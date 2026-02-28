@@ -1,0 +1,195 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* CSS Variables for theming - Default light mode */
+:root {
+  /* Dynamic Configuration Variables (Managed by Settings) */
+  --font-family-base: system-ui, -apple-system, sans-serif;
+  --cell-gap: 4px;
+  --cell-border-width: 1px;
+  --cell-border-color: #d1d5db;
+
+  /* Primary colors */
+  --primary: #3b82f6;
+  --primary-light: rgba(59, 130, 246, 0.1);
+  --primary-light-hover: rgba(59, 130, 246, 0.2);
+  
+  /* Text colors */
+  --text-primary: #1f2937;
+  --text-secondary: #4b5563;
+  --text-muted: #9ca3af;
+  
+  /* Background colors - CSS backdrop-filter 透明栈 */
+  --glass-bg: rgba(255, 255, 255, 0.3);
+  --cell-bg: rgba(255, 255, 255, 0.25);
+  --cell-bg-muted: rgba(255, 255, 255, 0.15);
+  --hover-bg: rgba(0, 0, 0, 0.05);
+  
+  /* Schedule colors */
+  --schedule-bg: rgba(255, 255, 255, 0.7);
+  --schedule-hover: rgba(255, 255, 255, 0.9);
+  
+  /* Border colors */
+  --border-light: rgba(255, 255, 255, 0.2);
+  --border-color: var(--cell-border-color); /* Linked to settings */
+  
+  /* Status colors */
+  --success: #22c55e;
+  --danger: #ef4444;
+  --danger-bg: rgba(239, 68, 68, 0.1);
+  
+  /* Resize handle */
+  --resize-hover: rgba(59, 130, 246, 0.3);
+  
+  /* Effects - CSS backdrop-filter 高斯模糊 */
+  --backdrop-blur: 16px;
+  --backdrop-saturate: 180%;
+  --shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+  
+  /* Typography */
+  --font-size-base: 14px;
+  --font-size-xs: calc(var(--font-size-base) * 0.75);
+  --font-size-sm: calc(var(--font-size-base) * 0.875);
+  --font-size-md: var(--font-size-base);
+  --font-size-lg: calc(var(--font-size-base) * 1.125);
+  --font-size-xl: calc(var(--font-size-base) * 1.25);
+  --font-weight-base: 400;
+  --font-weight-bold: calc(var(--font-weight-base) + 200);
+  
+  /* Use the variable injected by JS settings */
+  font-family: var(--font-family-base), BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  -webkit-text-size-adjust: 100%;
+  font-size: var(--font-size-base);
+  font-weight: var(--font-weight-base);
+}
+
+/* Dark mode variables */
+[data-theme="dark"] {
+  --primary: #60a5fa;
+  --primary-light: rgba(96, 165, 250, 0.15);
+  --primary-light-hover: rgba(96, 165, 250, 0.25);
+  
+  --text-primary: #f9fafb;
+  --text-secondary: #d1d5db;
+  --text-muted: #6b7280;
+  
+  /* CSS backdrop-filter 透明栈 - 暗色模式 */
+  --glass-bg: rgba(30, 30, 30, 0.4);
+  --cell-bg: rgba(255, 255, 255, 0.20);
+  --cell-bg-muted: rgba(255, 255, 255, 0.10);
+  --hover-bg: rgba(255, 255, 255, 0.1);
+  
+  --schedule-bg: rgba(255, 255, 255, 0.15);
+  --schedule-hover: rgba(255, 255, 255, 0.25);
+  
+  --border-light: rgba(255, 255, 255, 0.1);
+  --border-color: var(--cell-border-color); /* Linked to settings */
+  
+  --danger-bg: rgba(239, 68, 68, 0.2);
+  
+  --shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  user-select: none;
+}
+
+/* 允许输入框和文本区域选择文本 */
+input, textarea, [contenteditable] {
+  user-select: text;
+}
+
+/* 1. 彻底打通底层 */
+:root,
+html,
+body,
+#app {
+  background: transparent !important;
+  background-color: transparent !important;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+}
+
+html, body {
+  width: 100%;
+  height: 100%;
+}
+
+#app {
+  width: 100%;
+  height: 100%;
+  padding: 0px;
+  border-radius: 0.5rem;
+  overflow: hidden;
+  box-shadow: none !important;
+}
+
+/* 2. 核心模糊容器 - Glass effect utility */
+.glass {
+  /* 高斯模糊：核心在这里 */
+  backdrop-filter: blur(var(--backdrop-blur)) saturate(var(--backdrop-saturate));
+  -webkit-backdrop-filter: blur(var(--backdrop-blur)) saturate(var(--backdrop-saturate));
+  /* 半透明底色 */
+  background: var(--glass-bg);
+  /* 细边框更精致 */
+  border: 1px solid var(--border-light); 
+  box-shadow: var(--shadow);
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.05);
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.15);
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 0, 0, 0.25);
+}
+[data-theme="dark"] ::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.05);
+}
+[data-theme="dark"] ::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.15);
+}
+[data-theme="dark"] ::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.25);
+}
+
+/* Drag region */
+.drag-region {
+  -webkit-app-region: drag;
+  app-region: drag;
+}
+.no-drag {
+  -webkit-app-region: no-drag;
+  app-region: no-drag;
+}
+
+/* Font size utilities */
+.text-xs { font-size: var(--font-size-xs); }
+.text-sm { font-size: var(--font-size-sm); }
+.text-base { font-size: var(--font-size-md); }
+.text-lg { font-size: var(--font-size-lg); }
+.text-xl { font-size: var(--font-size-xl); }
+
+/* Color utilities */
+.text-primary { color: var(--text-primary); }
+.text-secondary { color: var(--text-secondary); }
+.text-muted { color: var(--text-muted); }
+.bg-primary { background-color: var(--primary); }
+.border-light { border-color: var(--border-light); }

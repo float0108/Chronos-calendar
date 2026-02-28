@@ -1,0 +1,38 @@
+# --- IDE 配置文件 ---
+.vscode/*
+!.vscode/extensions.json
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# --- Node.js 相关 ---
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+.pnpm-debug.log*
+
+# --- 构建产物 (Frontend) ---
+dist/
+dist-ssr/
+*.local
+
+# --- Tauri / Rust 相关 ---
+# 忽略 Rust 的 target 目录（非常大，绝对不能提交）
+src-tauri/target/
+
+# 忽略 Tauri 编译生成的各种安装包
+src-tauri/gen/
+src-tauri/bin/
+
+# 如果你使用的是特定的环境变量文件
+.env
+.env*.local
+
+# --- 系统文件 ---
+.DS_Store
+Thumbs.db
