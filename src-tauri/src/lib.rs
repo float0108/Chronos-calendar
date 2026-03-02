@@ -41,6 +41,8 @@ pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_sql::Builder::default().build())
         .plugin(tauri_plugin_window_state::Builder::default().build())
+        .plugin(tauri_plugin_dialog::init())
+        .plugin(tauri_plugin_fs::init())
         .invoke_handler(tauri::generate_handler![set_window_vibrancy])
         .setup(|app| {
             let window = app.get_webview_window("main").unwrap();

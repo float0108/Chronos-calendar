@@ -191,7 +191,7 @@ export function useDatabase() {
 
   async function getCellColor(date: string): Promise<string> {
     if (!db.value) return '';
-    
+
     try {
       const result = await db.value.select<{cell_color: string}[]>(
         'SELECT cell_color FROM cell_metadata WHERE date = $1',
@@ -201,6 +201,124 @@ export function useDatabase() {
     } catch (error) {
       console.error('Failed to get cell color:', error);
       return '';
+    }
+  }
+
+  async function loadAllSchedules(): Promise<{ schedules: Schedule[], cellColors: Map<string, string> }> {
+    if (!db.value) return { schedules: [], cellColors: new Map() };
+
+    try {
+      // 获取所有日程
+      const schedules = await db.value.select<Schedule[]>(
+        'SELECT * FROM schedules ORDER BY date, created_at'
+      );
+
+      // 获取所有单元格颜色
+      const metadata = await db.value.select<{date: string; cell_color: string}[]>(
+        "SELECT date, cell_color FROM cell_metadata WHERE cell_color != ''"
+      );
+
+      const cellColors = new Map(metadata.map(m => [m.date, m.cell_color]));
+
+      return { schedules, cellColors };
+    } catch (error) {
+      console.error('Failed to load all schedules:', error);
+      return { schedules: [], cellColors: new Map() };
+    }
+  }
+
+  async function importSchedules(schedules: Schedule[], merge: boolean = false): Promise<{ inserted: number, updated: number }> {
+    if (!db.value) return { inserted: 0, updated: 0 };
+
+    let inserted = 0;
+    let updated = 0;
+
+    try {
+      if (merge) {
+        // 合并模式：智能去重和更新
+        for (const schedule of schedules) {
+          // 查找是否存在相同 date 和 content 的记录
+          const existing = await db.value.select<Schedule[]>(
+            'SELECT * FROM schedules WHERE date = $1 AND content = $2',
+            [schedule.date, schedule.content]
+          );
+
+          if (existing.length > 0) {
+            // 存在则更新该记录
+            await db.value.execute(
+              'UPDATE schedules SET is_done = $1, priority = $2, created_at = $3 WHERE id = $4',
+              [schedule.is_done ? 1 : 0, schedule.priority, schedule.created_at, existing[0].id]
+            );
+            updated++;
+          } else {
+            // 不存在则插入新记录
+            await db.value.execute(
+              'INSERT INTO schedules (date, content, is_done, priority, created_at) VALUES ($1, $2, $3, $4, $5)',
+              [schedule.date, schedule.content, schedule.is_done ? 1 : 0, schedule.priority, schedule.created_at]
+            );
+            inserted++;
+          }
+        }
+      } else {
+        // 覆盖模式：直接插入所有记录
+        for (const schedule of schedules) {
+          await db.value.execute(
+            'INSERT INTO schedules (date, content, is_done, priority, created_at) VALUES ($1, $2, $3, $4, $5)',
+            [schedule.date, schedule.content, schedule.is_done ? 1 : 0, schedule.priority, schedule.created_at]
+          );
+          inserted++;
+        }
+      }
+
+      return { inserted, updated };
+    } catch (error) {
+      console.error('Failed to import schedules:', error);
+      throw error;
+    }
+  }
+
+  async function importCellColors(cellColors: { date: string, color: string }[]): Promise<{ inserted: number, updated: number }> {
+    if (!db.value) return { inserted: 0, updated: 0 };
+
+    let inserted = 0;
+    let updated = 0;
+
+    try {
+      for (const { date, color } of cellColors) {
+        // 检查是否已存在该日期的颜色
+        const existing = await db.value.select<{ count: number }[]>(
+          'SELECT COUNT(*) as count FROM cell_metadata WHERE date = $1',
+          [date]
+        );
+
+        if (existing[0]?.count > 0) {
+          updated++;
+        } else {
+          inserted++;
+        }
+
+        await db.value.execute(
+          'INSERT INTO cell_metadata (date, cell_color) VALUES ($1, $2) ON CONFLICT(date) DO UPDATE SET cell_color = $2',
+          [date, color]
+        );
+      }
+
+      return { inserted, updated };
+    } catch (error) {
+      console.error('Failed to import cell colors:', error);
+      throw error;
+    }
+  }
+
+  async function clearAllData(): Promise<void> {
+    if (!db.value) return;
+
+    try {
+      await db.value.execute('DELETE FROM schedules');
+      await db.value.execute('DELETE FROM cell_metadata');
+    } catch (error) {
+      console.error('Failed to clear all data:', error);
+      throw error;
     }
   }
 
@@ -214,5 +332,9 @@ export function useDatabase() {
     toggleScheduleStatus,
     updateScheduleColor,
     getCellColor,
+    loadAllSchedules,
+    importSchedules,
+    importCellColors,
+    clearAllData,
   };
 }

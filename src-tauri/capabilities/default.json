@@ -11,6 +11,12 @@
     "sql:allow-select",
     "core:window:allow-close",
     "core:window:allow-start-dragging",
-    "core:window:allow-start-resize-dragging"
+    "core:window:allow-start-resize-dragging",
+    "dialog:default",
+    "dialog:allow-open",
+    "dialog:allow-save",
+    "fs:default",
+    "fs:allow-read-text-file",
+    "fs:allow-write-text-file"
   ]
 }

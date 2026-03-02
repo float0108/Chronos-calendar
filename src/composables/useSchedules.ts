@@ -3,9 +3,10 @@ import dayjs from 'dayjs';
 import type { Schedule } from '../types';
 import { useDatabase } from './useDatabase';
 import { useToast } from './useToast';
+import { schedulesToCSV, exportToFile } from '../utils/export';
 
 export function useSchedules() {
-  const { loadSchedules, saveSchedule, deleteSchedulesByDate, updateScheduleColor } = useDatabase();
+  const { loadSchedules, saveSchedule, deleteSchedulesByDate, updateScheduleColor, loadAllSchedules, importSchedules, importCellColors, clearAllData } = useDatabase();
   const { showError, showSuccess } = useToast();
   
   const schedules = ref<Map<string, Schedule[]>>(new Map());
@@ -122,6 +123,61 @@ export function useSchedules() {
     }
   }
 
+  async function exportAllSchedules(): Promise<void> {
+    try {
+      const { schedules, cellColors } = await loadAllSchedules();
+
+      if (schedules.length === 0 && cellColors.size === 0) {
+        showError('没有日程数据可导出');
+        return;
+      }
+
+      const csvData = schedulesToCSV(schedules, cellColors);
+      const filename = `chronos-schedules-${dayjs().format('YYYY-MM-DD')}.csv`;
+      const success = await exportToFile(csvData, filename);
+
+      if (success) {
+        showSuccess('导出成功');
+      }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : '导出失败，请重试';
+      showError(message);
+    }
+  }
+
+  async function importSchedulesFromData(schedules: Schedule[], cellColors: { date: string, color: string }[], mode: 'merge' | 'overwrite'): Promise<{ success: boolean, scheduleStats?: { inserted: number, updated: number }, colorStats?: { inserted: number, updated: number } }> {
+    try {
+      console.log('Importing data:', { mode, schedulesCount: schedules.length, cellColorsCount: cellColors.length });
+      console.log('Sample schedule:', schedules[0]);
+      console.log('Sample cellColor:', cellColors[0]);
+
+      if (mode === 'overwrite') {
+        await clearAllData();
+      }
+
+      let scheduleStats = { inserted: 0, updated: 0 };
+      let colorStats = { inserted: 0, updated: 0 };
+
+      if (schedules.length > 0) {
+        scheduleStats = await importSchedules(schedules, mode === 'merge');
+        console.log('Schedule import result:', scheduleStats);
+      }
+
+      if (cellColors.length > 0) {
+        colorStats = await importCellColors(cellColors);
+        console.log('Color import result:', colorStats);
+      }
+
+      await refreshSchedules();
+      return { success: true, scheduleStats, colorStats };
+    } catch (error) {
+      console.error('Import error:', error);
+      const message = error instanceof Error ? error.message : '导入失败，请重试';
+      showError(message);
+      return { success: false };
+    }
+  }
+
   return {
     schedules,
     currentDate,
@@ -135,5 +191,7 @@ export function useSchedules() {
     nextMonth,
     goToToday,
     selectDate,
+    exportAllSchedules,
+    importSchedulesFromData,
   };
 }

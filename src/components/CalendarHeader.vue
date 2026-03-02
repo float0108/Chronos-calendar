@@ -23,6 +23,8 @@ const emit = defineEmits<{
   (e: 'settings'): void;
   (e: 'quit'): void;
   (e: 'toggleLock'): void;
+  (e: 'export'): void;
+  (e: 'import'): void;
 }>();
 
 function handleDrag(event: MouseEvent) {
@@ -63,6 +65,14 @@ function handleQuit() {
 
 function handleToggleLock() {
   emit('toggleLock');
+}
+
+function handleExport() {
+  emit('export');
+}
+
+function handleImport() {
+  emit('import');
 }
 </script>
 
@@ -141,6 +151,8 @@ function handleToggleLock() {
           :visible="showMenu"
           @settings="handleSettings"
           @quit="handleQuit"
+          @export="handleExport"
+          @import="handleImport"
         />
       </div>
     </div>
