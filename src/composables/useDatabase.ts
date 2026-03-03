@@ -162,11 +162,11 @@ export function useDatabase() {
 
   async function toggleScheduleStatus(scheduleId: number, isDone: boolean): Promise<void> {
     if (!db.value) return;
-    
+
     try {
       await db.value.execute(
         'UPDATE schedules SET is_done = $1 WHERE id = $2',
-        [isDone ? 0 : 1, scheduleId]
+        [isDone ? 1 : 0, scheduleId]
       );
     } catch (error) {
       console.error('Failed to toggle schedule:', error);

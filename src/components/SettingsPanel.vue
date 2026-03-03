@@ -230,9 +230,9 @@ function handleReset() {
               <h3 class="text-sm font-semibold text-gray-900 border-b pb-2">颜色配置</h3>
               <ColorPicker v-model="localSettings.primary_color" label="主题色" />
               <ColorPicker v-model="localSettings.text_color" label="文字颜色" />
-              <ColorPicker v-model="localSettings.bg_color" label="背景颜色" />
-              <ColorPicker v-model="localSettings.cell_color" label="单元格颜色" />
-              <ColorPicker v-model="localSettings.cell_border_color" label="边框颜色" />
+              <ColorPicker v-model="localSettings.bg_color" label="背景颜色" :allow-transparent="true" />
+              <ColorPicker v-model="localSettings.cell_color" label="单元格颜色" :allow-transparent="true" />
+              <ColorPicker v-model="localSettings.cell_border_color" label="边框颜色" :allow-transparent="true" />
             </div>
 
             <div class="space-y-6">

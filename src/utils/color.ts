@@ -1,4 +1,9 @@
 export function hexToRgba(hex: string, alpha: number): string {
+  // 如果是透明色，直接返回 rgba 格式
+  if (hex === 'transparent') {
+    return `rgba(0, 0, 0, 0)`;
+  }
+
   const r = parseInt(hex.slice(1, 3), 16);
   const g = parseInt(hex.slice(3, 5), 16);
   const b = parseInt(hex.slice(5, 7), 16);
@@ -6,6 +11,11 @@ export function hexToRgba(hex: string, alpha: number): string {
 }
 
 export function adjustBrightness(hex: string, percent: number): string {
+  // 如果是透明色，直接返回透明色
+  if (hex === 'transparent') {
+    return 'transparent';
+  }
+
   const num = parseInt(hex.replace('#', ''), 16);
   const amt = Math.round(2.55 * percent);
   const R = (num >> 16) + amt;

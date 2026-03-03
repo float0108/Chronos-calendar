@@ -6,7 +6,10 @@ import { useToast } from './useToast';
 import { schedulesToCSV, exportToFile } from '../utils/export';
 
 export function useSchedules() {
-  const { loadSchedules, saveSchedule, deleteSchedulesByDate, updateScheduleColor, loadAllSchedules, importSchedules, importCellColors, clearAllData } = useDatabase();
+  const { loadSchedules, saveSchedule, deleteSchedulesByDate, updateScheduleColor, loadAllSchedules, importSchedules, importCellColors, clearAllData, toggleScheduleStatus } = useDatabase();
+
+  // 导出 saveSchedule 供撤销功能使用
+  const _saveSchedule = saveSchedule;
   const { showError, showSuccess } = useToast();
   
   const schedules = ref<Map<string, Schedule[]>>(new Map());
@@ -193,5 +196,7 @@ export function useSchedules() {
     selectDate,
     exportAllSchedules,
     importSchedulesFromData,
+    toggleScheduleStatus,
+    saveSchedule: _saveSchedule,
   };
 }

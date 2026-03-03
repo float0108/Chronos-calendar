@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue';
+import { ref, computed, onMounted, onUnmounted } from 'vue';
 import dayjs from 'dayjs';
 import CalendarHeader from './components/CalendarHeader.vue';
 import CalendarGrid from './components/CalendarGrid.vue';
@@ -11,6 +11,7 @@ import { useDatabase } from './composables/useDatabase';
 import { useSchedules } from './composables/useSchedules';
 import { useSettings } from './composables/useSettings';
 import { useToast } from './composables/useToast';
+import { useUndoHistory } from './composables/useUndoHistory';
 import { closeWindow, setWindowLocked } from './utils/window';
 import { importFromFile, csvToSchedules } from './utils/export';
 import type { AppSettings, ThemeMode } from './types';
@@ -28,6 +29,8 @@ const {
   selectDate,
   exportAllSchedules,
   importSchedulesFromData,
+  toggleScheduleStatus,
+  saveSchedule,
 } = useSchedules();
 const {
   currentSettings,
@@ -37,6 +40,7 @@ const {
   switchMode,
 } = useSettings();
 const { showSuccess, showError } = useToast();
+const { pushAction, popAction, canUndo } = useUndoHistory();
 const calendarKey = ref(0);
 const showMenu = ref(false);
 const showMiniCalendar = ref(false);
@@ -226,6 +230,22 @@ function handleReset(date: string, content: string | null) {
 }
 function handleUpdate(date: string, lines: { text: string; done: boolean }[]) {
   if (isLocked.value) return;
+
+  // 保存撤销状态 - 获取当前日期的日程
+  const currentSchedules = schedules.value.get(date) || [];
+  const previousLines = currentSchedules
+    .filter(s => s.id !== -1 && s.content.trim() !== '')
+    .map(s => ({ text: s.content.trim(), done: !!s.is_done }));
+
+  pushAction({
+    type: 'updateLines',
+    data: {
+      date,
+      previousLines,
+    },
+    timestamp: Date.now(),
+  });
+
   updateScheduleLines(date, lines);
 }
 function handleSelectDate(day: number) {
@@ -251,18 +271,91 @@ function selectColor(color: string) {
   setCellColor(contextMenu.value.date, color);
   contextMenu.value.show = false;
 }
+async function handleToggleDone(schedule: any) {
+  // 保存撤销状态
+  pushAction({
+    type: 'toggleDone',
+    data: {
+      id: schedule.id,
+      previousState: schedule.is_done,
+    },
+    timestamp: Date.now(),
+  });
+
+  // 切换完成状态（传入切换后的状态，而不是当前状态）
+  await toggleScheduleStatus(schedule.id, !schedule.is_done);
+  await refreshSchedules();
+}
+
+async function handleUndo() {
+  const action = popAction();
+  if (!action) return;
+
+  try {
+    switch (action.type) {
+      case 'toggleDone': {
+        const { id, previousState } = action.data;
+        await toggleScheduleStatus(id, !previousState);
+        await refreshSchedules();
+        showSuccess('已撤销：切换完成状态');
+        break;
+      }
+      case 'updateLines': {
+        const { date, previousLines } = action.data;
+        await updateScheduleLines(date, previousLines);
+        await refreshSchedules();
+        showSuccess('已撤销：编辑操作');
+        break;
+      }
+      case 'deleteSchedule': {
+        const { date, previousSchedules } = action.data;
+        // 恢复删除的日程
+        for (const schedule of previousSchedules) {
+          await saveSchedule(date, schedule.content, schedule.is_done, schedule.priority);
+        }
+        await refreshSchedules();
+        showSuccess('已撤销：删除操作');
+        break;
+      }
+    }
+  } catch (error) {
+    console.error('Undo failed:', error);
+    showError('撤销失败');
+  }
+}
+
 function toggleLock() {
   isLocked.value = !isLocked.value;
   setWindowLocked(isLocked.value);
 }
+
+function handleKeydown(event: KeyboardEvent) {
+  // Ctrl+Z 撤销
+  if ((event.ctrlKey || event.metaKey) && event.key === 'z' && !event.shiftKey) {
+    event.preventDefault();
+    if (canUndo()) {
+      handleUndo();
+    } else {
+      showError('没有可撤销的操作');
+    }
+  }
+}
+
 onMounted(async () => {
   await initDatabase();
   await refreshSchedules();
   await initSettings();
+
+  // 监听键盘事件
+  window.addEventListener('keydown', handleKeydown);
+});
+
+onUnmounted(() => {
+  window.removeEventListener('keydown', handleKeydown);
 });
 </script>
 <template>
-  <div class="w-full h-full flex flex-col glass rounded-lg overflow-hidden relative">
+  <div class="w-full h-full flex flex-col glass rounded-lg overflow-hidden relative" @contextmenu.prevent>
     <ResizeHandles :is-locked="isLocked" />
     
     <CalendarHeader
@@ -292,6 +385,7 @@ onMounted(async () => {
       @update="handleUpdate"
       @navigate="handleNavigate"
       @contextmenu="handleContextMenu"
+      @toggle-done="handleToggleDone"
     />
     
     <div 

@@ -16,6 +16,7 @@ const emit = defineEmits<{
   (e: 'update', date: string, lines: { text: string; done: boolean }[]): void;
   (e: 'navigate', direction: string): void;
   (e: 'contextmenu', event: MouseEvent, date: string): void;
+  (e: 'toggleDone', schedule: Schedule): void;
 }>();
 
 const settings = computed(() => {
@@ -65,6 +66,10 @@ function handleUpdate(date: string, lines: { text: string; done: boolean }[]) {
 
 function handleCellContextMenu(event: MouseEvent, date: string) {
   emit('contextmenu', event, date);
+}
+
+function handleToggleDone(schedule: Schedule) {
+  emit('toggleDone', schedule);
 }
 
 function handleCellFocus(index: number) {
@@ -123,6 +128,7 @@ function handleNavigate(direction: string) {
         @focus="handleCellFocus(index)"
         @navigate="handleNavigate"
         @contextmenu="handleCellContextMenu($event, date.format('YYYY-MM-DD'))"
+        @toggle-done="handleToggleDone"
       />
     </div>
   </div>

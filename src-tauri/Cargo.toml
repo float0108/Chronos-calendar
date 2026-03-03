@@ -25,13 +25,13 @@ tauri-plugin-fs = "2"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 
-[features]
-default = ["custom-protocol"]
-custom-protocol = ["tauri/custom-protocol"]
-
 [profile.release]
-panic = "abort" # 发生 panic 时直接退出，减少错误处理代码
-codegen-units = 1 # 优化程度更高
-lto = true # 开启链接时优化 (Link Time Optimization)
-opt-level = "s" # 针对二进制大小进行优化 (或使用 "z")
-strip = true # 移除符号表和调试信息 (Tauri v1.5+ 支持)
+panic = "abort" 
+codegen-units = 1 
+lto = true 
+opt-level = "s" 
+strip = true 
+
+# 仅在 Windows 平台下编译引入此依赖，用于调用系统 API (如窗口层级置底)
+[target.'cfg(windows)'.dependencies]
+windows = { version = "0.58", features = ["Win32_Foundation", "Win32_UI_WindowsAndMessaging"] }

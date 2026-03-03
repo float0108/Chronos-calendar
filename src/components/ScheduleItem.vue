@@ -36,8 +36,8 @@ function handleDelete(event: Event) {
     >
       <Check v-if="schedule.is_done" class="w-2 h-2 text-white" />
     </button>
-    <span 
-      class="flex-1 truncate"
+    <span
+      class="flex-1 break-words"
       :class="schedule.is_done ? 'line-through text-[var(--text-muted)]' : 'text-[var(--text-primary)]'"
     >
       {{ schedule.content }}

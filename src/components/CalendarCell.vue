@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, nextTick, onMounted, onUnmounted } from 'vue';
-import { Check, Trash2 } from 'lucide-vue-next';
+import { Check, Trash2, Palette } from 'lucide-vue-next';
 import dayjs from 'dayjs';
 import type { Schedule } from '../types';
 
@@ -21,12 +21,13 @@ const emit = defineEmits<{
   (e: 'update', date: string, lines: EditLine[]): void;
   (e: 'navigate', direction: string): void;
   (e: 'contextmenu', event: MouseEvent): void;
+  (e: 'toggleDone', schedule: Schedule): void;
 }>();
 
 const isEditing = ref(false);
 const editLines = ref<EditLine[]>([]);
 const cellRef = ref<HTMLElement | null>(null);
-const inputRefs = ref<(HTMLInputElement | null)[]>([]);
+const textareaRefs = ref<(HTMLTextAreaElement | null)[]>([]);
 const activeLineIndex = ref<number | null>(null);
 const dateStr = props.date.format('YYYY-MM-DD');
 
@@ -88,11 +89,12 @@ function saveEdit() {
 
 function focusInput(index: number) {
   nextTick(() => {
-    const input = inputRefs.value[index];
-    if (input) {
-      input.focus();
-      const len = input.value.length;
-      input.setSelectionRange(len, len);
+    const textarea = textareaRefs.value[index];
+    if (textarea) {
+      textarea.focus();
+      const len = textarea.value.length;
+      textarea.setSelectionRange(len, len);
+      autoResize(textarea);
     }
   });
 }
@@ -103,23 +105,78 @@ function toggleActiveLineDone() {
   }
 }
 
+function deleteActiveLine() {
+  if (activeLineIndex.value === null) return;
+
+  // 如果只有一个条目且为空，清空内容
+  if (editLines.value.length === 1) {
+    editLines.value[0].text = '';
+    return;
+  }
+
+  // 如果有多个条目，删除当前条目
+  const newIndex = Math.max(0, activeLineIndex.value - 1);
+  editLines.value.splice(activeLineIndex.value, 1);
+  activeLineIndex.value = newIndex;
+  focusInput(newIndex);
+}
+
 function handleInputKeydown(event: KeyboardEvent, index: number) {
   if (event.key === 'Escape') { saveEdit(); return; }
-  if (event.key === 'Enter') {
+  // Enter 创建新条目（每个换行就是一个新条目）
+  if (event.key === 'Enter' && !event.shiftKey && !event.ctrlKey) {
     event.preventDefault();
     editLines.value.splice(index + 1, 0, { text: '', done: false });
     focusInput(index + 1);
+    return;
   }
   if (event.key === 'Backspace' && editLines.value[index].text === '' && editLines.value.length > 1) {
     event.preventDefault();
     editLines.value.splice(index, 1);
     focusInput(Math.max(0, index - 1));
   }
+  // 上下箭头导航
   if (['ArrowUp', 'ArrowDown'].includes(event.key)) {
-    event.preventDefault();
-    const nextIndex = event.key === 'ArrowUp' ? index - 1 : index + 1;
-    if (nextIndex >= 0 && nextIndex < editLines.value.length) focusInput(nextIndex);
+    const textarea = textareaRefs.value[index];
+    if (!textarea) return;
+    const cursorPos = textarea.selectionStart;
+    const text = textarea.value;
+
+    // ArrowUp: 只在光标在开头时导航到上一条目
+    if (event.key === 'ArrowUp' && index > 0 && cursorPos === 0) {
+      event.preventDefault();
+      focusInput(index - 1);
+    }
+    // ArrowDown: 只在光标在末尾时导航到下一条目
+    if (event.key === 'ArrowDown' && index < editLines.value.length - 1 && cursorPos === text.length) {
+      event.preventDefault();
+      focusInput(index + 1);
+    }
   }
+}
+
+function autoResize(textarea: HTMLTextAreaElement) {
+  textarea.style.height = 'auto';
+  textarea.style.height = textarea.scrollHeight + 'px';
+}
+
+function handleScheduleContextMenu(event: MouseEvent, schedule: Schedule) {
+  event.preventDefault();
+  event.stopPropagation();
+  emit('toggleDone', schedule);
+}
+
+function handleColorButtonClick(event: MouseEvent) {
+  event.preventDefault();
+  event.stopPropagation();
+  emit('contextmenu', event);
+}
+
+function handleEditLineContextMenu(event: MouseEvent, index: number) {
+  event.preventDefault();
+  event.stopPropagation();
+  // 切换该行的完成状态
+  editLines.value[index].done = !editLines.value[index].done;
 }
 </script>
 
@@ -130,7 +187,7 @@ function handleInputKeydown(event: KeyboardEvent, index: number) {
     'ring-2 ring-inset ring-[var(--primary)] border-transparent': isToday && !isEditing,
     'editing shadow-2xl z-30 bg-white dark:bg-gray-800 scale-[1.02] !border-transparent': isEditing,
     'hover:shadow-md hover:brightness-95 dark:hover:brightness-110': !isEditing && !isLocked
-  }" :style="cellStyle" @click="!isEditing && startEditing()" @contextmenu.prevent="emit('contextmenu', $event)">
+  }" :style="cellStyle" @click="!isEditing && startEditing()">
     <div class="px-2 py-1 shrink-0 flex items-center justify-between select-none">
       <span class="font-semibold w-5 h-5 flex items-center justify-center rounded-full text-xs transition-colors"
         :class="isToday ? 'bg-[var(--primary)] text-white shadow-sm' : (isCurrentMonth ? 'text-[var(--text-primary)]' : 'text-[var(--text-muted)]')">
@@ -142,39 +199,43 @@ function handleInputKeydown(event: KeyboardEvent, index: number) {
 
       <div v-if="!isEditing" class="content-area h-full overflow-y-auto no-scrollbar px-1">
         <div v-for="(s, i) in schedules.filter(s => s.id !== -1 && s.content.trim() !== '')" :key="i"
-          class="flex items-start gap-1 mb-0.5 text-xs leading-tight transition-all py-0.5"
-          :class="s.is_done ? 'text-gray-400 line-through opacity-70' : 'text-[var(--text-primary)]'">
-          <div class="shrink-0 w-1 h-1 rounded-full bg-current opacity-50 mt-1.5 mx-0.5"></div>
-          <span class="truncate w-full">{{ s.content }}</span>
+          class="flex items-center gap-1 mb-0.5 text-xs leading-tight transition-all py-0.5 cursor-pointer"
+          :class="s.is_done ? 'text-gray-400 line-through opacity-70' : 'text-[var(--text-primary)]'"
+          @contextmenu.prevent="handleScheduleContextMenu($event, s)">
+          <div class="shrink-0 w-1 h-1 rounded-full bg-current opacity-50"></div>
+          <span class="break-words flex-1">{{ s.content }}</span>
         </div>
       </div>
 
       <div v-else class="editor-container flex flex-col h-full overflow-y-auto no-scrollbar pb-6">
         <div v-for="(line, index) in editLines" :key="index"
-          class="edit-line flex items-center gap-1 px-1 rounded-md group relative transition-colors"
-          :class="{ 'bg-[var(--primary)]/10 dark:bg-[var(--primary)]/20': activeLineIndex === index }">
-          <div class="shrink-0 w-1 h-1 rounded-full bg-gray-400 mx-0.5"></div>
-          <input :ref="el => { inputRefs[index] = el as HTMLInputElement }" v-model="line.text" type="text"
-            class="flex-1 bg-transparent border-none outline-none text-xs py-0.5 min-w-0"
+          class="edit-line flex items-start gap-1 px-1 rounded-md group relative transition-colors"
+          :class="{ 'bg-[var(--primary)]/10 dark:bg-[var(--primary)]/20': activeLineIndex === index }"
+          @contextmenu.prevent="handleEditLineContextMenu($event, index)">
+          <div class="shrink-0 w-1 h-1 rounded-full bg-gray-400 mt-1.5"></div>
+          <textarea :ref="el => { textareaRefs[index] = el as HTMLTextAreaElement }" v-model="line.text"
+            rows="1"
+            class="flex-1 bg-transparent border-none outline-none text-xs py-0.5 min-w-0 resize-none overflow-hidden leading-tight break-words"
             :class="line.done ? 'line-through text-gray-400' : 'text-[var(--text-primary)]'"
-            @focus="activeLineIndex = index" @keydown="handleInputKeydown($event, index)" />
-          <button @click.stop="editLines.length > 1 ? editLines.splice(index, 1) : (line.text = '')"
-            class="opacity-0 group-hover:opacity-100 text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/30 p-1 rounded transition-all">
-            <Trash2 class="w-3 h-3" />
-          </button>
+            @focus="activeLineIndex = index"
+            @keydown="handleInputKeydown($event, index)"
+            @input="autoResize($event.target as HTMLTextAreaElement)"></textarea>
         </div>
       </div>
 
-      <div v-if="isEditing && activeLine" class="absolute bottom-2 right-2 z-30 flex items-center">
-        <button @mousedown.prevent="toggleActiveLineDone"
-          class="w-4 h-4 flex items-center justify-center transition-all cursor-pointer hover:scale-110 active:scale-95 shadow-sm"
-          :class="[
-            'rounded-md border',
-            activeLine.done
-              ? 'bg-green-500 border-green-600 shadow-green-500/20'
-              : 'bg-white border-[var(--cell-border-color)] dark:bg-gray-700 dark:border-gray-500'
-          ]">
-          <Check v-if="activeLine.done" class="w-2.5 h-2.5 text-white" stroke-width="4" />
+      <!-- 左下角垃圾桶：删除当前条目 -->
+      <div v-if="isEditing && activeLineIndex !== null" class="absolute bottom-2 left-2 z-30">
+        <button @mousedown.prevent="deleteActiveLine"
+          class="w-6 h-6 flex items-center justify-center rounded-md bg-red-50 hover:bg-red-100 text-red-500 transition-all hover:scale-110 active:scale-95 shadow-sm dark:bg-red-900/20 dark:hover:bg-red-900/30">
+          <Trash2 class="w-3 h-3" />
+        </button>
+      </div>
+
+      <!-- 右下角调色盘：单元格颜色 -->
+      <div v-if="isEditing" class="absolute bottom-2 right-2 z-30">
+        <button @mousedown.prevent="handleColorButtonClick"
+          class="w-6 h-6 flex items-center justify-center rounded-md bg-white hover:bg-gray-50 text-gray-600 transition-all hover:scale-110 active:scale-95 shadow-sm border border-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 dark:text-gray-300 dark:border-gray-600">
+          <Palette class="w-3 h-3" />
         </button>
       </div>
 
