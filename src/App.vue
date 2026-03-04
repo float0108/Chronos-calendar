@@ -388,7 +388,15 @@ onUnmounted(() => {
 });
 </script>
 <template>
-  <div class="w-full h-full flex flex-col glass rounded-lg overflow-hidden relative" @contextmenu.prevent>
+  <div
+    class="w-full h-full flex flex-col glass rounded-lg overflow-hidden relative"
+    :style="{
+      borderWidth: 'var(--cell-border-width)',
+      borderStyle: 'solid',
+      borderColor: 'var(--cell-border-color)'
+    }"
+    @contextmenu.prevent
+  >
     <ResizeHandles :is-locked="isLocked" />
     
     <CalendarHeader
@@ -428,8 +436,8 @@ onUnmounted(() => {
       @toggle-done="handleToggleDone"
     />
     
-    <div 
-      v-if="showMenu || showMiniCalendar" 
+    <div
+      v-if="showMenu || showMiniCalendar || contextMenu.show"
       class="fixed inset-0 z-40"
       @click="closeOverlays"
     ></div>

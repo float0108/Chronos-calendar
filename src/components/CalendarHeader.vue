@@ -96,8 +96,14 @@ function handleSwitchViewMode(mode: ViewMode) {
 </script>
 
 <template>
-  <div 
-    class="calendar-header flex items-center justify-between px-4 py-3 border-b border-[var(--border-light)] select-none"
+  <div
+    class="calendar-header flex items-center justify-between px-4 py-3 select-none"
+    :style="{
+      backgroundColor: 'var(--cell-bg)',
+      borderBottomWidth: 'var(--cell-border-width)',
+      borderBottomStyle: 'solid',
+      borderBottomColor: 'var(--cell-border-color)'
+    }"
     @mousedown="handleDrag"
   >
     <div class="flex items-center gap-2">
