@@ -112,23 +112,21 @@ function handleSwitchViewMode(mode: ViewMode) {
     </div>
     
     <div class="flex items-center gap-1 no-drag">
-      <button 
+      <button
         @click="handlePrev"
         class="p-1.5 rounded-lg hover:bg-[var(--hover-bg)] transition-colors"
-        :class="{ 'opacity-50 pointer-events-none': isLocked }"
       >
         <ChevronLeft class="w-4 h-4 text-gray-700" />
       </button>
-      
+
       <div class="relative">
-        <button 
+        <button
           @click="handleToggleMini"
           class="text-sm font-medium min-w-[100px] text-center text-gray-900 px-2 py-1 rounded-lg hover:bg-[var(--hover-bg)] transition-colors"
-          :class="{ 'opacity-50 pointer-events-none': isLocked }"
         >
           {{ formatMonthYear(currentDate) }}
         </button>
-        
+
         <MiniCalendar
           :current-date="currentDate"
           :visible="showMiniCalendar"
@@ -137,19 +135,17 @@ function handleSwitchViewMode(mode: ViewMode) {
           @nextMonth="handleNext"
         />
       </div>
-      
-      <button 
+
+      <button
         @click="handleNext"
         class="p-1.5 rounded-lg hover:bg-[var(--hover-bg)] transition-colors"
-        :class="{ 'opacity-50 pointer-events-none': isLocked }"
       >
         <ChevronRight class="w-4 h-4 text-gray-700" />
       </button>
-      
+
       <button
         @click="handleToday"
         class="ml-2 px-2 py-1 text-xs rounded-lg bg-[var(--primary-light)] text-[var(--primary)] hover:bg-[var(--primary-light-hover)] transition-colors"
-        :class="{ 'opacity-50 pointer-events-none': isLocked }"
       >
         今天
       </button>

@@ -90,12 +90,10 @@ function closeOverlays() {
   contextMenu.value.show = false;
 }
 function toggleMenu() {
-  if (isLocked.value) return;
   showMenu.value = !showMenu.value;
   if (showMenu.value) showMiniCalendar.value = false;
 }
 function toggleMiniCalendar() {
-  if (isLocked.value) return;
   showMiniCalendar.value = !showMiniCalendar.value;
   if (showMiniCalendar.value) showMenu.value = false;
 }
@@ -252,12 +250,10 @@ function handleUpdate(date: string, lines: { text: string; done: boolean }[]) {
   updateScheduleLines(date, lines);
 }
 function handleSelectDate(day: number) {
-  if (isLocked.value) return;
   selectDate(day);
   showMiniCalendar.value = false;
 }
 function handleSwitchViewMode(mode: ViewMode) {
-  if (isLocked.value) return;
   switchViewMode(mode);
 }
 function handleNavigate(dateStr: string) {
@@ -407,9 +403,9 @@ onUnmounted(() => {
       :can-undo="canUndo()"
       :can-redo="canRedo()"
       :view-mode="viewMode"
-      @prev-month="!isLocked && prevMonth()"
-      @next-month="!isLocked && nextMonth()"
-      @go-today="!isLocked && goToToday()"
+      @prev-month="prevMonth()"
+      @next-month="nextMonth()"
+      @go-today="goToToday()"
       @toggle-mini-calendar="toggleMiniCalendar"
       @toggle-menu="toggleMenu"
       @select-date="handleSelectDate"
