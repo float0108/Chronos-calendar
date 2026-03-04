@@ -28,6 +28,8 @@ const settings = computed(() => {
 });
 
 const weekStartsOn = computed(() => (settings.value?.week_starts_on ?? 1) as 0 | 1);
+const displayMode = computed(() => (settings.value?.display_mode ?? 'month') as 'month' | 'floating_weeks');
+const floatingWeeksCount = computed(() => (settings.value?.floating_weeks_count ?? 3) as number);
 
 const weekdays = computed(() => {
   const weekDays = ['日', '一', '二', '三', '四', '五', '六'];
@@ -39,7 +41,7 @@ const weekdays = computed(() => {
   return days;
 });
 
-const days = computed(() => getCalendarDays(props.currentDate, weekStartsOn.value));
+const days = computed(() => getCalendarDays(props.currentDate, weekStartsOn.value, displayMode.value, floatingWeeksCount.value));
 
 const editingIndex = ref<number | null>(null);
 
@@ -53,6 +55,11 @@ function isToday(date: dayjs.Dayjs): boolean {
 }
 
 function isCurrentMonth(date: dayjs.Dayjs): boolean {
+  // 浮动周模式下，所有显示的单元格都是激活状态
+  if (displayMode.value === 'floating_weeks') {
+    return true;
+  }
+  // 整月模式下，只有当前月份的单元格是激活状态
   return date.isSame(props.currentDate, 'month');
 }
 
@@ -113,7 +120,7 @@ function handleNavigate(direction: string) {
       </div>
     </div>
     
-    <div class="grid grid-cols-7 flex-1 min-h-0 grid-rows-6" style="gap: var(--cell-gap)">
+    <div class="grid grid-cols-7 flex-1 min-h-0" :style="{ gridTemplateRows: `repeat(${Math.ceil(days.length / 7)}, minmax(0, 1fr))`, gap: 'var(--cell-gap)' }">
       <CalendarCell
         v-for="(date, index) in days"
         :key="date.format('YYYY-MM-DD')"

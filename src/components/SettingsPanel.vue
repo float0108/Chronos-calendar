@@ -62,6 +62,8 @@ function handleSwitchMode(mode: ThemeMode) {
     cell_gap: localSettings.value.cell_gap,
     cell_border_width: localSettings.value.cell_border_width,
     week_starts_on: localSettings.value.week_starts_on,
+    display_mode: localSettings.value.display_mode,
+    floating_weeks_count: localSettings.value.floating_weeks_count,
   };
 
   const saved = localStorage.getItem(`chronos_settings_${mode}`);
@@ -208,6 +210,43 @@ function handleReset() {
                   <span class="text-sm text-gray-700">周一</span>
                 </label>
               </div>
+            </div>
+
+            <div class="space-y-2">
+              <label class="text-sm font-medium text-gray-700">显示模式</label>
+              <div class="flex gap-6 mt-2">
+                <label class="flex items-center gap-2 cursor-pointer">
+                  <input type="radio" value="month" v-model="localSettings.display_mode"
+                    class="w-4 h-4 text-blue-500 focus:ring-blue-500" />
+                  <span class="text-sm text-gray-700">整月显示</span>
+                </label>
+                <label class="flex items-center gap-2 cursor-pointer">
+                  <input type="radio" value="floating_weeks" v-model="localSettings.display_mode"
+                    class="w-4 h-4 text-blue-500 focus:ring-blue-500" />
+                  <span class="text-sm text-gray-700">浮动周显示</span>
+                </label>
+              </div>
+            </div>
+
+            <div v-if="localSettings.display_mode === 'floating_weeks'" class="space-y-2">
+              <div class="flex items-center justify-between">
+                <label class="text-sm font-medium text-gray-700">浮动周数量</label>
+                <div class="flex items-center gap-2">
+                  <input
+                    type="number"
+                    v-model.number="localSettings.floating_weeks_count"
+                    min="2"
+                    max="10"
+                    step="1"
+                    class="w-20 px-2 py-1 text-sm text-right bg-white border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                  <span class="text-sm text-gray-500">周</span>
+                </div>
+              </div>
+              <p class="text-xs text-gray-500">
+                奇数：当天所在周前后各 (n-1)/2 周<br>
+                偶数：前 n/2-1 周，后 n/2+1 周
+              </p>
             </div>
           </div>
 

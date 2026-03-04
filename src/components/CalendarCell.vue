@@ -334,14 +334,13 @@ function handleEditLineContextMenu(event: MouseEvent, index: number) {
 <template>
   <div ref="cellRef" class="calendar-cell relative flex flex-col transition-all duration-200 rounded-xl" :class="{
     'bg-[var(--cell-bg)]': isCurrentMonth && !cellStyle.backgroundColor,
-    'bg-[var(--cell-bg-muted)] opacity-70': !isCurrentMonth && !cellStyle.backgroundColor,
+    'bg-[var(--cell-bg-muted)]': !isCurrentMonth && !cellStyle.backgroundColor,
     'today-cell': isToday && !isEditing,
     'editing shadow-2xl z-30 bg-white dark:bg-gray-800 scale-[1.02] !border-transparent': isEditing,
     'hover:shadow-md hover:brightness-95 dark:hover:brightness-110': !isEditing && !isLocked
   }" :style="cellStyle" @click="!isEditing && startEditing()">
     <div class="px-2 py-1 shrink-0 flex items-center justify-between select-none">
-      <span class="font-semibold w-5 h-5 flex items-center justify-center rounded-full text-xs transition-colors"
-        :class="isCurrentMonth ? 'text-[var(--text-primary)]' : 'text-[var(--text-muted)]'">
+      <span class="font-semibold w-5 h-5 flex items-center justify-center rounded-full text-xs transition-colors text-[var(--text-primary)]">
         {{ date.date() }}
       </span>
     </div>

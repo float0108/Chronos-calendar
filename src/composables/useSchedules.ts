@@ -22,8 +22,12 @@ export function useSchedules() {
   // 获取日历视图的日期范围
   const dateRange = computed(() => {
     const settings = localStorage.getItem('chronos_settings');
-    const weekStartsOn = settings ? (JSON.parse(settings).week_starts_on ?? 1) : 1;
-    const days = getCalendarDays(currentDate.value, weekStartsOn as 0 | 1);
+    const parsed = settings ? JSON.parse(settings) : {};
+    const weekStartsOn = parsed.week_starts_on ?? 1;
+    const displayMode = parsed.display_mode ?? 'month';
+    const floatingWeeksCount = parsed.floating_weeks_count ?? 3;
+
+    const days = getCalendarDays(currentDate.value, weekStartsOn as 0 | 1, displayMode, floatingWeeksCount);
     if (days.length === 0) return { startDate: monthStr.value, endDate: monthStr.value };
     const startDate = days[0].format('YYYY-MM-DD');
     const endDate = days[days.length - 1].format('YYYY-MM-DD');
@@ -132,12 +136,34 @@ export function useSchedules() {
   }
 
   function prevMonth(): void {
-    currentDate.value = currentDate.value.subtract(1, 'month');
+    const settings = localStorage.getItem('chronos_settings');
+    const parsed = settings ? JSON.parse(settings) : {};
+    const displayMode = parsed.display_mode ?? 'month';
+    const floatingWeeksCount = parsed.floating_weeks_count ?? 3;
+
+    if (displayMode === 'floating_weeks') {
+      // 浮动周模式：向上翻 floatingWeeksCount 周
+      currentDate.value = currentDate.value.subtract(floatingWeeksCount, 'week');
+    } else {
+      // 整月模式：向上翻一个月
+      currentDate.value = currentDate.value.subtract(1, 'month');
+    }
     refreshSchedules();
   }
 
   function nextMonth(): void {
-    currentDate.value = currentDate.value.add(1, 'month');
+    const settings = localStorage.getItem('chronos_settings');
+    const parsed = settings ? JSON.parse(settings) : {};
+    const displayMode = parsed.display_mode ?? 'month';
+    const floatingWeeksCount = parsed.floating_weeks_count ?? 3;
+
+    if (displayMode === 'floating_weeks') {
+      // 浮动周模式：向下翻 floatingWeeksCount 周
+      currentDate.value = currentDate.value.add(floatingWeeksCount, 'week');
+    } else {
+      // 整月模式：向下翻一个月
+      currentDate.value = currentDate.value.add(1, 'month');
+    }
     refreshSchedules();
   }
 

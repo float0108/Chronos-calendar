@@ -32,6 +32,8 @@ export interface CommonSettings {
   cell_gap: number;
   cell_border_width: number;
   week_starts_on: WeekStartsOn;
+  display_mode: 'month' | 'floating_weeks'; // 显示模式：整月或浮动周
+  floating_weeks_count: number; // 浮动周数量（默认3）
 }
 
 export interface ModeSettings {
@@ -58,6 +60,8 @@ export const defaultCommonSettings: CommonSettings = {
   cell_gap: 4,
   cell_border_width: 1,
   week_starts_on: 1,
+  display_mode: 'month',
+  floating_weeks_count: 3,
 };
 
 // 默认浅色/深色模式配置

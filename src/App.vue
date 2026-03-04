@@ -113,8 +113,9 @@ async function handleSaveSettings(settings: AppSettings) {
   if (currentMode.value !== settings.theme_mode) {
     await switchMode(settings.theme_mode);
   }
-  // 强制刷新日历网格以应用新设置（如每周开始于周一/周日）
+  // 强制刷新日历网格和日程数据以应用新设置（如每周开始于周一/周日、显示模式等）
   calendarKey.value++;
+  await refreshSchedules();
 }
 async function handleSwitchMode(mode: ThemeMode) {
   await switchMode(mode);

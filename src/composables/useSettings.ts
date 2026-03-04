@@ -33,7 +33,9 @@ export function useSettings() {
       font_weight: settings.font_weight,
       cell_gap: settings.cell_gap,
       cell_border_width: settings.cell_border_width,
-      week_starts_on: settings.week_starts_on
+      week_starts_on: settings.week_starts_on,
+      display_mode: settings.display_mode,
+      floating_weeks_count: settings.floating_weeks_count
     };
 
     // 保存当前模式
