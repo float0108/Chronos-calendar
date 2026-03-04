@@ -123,22 +123,22 @@ export function useDatabase() {
     }
   }
 
-  async function loadSchedules(monthStr: string): Promise<Schedule[]> {
+  async function loadSchedules(startDate: string, endDate: string): Promise<Schedule[]> {
     if (!db.value) return [];
 
     try {
-      // 获取日程内容
+      // 获取日程内容（使用日期范围）
       const schedules = await db.value.select<Schedule[]>(`
         SELECT * FROM schedules
-        WHERE create_date LIKE $1 || '%'
+        WHERE create_date >= $1 AND create_date <= $2
         ORDER BY id ASC
-      `, [monthStr]);
+      `, [startDate, endDate]);
 
       // 获取颜色元数据
       const metadata = await db.value.select<{date: string; cell_color: string}[]>(`
         SELECT * FROM cell_metadata
-        WHERE date LIKE $1 || '%'
-      `, [monthStr]);
+        WHERE date >= $1 AND date <= $2
+      `, [startDate, endDate]);
 
       // 创建颜色映射
       const colorMap = new Map(metadata.map(m => [m.date, m.cell_color]));
@@ -182,22 +182,22 @@ export function useDatabase() {
     }
   }
 
-  async function loadTodoSchedules(monthStr: string): Promise<Schedule[]> {
+  async function loadTodoSchedules(startDate: string, endDate: string): Promise<Schedule[]> {
     if (!db.value) return [];
 
     try {
       // 加载所有日程（包括已完成和未完成），按日期和完成状态排序
       const schedules = await db.value.select<Schedule[]>(`
         SELECT * FROM schedules
-        WHERE create_date LIKE $1 || '%'
+        WHERE create_date >= $1 AND create_date <= $2
         ORDER BY create_date ASC, is_done ASC, id ASC
-      `, [monthStr]);
+      `, [startDate, endDate]);
 
       // 获取颜色元数据
       const metadata = await db.value.select<{date: string; cell_color: string}[]>(`
         SELECT * FROM cell_metadata
-        WHERE date LIKE $1 || '%'
-      `, [monthStr]);
+        WHERE date >= $1 AND date <= $2
+      `, [startDate, endDate]);
 
       // 创建颜色映射
       const colorMap = new Map(metadata.map(m => [m.date, m.cell_color]));
@@ -241,22 +241,22 @@ export function useDatabase() {
     }
   }
 
-  async function loadDoneSchedules(monthStr: string): Promise<Schedule[]> {
+  async function loadDoneSchedules(startDate: string, endDate: string): Promise<Schedule[]> {
     if (!db.value) return [];
 
     try {
       // 加载已完成的日程（is_done = 1），按 done_date 分组
       const schedules = await db.value.select<Schedule[]>(`
         SELECT * FROM schedules
-        WHERE done_date LIKE $1 || '%' AND is_done = 1
+        WHERE done_date >= $1 AND done_date <= $2 AND is_done = 1
         ORDER BY done_date, id ASC
-      `, [monthStr]);
+      `, [startDate, endDate]);
 
       // 获取颜色元数据
       const metadata = await db.value.select<{date: string; cell_color: string}[]>(`
         SELECT * FROM cell_metadata
-        WHERE date LIKE $1 || '%'
-      `, [monthStr]);
+        WHERE date >= $1 AND date <= $2
+      `, [startDate, endDate]);
 
       // 创建颜色映射
       const colorMap = new Map(metadata.map(m => [m.date, m.cell_color]));

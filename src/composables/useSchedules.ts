@@ -4,6 +4,7 @@ import type { Schedule, ViewMode } from '../types';
 import { useDatabase } from './useDatabase';
 import { useToast } from './useToast';
 import { schedulesToCSV, exportToFile } from '../utils/export';
+import { getCalendarDays } from '../utils/date';
 
 export function useSchedules() {
   const { loadSchedules, loadTodoSchedules, loadDoneSchedules, saveSchedule, deleteSchedulesByDate, updateScheduleColor, loadAllSchedules, importSchedules, importCellColors, clearAllData, toggleScheduleStatus } = useDatabase();
@@ -18,16 +19,29 @@ export function useSchedules() {
 
   const monthStr = computed(() => currentDate.value.format('YYYY-MM'));
 
+  // 获取日历视图的日期范围
+  const dateRange = computed(() => {
+    const settings = localStorage.getItem('chronos_settings');
+    const weekStartsOn = settings ? (JSON.parse(settings).week_starts_on ?? 1) : 1;
+    const days = getCalendarDays(currentDate.value, weekStartsOn as 0 | 1);
+    if (days.length === 0) return { startDate: monthStr.value, endDate: monthStr.value };
+    const startDate = days[0].format('YYYY-MM-DD');
+    const endDate = days[days.length - 1].format('YYYY-MM-DD');
+    return { startDate, endDate };
+  });
+
   async function refreshSchedules(): Promise<void> {
     let result: Schedule[];
 
+    const { startDate, endDate } = dateRange.value;
+
     // 根据视图模式选择加载函数
     if (viewMode.value === 'todo') {
-      result = await loadTodoSchedules(monthStr.value);
+      result = await loadTodoSchedules(startDate, endDate);
     } else if (viewMode.value === 'done') {
-      result = await loadDoneSchedules(monthStr.value);
+      result = await loadDoneSchedules(startDate, endDate);
     } else {
-      result = await loadSchedules(monthStr.value);
+      result = await loadSchedules(startDate, endDate);
     }
 
     schedules.value.clear();
