@@ -184,7 +184,15 @@ function startEditing() {
   undoHistory.value = [];
   redoHistory.value = [];
 
-  nextTick(() => focusInput(activeLineIndex.value!));
+  nextTick(() => {
+    focusInput(activeLineIndex.value!);
+    // 初始化所有 textarea 的高度
+    textareaRefs.value.forEach(textarea => {
+      if (textarea) {
+        autoResize(textarea);
+      }
+    });
+  });
 }
 
 function saveEdit() {
@@ -324,16 +332,16 @@ function handleEditLineContextMenu(event: MouseEvent, index: number) {
 </script>
 
 <template>
-  <div ref="cellRef" class="calendar-cell relative flex flex-col transition-all duration-200 rounded-xl m-[1px]" :class="{
+  <div ref="cellRef" class="calendar-cell relative flex flex-col transition-all duration-200 rounded-xl" :class="{
     'bg-[var(--cell-bg)]': isCurrentMonth && !cellStyle.backgroundColor,
     'bg-[var(--cell-bg-muted)] opacity-70': !isCurrentMonth && !cellStyle.backgroundColor,
-    'ring-2 ring-inset ring-[var(--primary)] border-transparent': isToday && !isEditing,
+    'today-cell': isToday && !isEditing,
     'editing shadow-2xl z-30 bg-white dark:bg-gray-800 scale-[1.02] !border-transparent': isEditing,
     'hover:shadow-md hover:brightness-95 dark:hover:brightness-110': !isEditing && !isLocked
   }" :style="cellStyle" @click="!isEditing && startEditing()">
     <div class="px-2 py-1 shrink-0 flex items-center justify-between select-none">
       <span class="font-semibold w-5 h-5 flex items-center justify-center rounded-full text-xs transition-colors"
-        :class="isToday ? 'bg-[var(--primary)] text-white shadow-sm' : (isCurrentMonth ? 'text-[var(--text-primary)]' : 'text-[var(--text-muted)]')">
+        :class="isCurrentMonth ? 'text-[var(--text-primary)]' : 'text-[var(--text-muted)]'">
         {{ date.date() }}
       </span>
     </div>
@@ -346,19 +354,19 @@ function handleEditLineContextMenu(event: MouseEvent, index: number) {
           :class="s.is_done ? 'text-gray-400 line-through opacity-70' : 'text-[var(--text-primary)]'"
           @contextmenu.prevent="handleScheduleContextMenu($event, s)">
           <div class="shrink-0 w-1 h-1 rounded-full bg-current opacity-50"></div>
-          <span class="break-words flex-1">{{ s.content }}</span>
+          <span class="content-text flex-1">{{ s.content }}</span>
         </div>
       </div>
 
       <div v-else class="editor-container flex flex-col h-full overflow-y-auto no-scrollbar pb-6">
         <div v-for="(line, index) in editLines" :key="index"
-          class="edit-line flex items-center gap-1 mb-0.5 rounded-md group relative transition-all py-0.5"
+          class="edit-line flex items-start gap-1 mb-1 rounded-md group relative transition-all py-0.5"
           :class="{ 'bg-[var(--primary)]/10 dark:bg-[var(--primary)]/20': activeLineIndex === index }"
           @contextmenu.prevent="handleEditLineContextMenu($event, index)">
-          <div class="shrink-0 w-1 h-1 rounded-full bg-current opacity-50"></div>
+          <div class="shrink-0 w-1 h-1 rounded-full bg-current opacity-50 mt-1.5"></div>
           <textarea :ref="el => { textareaRefs[index] = el as HTMLTextAreaElement }" v-model="line.text"
             rows="1"
-            class="flex-1 bg-transparent border-none outline-none text-xs min-w-0 resize-none overflow-hidden leading-tight break-words"
+            class="flex-1 bg-transparent border-none outline-none text-xs min-w-0 resize-none overflow-hidden leading-tight textarea-wrap"
             :class="line.done ? 'line-through text-gray-400 opacity-70' : 'text-[var(--text-primary)]'"
             @focus="activeLineIndex = index"
             @keydown="handleInputKeydown($event, index)"
@@ -404,7 +412,26 @@ function handleEditLineContextMenu(event: MouseEvent, index: number) {
   cursor: pointer;
 }
 
+.today-cell {
+  outline-style: solid;
+  outline-width: var(--cell-border-width, 2px);
+  outline-offset: calc(var(--cell-border-width, 2px) * -1);
+  outline-color: var(--primary);
+}
+
 .edit-line input:focus {
   box-shadow: none;
+}
+
+.content-text {
+  word-wrap: break-word;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.textarea-wrap {
+  word-wrap: break-word;
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 </style>
