@@ -40,7 +40,7 @@ const {
   switchMode,
 } = useSettings();
 const { showSuccess, showError } = useToast();
-const { pushAction, popAction, canUndo } = useUndoHistory();
+const { pushAction, popAction, pushRedo, popRedo, canUndo, canRedo } = useUndoHistory();
 const calendarKey = ref(0);
 const showMenu = ref(false);
 const showMiniCalendar = ref(false);
@@ -302,6 +302,17 @@ async function handleUndo() {
       }
       case 'updateLines': {
         const { date, previousLines } = action.data;
+        // 获取当前状态用于重做
+        const currentSchedules = schedules.value.get(date) || [];
+        const currentLines = currentSchedules
+          .filter(s => s.id !== -1 && s.content.trim() !== '')
+          .map(s => ({ text: s.content.trim(), done: !!s.is_done }));
+        // 保存当前状态到重做历史
+        pushRedo({
+          type: 'updateLines',
+          data: { date, previousLines: currentLines },
+          timestamp: Date.now(),
+        });
         await updateScheduleLines(date, previousLines);
         await refreshSchedules();
         showSuccess('已撤销：编辑操作');
@@ -324,21 +335,36 @@ async function handleUndo() {
   }
 }
 
+async function handleRedo() {
+  const action = popRedo();
+  if (!action) return;
+
+  try {
+    switch (action.type) {
+      case 'updateLines': {
+        const { date, previousLines } = action.data;
+        await updateScheduleLines(date, previousLines);
+        await refreshSchedules();
+        showSuccess('已重做：编辑操作');
+        break;
+      }
+      default:
+        console.warn('Unsupported redo action type:', action.type);
+    }
+  } catch (error) {
+    console.error('Redo failed:', error);
+    showError('重做失败');
+  }
+}
+
 function toggleLock() {
   isLocked.value = !isLocked.value;
   setWindowLocked(isLocked.value);
 }
 
 function handleKeydown(event: KeyboardEvent) {
-  // Ctrl+Z 撤销
-  if ((event.ctrlKey || event.metaKey) && event.key === 'z' && !event.shiftKey) {
-    event.preventDefault();
-    if (canUndo()) {
-      handleUndo();
-    } else {
-      showError('没有可撤销的操作');
-    }
-  }
+  // 全局撤销/重做仅在非输入状态下由按钮触发
+  // 这里不处理键盘快捷键
 }
 
 onMounted(async () => {
@@ -363,6 +389,8 @@ onUnmounted(() => {
       :show-mini-calendar="showMiniCalendar"
       :show-menu="showMenu"
       :is-locked="isLocked"
+      :can-undo="canUndo()"
+      :can-redo="canRedo()"
       @prev-month="!isLocked && prevMonth()"
       @next-month="!isLocked && nextMonth()"
       @go-today="!isLocked && goToToday()"
@@ -374,6 +402,8 @@ onUnmounted(() => {
       @export="handleExport"
       @import="handleImport"
       @toggle-lock="toggleLock"
+      @undo="handleUndo"
+      @redo="handleRedo"
     />
     
     <CalendarGrid

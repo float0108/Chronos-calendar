@@ -9,6 +9,12 @@ interface EditLine {
   done: boolean;
 }
 
+interface EditHistory {
+  lines: EditLine[];
+  activeLineIndex: number | null;
+  cursorPosition: number;
+}
+
 const props = defineProps<{
   date: dayjs.Dayjs;
   schedules: Schedule[];
@@ -30,6 +36,13 @@ const cellRef = ref<HTMLElement | null>(null);
 const textareaRefs = ref<(HTMLTextAreaElement | null)[]>([]);
 const activeLineIndex = ref<number | null>(null);
 const dateStr = props.date.format('YYYY-MM-DD');
+
+// 编辑历史管理
+const undoHistory = ref<EditHistory[]>([]);
+const redoHistory = ref<EditHistory[]>([]);
+const maxHistory = 50;
+let lastSaveTime = 0;
+const saveDelay = 500; // 500ms 防抖
 
 const cellStyle = computed(() => {
   if (props.schedules.length > 0 && props.schedules[0].cell_color) {
@@ -62,6 +75,96 @@ function initEditLines() {
   }));
 }
 
+// 保存当前编辑状态到历史
+function saveHistory() {
+  const textarea = activeLineIndex.value !== null ? textareaRefs.value[activeLineIndex.value] : null;
+  const cursorPosition = textarea ? textarea.selectionStart : 0;
+
+  undoHistory.value.push({
+    lines: JSON.parse(JSON.stringify(editLines.value)),
+    activeLineIndex: activeLineIndex.value,
+    cursorPosition,
+  });
+
+  if (undoHistory.value.length > maxHistory) {
+    undoHistory.value.shift();
+  }
+
+  // 清空重做历史
+  redoHistory.value = [];
+}
+
+// 防抖保存历史（用于文本输入）
+function saveHistoryDebounced() {
+  const now = Date.now();
+  if (now - lastSaveTime > saveDelay) {
+    saveHistory();
+    lastSaveTime = now;
+  }
+}
+
+// 撤销
+function handleEditUndo() {
+  if (undoHistory.value.length === 0) return;
+
+  const textarea = activeLineIndex.value !== null ? textareaRefs.value[activeLineIndex.value] : null;
+  const cursorPosition = textarea ? textarea.selectionStart : 0;
+
+  // 保存当前状态到重做历史
+  redoHistory.value.push({
+    lines: JSON.parse(JSON.stringify(editLines.value)),
+    activeLineIndex: activeLineIndex.value,
+    cursorPosition,
+  });
+
+  // 恢复上一个状态
+  const history = undoHistory.value.pop()!;
+  editLines.value = history.lines;
+  activeLineIndex.value = history.activeLineIndex;
+
+  // 恢复光标位置
+  nextTick(() => {
+    if (history.activeLineIndex !== null) {
+      const textarea = textareaRefs.value[history.activeLineIndex];
+      if (textarea) {
+        textarea.focus();
+        textarea.setSelectionRange(history.cursorPosition, history.cursorPosition);
+      }
+    }
+  });
+}
+
+// 重做
+function handleEditRedo() {
+  if (redoHistory.value.length === 0) return;
+
+  const textarea = activeLineIndex.value !== null ? textareaRefs.value[activeLineIndex.value] : null;
+  const cursorPosition = textarea ? textarea.selectionStart : 0;
+
+  // 保存当前状态到撤销历史
+  undoHistory.value.push({
+    lines: JSON.parse(JSON.stringify(editLines.value)),
+    activeLineIndex: activeLineIndex.value,
+    cursorPosition,
+  });
+
+  // 恢复下一个状态
+  const history = redoHistory.value.pop()!;
+  editLines.value = history.lines;
+  activeLineIndex.value = history.activeLineIndex;
+
+  // 恢复光标位置
+  nextTick(() => {
+    if (history.activeLineIndex !== null) {
+      const textarea = textareaRefs.value[history.activeLineIndex];
+      if (textarea) {
+        textarea.focus();
+        textarea.setSelectionRange(history.cursorPosition, history.cursorPosition);
+      }
+    }
+  });
+}
+
 function handleClickOutside(event: MouseEvent) {
   if (isEditing.value && cellRef.value && !cellRef.value.contains(event.target as Node)) {
     saveEdit();
@@ -76,6 +179,11 @@ function startEditing() {
   editLines.value = initEditLines();
   isEditing.value = true;
   activeLineIndex.value = editLines.value.length - 1;
+
+  // 初始化历史
+  undoHistory.value = [];
+  redoHistory.value = [];
+
   nextTick(() => focusInput(activeLineIndex.value!));
 }
 
@@ -101,6 +209,7 @@ function focusInput(index: number) {
 
 function toggleActiveLineDone() {
   if (activeLine.value) {
+    saveHistory();
     activeLine.value.done = !activeLine.value.done;
   }
 }
@@ -110,11 +219,15 @@ function deleteActiveLine() {
 
   // 如果只有一个条目且为空，清空内容
   if (editLines.value.length === 1) {
-    editLines.value[0].text = '';
+    if (editLines.value[0].text !== '') {
+      saveHistory();
+      editLines.value[0].text = '';
+    }
     return;
   }
 
   // 如果有多个条目，删除当前条目
+  saveHistory();
   const newIndex = Math.max(0, activeLineIndex.value - 1);
   editLines.value.splice(activeLineIndex.value, 1);
   activeLineIndex.value = newIndex;
@@ -122,16 +235,39 @@ function deleteActiveLine() {
 }
 
 function handleInputKeydown(event: KeyboardEvent, index: number) {
+  // Ctrl+Z 撤销
+  if ((event.ctrlKey || event.metaKey) && event.key === 'z' && !event.shiftKey) {
+    event.preventDefault();
+    handleEditUndo();
+    return;
+  }
+
+  // Ctrl+Y 重做
+  if ((event.ctrlKey || event.metaKey) && event.key === 'y') {
+    event.preventDefault();
+    handleEditRedo();
+    return;
+  }
+
+  // Ctrl+Shift+Z 也支持重做
+  if ((event.ctrlKey || event.metaKey) && event.key === 'z' && event.shiftKey) {
+    event.preventDefault();
+    handleEditRedo();
+    return;
+  }
+
   if (event.key === 'Escape') { saveEdit(); return; }
   // Enter 创建新条目（每个换行就是一个新条目）
   if (event.key === 'Enter' && !event.shiftKey && !event.ctrlKey) {
     event.preventDefault();
+    saveHistory();
     editLines.value.splice(index + 1, 0, { text: '', done: false });
     focusInput(index + 1);
     return;
   }
   if (event.key === 'Backspace' && editLines.value[index].text === '' && editLines.value.length > 1) {
     event.preventDefault();
+    saveHistory();
     editLines.value.splice(index, 1);
     focusInput(Math.max(0, index - 1));
   }
@@ -160,6 +296,12 @@ function autoResize(textarea: HTMLTextAreaElement) {
   textarea.style.height = textarea.scrollHeight + 'px';
 }
 
+function handleInput(event: Event, index: number) {
+  const textarea = event.target as HTMLTextAreaElement;
+  autoResize(textarea);
+  saveHistoryDebounced();
+}
+
 function handleScheduleContextMenu(event: MouseEvent, schedule: Schedule) {
   event.preventDefault();
   event.stopPropagation();
@@ -176,6 +318,7 @@ function handleEditLineContextMenu(event: MouseEvent, index: number) {
   event.preventDefault();
   event.stopPropagation();
   // 切换该行的完成状态
+  saveHistory();
   editLines.value[index].done = !editLines.value[index].done;
 }
 </script>
@@ -209,17 +352,17 @@ function handleEditLineContextMenu(event: MouseEvent, index: number) {
 
       <div v-else class="editor-container flex flex-col h-full overflow-y-auto no-scrollbar pb-6">
         <div v-for="(line, index) in editLines" :key="index"
-          class="edit-line flex items-start gap-1 px-1 rounded-md group relative transition-colors"
+          class="edit-line flex items-center gap-1 mb-0.5 rounded-md group relative transition-all py-0.5"
           :class="{ 'bg-[var(--primary)]/10 dark:bg-[var(--primary)]/20': activeLineIndex === index }"
           @contextmenu.prevent="handleEditLineContextMenu($event, index)">
-          <div class="shrink-0 w-1 h-1 rounded-full bg-gray-400 mt-1.5"></div>
+          <div class="shrink-0 w-1 h-1 rounded-full bg-current opacity-50"></div>
           <textarea :ref="el => { textareaRefs[index] = el as HTMLTextAreaElement }" v-model="line.text"
             rows="1"
-            class="flex-1 bg-transparent border-none outline-none text-xs py-0.5 min-w-0 resize-none overflow-hidden leading-tight break-words"
-            :class="line.done ? 'line-through text-gray-400' : 'text-[var(--text-primary)]'"
+            class="flex-1 bg-transparent border-none outline-none text-xs min-w-0 resize-none overflow-hidden leading-tight break-words"
+            :class="line.done ? 'line-through text-gray-400 opacity-70' : 'text-[var(--text-primary)]'"
             @focus="activeLineIndex = index"
             @keydown="handleInputKeydown($event, index)"
-            @input="autoResize($event.target as HTMLTextAreaElement)"></textarea>
+            @input="handleInput($event, index)"></textarea>
         </div>
       </div>
 

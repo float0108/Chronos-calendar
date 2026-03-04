@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ChevronLeft, ChevronRight, Calendar, MoreVertical, Lock, Unlock } from 'lucide-vue-next';
+import { ChevronLeft, ChevronRight, Calendar, MoreVertical, Lock, Unlock, Undo2, Redo2 } from 'lucide-vue-next';
 import dayjs from 'dayjs';
 import MiniCalendar from './MiniCalendar.vue';
 import DropdownMenu from './DropdownMenu.vue';
@@ -11,6 +11,8 @@ defineProps<{
   showMiniCalendar: boolean;
   showMenu: boolean;
   isLocked: boolean;
+  canUndo: boolean;
+  canRedo: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -25,6 +27,8 @@ const emit = defineEmits<{
   (e: 'toggleLock'): void;
   (e: 'export'): void;
   (e: 'import'): void;
+  (e: 'undo'): void;
+  (e: 'redo'): void;
 }>();
 
 function handleDrag(event: MouseEvent) {
@@ -74,6 +78,14 @@ function handleExport() {
 function handleImport() {
   emit('import');
 }
+
+function handleUndo() {
+  emit('undo');
+}
+
+function handleRedo() {
+  emit('redo');
+}
 </script>
 
 <template>
@@ -121,15 +133,37 @@ function handleImport() {
         <ChevronRight class="w-4 h-4 text-gray-700" />
       </button>
       
-      <button 
+      <button
         @click="handleToday"
         class="ml-2 px-2 py-1 text-xs rounded-lg bg-[var(--primary-light)] text-[var(--primary)] hover:bg-[var(--primary-light-hover)] transition-colors"
         :class="{ 'opacity-50 pointer-events-none': isLocked }"
       >
         今天
       </button>
-      
-      <button 
+
+      <div class="flex items-center gap-1 ml-2">
+        <button
+          @click="handleUndo"
+          class="p-1.5 rounded-lg hover:bg-[var(--hover-bg)] transition-colors"
+          :class="{ 'opacity-30 pointer-events-none': !canUndo }"
+          :disabled="!canUndo"
+          title="撤销 (Ctrl+Z)"
+        >
+          <Undo2 class="w-4 h-4 text-gray-700" />
+        </button>
+
+        <button
+          @click="handleRedo"
+          class="p-1.5 rounded-lg hover:bg-[var(--hover-bg)] transition-colors"
+          :class="{ 'opacity-30 pointer-events-none': !canRedo }"
+          :disabled="!canRedo"
+          title="重做 (Ctrl+Y)"
+        >
+          <Redo2 class="w-4 h-4 text-gray-700" />
+        </button>
+      </div>
+
+      <button
         @click="handleToggleLock"
         class="p-1.5 rounded-lg hover:bg-[var(--hover-bg)] transition-colors ml-1"
         :title="isLocked ? '解锁' : '锁定'"
