@@ -9,6 +9,7 @@ const props = defineProps<{
   currentDate: dayjs.Dayjs;
   schedules: Map<string, Schedule[]>;
   isLocked: boolean;
+  viewMode?: 'todo' | 'done';
 }>();
 
 const emit = defineEmits<{
@@ -129,6 +130,7 @@ function handleNavigate(direction: string) {
         :is-today="isToday(date)"
         :is-current-month="isCurrentMonth(date)"
         :is-locked="isLocked"
+        :view-mode="viewMode"
         class="h-full overflow-hidden"
         @reset="handleReset"
         @update="handleUpdate"

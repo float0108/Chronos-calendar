@@ -3,6 +3,8 @@ use tauri::{Manager, WindowEvent};
 use tauri::window::{Effect, EffectState};
 // 2. 引入正确的配置结构体 WindowEffectsConfig
 use tauri::utils::config::WindowEffectsConfig;
+use font_kit::source::SystemSource;
+use std::collections::HashSet;
 
 // === Windows 置底相关的 API 引入 ===
 #[cfg(target_os = "windows")]
@@ -45,7 +47,7 @@ fn set_window_vibrancy(window: tauri::WebviewWindow, enable: bool) -> Result<(),
             };
             window.set_effects(Some(effects)).map_err(|e| e.to_string())?;
         }
-        
+
         #[cfg(target_os = "macos")]
         {
             let effects = WindowEffectsConfig {
@@ -58,8 +60,28 @@ fn set_window_vibrancy(window: tauri::WebviewWindow, enable: bool) -> Result<(),
     } else {
         window.set_effects(None::<WindowEffectsConfig>).map_err(|e| e.to_string())?;
     }
-    
+
     Ok(())
+}
+
+#[tauri::command]
+fn get_system_fonts() -> Result<Vec<String>, String> {
+    let source = SystemSource::new();
+    let all_fonts = source.all_fonts().map_err(|e| e.to_string())?;
+
+    let mut font_names: HashSet<String> = HashSet::new();
+
+    for handle in all_fonts {
+        if let Ok(font) = handle.load() {
+            let family_name = font.family_name();
+            font_names.insert(family_name);
+        }
+    }
+
+    let mut fonts: Vec<String> = font_names.into_iter().collect();
+    fonts.sort();
+
+    Ok(fonts)
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -69,7 +91,7 @@ pub fn run() {
         .plugin(tauri_plugin_window_state::Builder::default().build())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_fs::init())
-        .invoke_handler(tauri::generate_handler![set_window_vibrancy])
+        .invoke_handler(tauri::generate_handler![set_window_vibrancy, get_system_fonts])
         .setup(|app| {
             let window = app.get_webview_window("main").unwrap();
             

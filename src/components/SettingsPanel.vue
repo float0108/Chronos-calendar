@@ -1,6 +1,7 @@
 <script setup lang="ts">
-import { ref, watch } from 'vue';
+import { ref, watch, onMounted } from 'vue';
 import { X, Sun, Moon, RotateCcw } from 'lucide-vue-next';
+import { invoke } from '@tauri-apps/api/core';
 import type { AppSettings, ThemeMode } from '../types';
 import { defaultLightSettings, defaultDarkSettings } from '../types/index';
 import ColorPicker from './ColorPicker.vue';
@@ -23,15 +24,29 @@ const activeMainTab = ref<'common' | 'mode'>('common');
 const activeTab = ref<ThemeMode>('light');
 const localSettings = ref<AppSettings>({ ...defaultLightSettings });
 
-// 常用字体选项
-const fontOptions = [
-  { label: '系统默认 (System UI)', value: 'system-ui, -apple-system, sans-serif' },
-  { label: '微软雅黑 (Microsoft YaHei)', value: '"Microsoft YaHei", sans-serif' },
-  { label: '苹方 (PingFang SC)', value: '"PingFang SC", sans-serif' },
-  { label: '黑体 (SimHei)', value: 'SimHei, sans-serif' },
-  { label: '宋体 (SimSun)', value: 'SimSun, serif' },
-  { label: '等宽字体 (Monospace)', value: 'monospace' }
-];
+// 系统字体列表
+const fontOptions = ref<Array<{ label: string; value: string }>>([
+  { label: '系统默认 (System UI)', value: 'system-ui, -apple-system, sans-serif' }
+]);
+
+// 加载系统字体
+async function loadSystemFonts() {
+  try {
+    const fonts = await invoke<string[]>('get_system_fonts');
+    const systemFonts = fonts.map(font => ({
+      label: font,
+      value: `"${font}", sans-serif`
+    }));
+    // 将系统字体添加到默认选项后面
+    fontOptions.value = [
+      { label: '系统默认 (System UI)', value: 'system-ui, -apple-system, sans-serif' },
+      ...systemFonts
+    ];
+  } catch (error) {
+    console.error('Failed to load system fonts:', error);
+    // 如果加载失败，保留默认选项
+  }
+}
 
 watch(() => props.visible, (visible) => {
   if (visible && props.currentSettings) {
@@ -40,6 +55,10 @@ watch(() => props.visible, (visible) => {
     localSettings.value = { ...defaults, ...props.currentSettings };
     activeTab.value = props.currentMode;
   }
+});
+
+onMounted(() => {
+  loadSystemFonts();
 });
 
 function handleClose() {

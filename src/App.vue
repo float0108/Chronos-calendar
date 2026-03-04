@@ -420,6 +420,7 @@ onUnmounted(() => {
       :current-date="currentDate"
       :schedules="schedules"
       :is-locked="isLocked"
+      :view-mode="viewMode"
       @reset="handleReset"
       @update="handleUpdate"
       @navigate="handleNavigate"
