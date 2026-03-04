@@ -322,7 +322,7 @@ async function handleUndo() {
         const { date, previousSchedules } = action.data;
         // 恢复删除的日程
         for (const schedule of previousSchedules) {
-          await saveSchedule(date, schedule.content, schedule.is_done, schedule.priority);
+          await saveSchedule(date, schedule.content, schedule.is_done, schedule.done_date, schedule.description);
         }
         await refreshSchedules();
         showSuccess('已撤销：删除操作');

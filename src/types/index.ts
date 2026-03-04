@@ -1,12 +1,13 @@
 // Schedule types
 export interface Schedule {
   id?: number;
-  date: string;
+  create_date: string; // 计划日期
   content: string;
   is_done: boolean;
   priority: number;
   cell_color?: string;
-  created_at?: string;
+  done_date?: string; // 完成日期
+  description?: string; // 描述/备注
 }
 
 export interface EditingCell {

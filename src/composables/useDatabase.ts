@@ -8,25 +8,85 @@ export function useDatabase() {
   async function initDatabase(): Promise<void> {
     try {
       db.value = await Database.load('sqlite:chronos.db');
-      
-      // 日程表 - 只存储实际日程内容
-      await db.value.execute(`
-        CREATE TABLE IF NOT EXISTS schedules (
-          id INTEGER PRIMARY KEY AUTOINCREMENT,
-          date TEXT NOT NULL,
-          content TEXT NOT NULL,
-          is_done INTEGER DEFAULT 0,
-          priority INTEGER DEFAULT 0,
-          created_at TEXT DEFAULT CURRENT_TIMESTAMP
-        )
+
+      // 检查是否需要迁移表结构
+      let needsMigration = false;
+      try {
+        const columns = await db.value!.select<{name: string}[]>(
+          "SELECT name FROM pragma_table_info('schedules')"
+        );
+        const columnNames = columns.map(c => c.name);
+
+        // 检查是否存在旧列名
+        const hasOldDateColumn = columnNames.includes('date');
+        const hasCreatedAtColumn = columnNames.includes('created_at');
+        const hasDoneTimeColumn = columnNames.includes('done_time');
+
+        if (hasOldDateColumn || hasCreatedAtColumn || hasDoneTimeColumn) {
+          needsMigration = true;
+          console.log('Table structure migration needed...');
+        }
+      } catch (e: any) {
+        // 表不存在，首次创建
+        console.log('Creating new table');
+      }
+
+      if (needsMigration) {
+        // 创建新表
+        await db.value!.execute(`
+          CREATE TABLE IF NOT EXISTS schedules_new (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            create_date TEXT NOT NULL,
+            content TEXT NOT NULL,
+            is_done INTEGER DEFAULT 0,
+            priority INTEGER DEFAULT 0,
+            done_date TEXT,
+            description TEXT
+          )
+        `);
+
+        // 迁移数据（从旧列映射到新列）
+        await db.value!.execute(`
+          INSERT INTO schedules_new (id, create_date, content, is_done, priority, done_date, description)
+          SELECT
+            id,
+            date,
+            content,
+            is_done,
+            priority,
+            done_time,
+            description
+          FROM schedules
+        `);
+
+        // 删除旧表
+        await db.value!.execute('DROP TABLE schedules');
+
+        // 重命名新表
+        await db.value!.execute('ALTER TABLE schedules_new RENAME TO schedules');
+
+        console.log('Table structure migration completed');
+      } else {
+        // 创建新表（首次运行）
+        await db.value!.execute(`
+          CREATE TABLE IF NOT EXISTS schedules (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            create_date TEXT NOT NULL,
+            content TEXT NOT NULL,
+            is_done INTEGER DEFAULT 0,
+            priority INTEGER DEFAULT 0,
+            done_date TEXT,
+            description TEXT
+          )
+        `);
+      }
+
+      await db.value!.execute(`
+        CREATE INDEX IF NOT EXISTS idx_schedules_create_date ON schedules(create_date)
       `);
-      
-      await db.value.execute(`
-        CREATE INDEX IF NOT EXISTS idx_schedules_date ON schedules(date)
-      `);
-      
+
       // 单元格元数据表 - 存储颜色等元数据（与内容分离）
-      await db.value.execute(`
+      await db.value!.execute(`
         CREATE TABLE IF NOT EXISTS cell_metadata (
           date TEXT PRIMARY KEY,
           cell_color TEXT DEFAULT ''
@@ -36,7 +96,7 @@ export function useDatabase() {
       console.error('Database initialization failed:', error);
       throw error;
     }
-    
+
     // 迁移：将旧表中的颜色数据迁移到新表（一次性）
     try {
       const hasOldColorColumn = await db.value!.select<{count: number}[]>(
@@ -46,17 +106,16 @@ export function useDatabase() {
         // 迁移旧数据
         await db.value!.execute(`
           INSERT OR REPLACE INTO cell_metadata (date, cell_color)
-          SELECT date, cell_color FROM schedules 
+          SELECT create_date, cell_color FROM schedules
           WHERE cell_color != '' AND cell_color IS NOT NULL
-          GROUP BY date
+          GROUP BY create_date
         `);
-        // 删除旧列（SQLite 不支持直接删除列，这里保留但不使用）
         console.log('Color data migrated to cell_metadata table');
       }
     } catch (e: any) {
       console.log('Migration check:', e?.message || 'ignored');
     }
-    
+
     try {
       await db.value!.execute('ALTER TABLE schedules ADD COLUMN is_done INTEGER DEFAULT 0');
     } catch (e: any) {
@@ -66,33 +125,33 @@ export function useDatabase() {
 
   async function loadSchedules(monthStr: string): Promise<Schedule[]> {
     if (!db.value) return [];
-    
+
     try {
       // 获取日程内容
       const schedules = await db.value.select<Schedule[]>(`
-        SELECT * FROM schedules 
-        WHERE date LIKE $1 || '%'
-        ORDER BY created_at ASC
+        SELECT * FROM schedules
+        WHERE create_date LIKE $1 || '%'
+        ORDER BY id ASC
       `, [monthStr]);
-      
+
       // 获取颜色元数据
       const metadata = await db.value.select<{date: string; cell_color: string}[]>(`
-        SELECT * FROM cell_metadata 
+        SELECT * FROM cell_metadata
         WHERE date LIKE $1 || '%'
       `, [monthStr]);
-      
+
       // 创建颜色映射
       const colorMap = new Map(metadata.map(m => [m.date, m.cell_color]));
-      
+
       // 按日期分组处理日程
       const grouped = new Map<string, Schedule[]>();
       schedules.forEach(s => {
-        if (!grouped.has(s.date)) grouped.set(s.date, []);
-        grouped.get(s.date)!.push(s);
+        if (!grouped.has(s.create_date)) grouped.set(s.create_date, []);
+        grouped.get(s.create_date)!.push(s);
       });
-      
+
       const result: Schedule[] = [];
-      
+
       // 为每个日期的记录附加颜色
       grouped.forEach((items, date) => {
         const color = colorMap.get(date);
@@ -101,13 +160,13 @@ export function useDatabase() {
         }
         result.push(...items);
       });
-      
+
       // 添加只有颜色没有内容的日期（用于显示背景色）
       colorMap.forEach((color, date) => {
         if (!grouped.has(date)) {
           result.push({
             id: -1, // 标记为虚拟记录
-            date,
+            create_date: date,
             content: '',
             is_done: false,
             priority: 0,
@@ -115,7 +174,7 @@ export function useDatabase() {
           });
         }
       });
-      
+
       return result;
     } catch (error) {
       console.error('Failed to load schedules:', error);
@@ -123,13 +182,13 @@ export function useDatabase() {
     }
   }
 
-  async function saveSchedule(date: string, content: string, isDone: boolean = false): Promise<void> {
+  async function saveSchedule(createDate: string, content: string, isDone: boolean = false, doneDate?: string, description?: string): Promise<void> {
     if (!db.value) return;
-    
+
     try {
       await db.value.execute(
-        'INSERT INTO schedules (date, content, is_done, priority) VALUES ($1, $2, $3, $4)',
-        [date, content.trim(), isDone ? 1 : 0, 0]
+        'INSERT INTO schedules (create_date, content, is_done, priority, done_date, description) VALUES ($1, $2, $3, $4, $5, $6)',
+        [createDate, content.trim(), isDone ? 1 : 0, 0, doneDate || null, description || null]
       );
     } catch (error) {
       console.error('Failed to save schedule:', error);
@@ -139,7 +198,7 @@ export function useDatabase() {
 
   async function deleteSchedule(scheduleId: number): Promise<void> {
     if (!db.value) return;
-    
+
     try {
       await db.value.execute('DELETE FROM schedules WHERE id = $1', [scheduleId]);
     } catch (error) {
@@ -150,10 +209,10 @@ export function useDatabase() {
 
   async function deleteSchedulesByDate(date: string): Promise<void> {
     if (!db.value) return;
-    
+
     try {
       // 删除该日期的所有日程内容（颜色保留在 cell_metadata 表中）
-      await db.value.execute('DELETE FROM schedules WHERE date = $1', [date]);
+      await db.value.execute('DELETE FROM schedules WHERE create_date = $1', [date]);
     } catch (error) {
       console.error('Failed to delete schedules:', error);
       throw error;
@@ -164,10 +223,23 @@ export function useDatabase() {
     if (!db.value) return;
 
     try {
-      await db.value.execute(
-        'UPDATE schedules SET is_done = $1 WHERE id = $2',
-        [isDone ? 1 : 0, scheduleId]
-      );
+      if (isDone) {
+        // 完成时：设置 is_done=1, done_date=当前日期
+        const now = new Date();
+        const doneDate = now.getFullYear() + '-' +
+          String(now.getMonth() + 1).padStart(2, '0') + '-' +
+          String(now.getDate()).padStart(2, '0');
+        await db.value.execute(
+          'UPDATE schedules SET is_done = 1, done_date = $1 WHERE id = $2',
+          [doneDate, scheduleId]
+        );
+      } else {
+        // 取消完成：设置 is_done=0, done_date=NULL
+        await db.value.execute(
+          'UPDATE schedules SET is_done = 0, done_date = NULL WHERE id = $1',
+          [scheduleId]
+        );
+      }
     } catch (error) {
       console.error('Failed to toggle schedule:', error);
       throw error;
@@ -210,7 +282,7 @@ export function useDatabase() {
     try {
       // 获取所有日程
       const schedules = await db.value.select<Schedule[]>(
-        'SELECT * FROM schedules ORDER BY date, created_at'
+        'SELECT * FROM schedules ORDER BY create_date, id'
       );
 
       // 获取所有单元格颜色
@@ -237,24 +309,24 @@ export function useDatabase() {
       if (merge) {
         // 合并模式：智能去重和更新
         for (const schedule of schedules) {
-          // 查找是否存在相同 date 和 content 的记录
+          // 查找是否存在相同 create_date 和 content 的记录
           const existing = await db.value.select<Schedule[]>(
-            'SELECT * FROM schedules WHERE date = $1 AND content = $2',
-            [schedule.date, schedule.content]
+            'SELECT * FROM schedules WHERE create_date = $1 AND content = $2',
+            [schedule.create_date, schedule.content]
           );
 
           if (existing.length > 0) {
             // 存在则更新该记录
             await db.value.execute(
-              'UPDATE schedules SET is_done = $1, priority = $2, created_at = $3 WHERE id = $4',
-              [schedule.is_done ? 1 : 0, schedule.priority, schedule.created_at, existing[0].id]
+              'UPDATE schedules SET is_done = $1, priority = $2, done_date = $3, description = $4 WHERE id = $5',
+              [schedule.is_done ? 1 : 0, schedule.priority, schedule.done_date || null, schedule.description || null, existing[0].id]
             );
             updated++;
           } else {
             // 不存在则插入新记录
             await db.value.execute(
-              'INSERT INTO schedules (date, content, is_done, priority, created_at) VALUES ($1, $2, $3, $4, $5)',
-              [schedule.date, schedule.content, schedule.is_done ? 1 : 0, schedule.priority, schedule.created_at]
+              'INSERT INTO schedules (create_date, content, is_done, priority, done_date, description) VALUES ($1, $2, $3, $4, $5, $6)',
+              [schedule.create_date, schedule.content, schedule.is_done ? 1 : 0, schedule.priority, schedule.done_date || null, schedule.description || null]
             );
             inserted++;
           }
@@ -263,8 +335,8 @@ export function useDatabase() {
         // 覆盖模式：直接插入所有记录
         for (const schedule of schedules) {
           await db.value.execute(
-            'INSERT INTO schedules (date, content, is_done, priority, created_at) VALUES ($1, $2, $3, $4, $5)',
-            [schedule.date, schedule.content, schedule.is_done ? 1 : 0, schedule.priority, schedule.created_at]
+            'INSERT INTO schedules (create_date, content, is_done, priority, done_date, description) VALUES ($1, $2, $3, $4, $5, $6)',
+            [schedule.create_date, schedule.content, schedule.is_done ? 1 : 0, schedule.priority, schedule.done_date || null, schedule.description || null]
           );
           inserted++;
         }

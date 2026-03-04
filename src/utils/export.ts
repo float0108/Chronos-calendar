@@ -89,7 +89,7 @@ function cleanFieldValue(value: string): string {
  * Convert schedules and cell colors to CSV string
  */
 export function schedulesToCSV(schedules: Schedule[], cellColors: Map<string, string>): string {
-  const header = 'date,content,is_done,priority,cell_color,created_at';
+  const header = 'create_date,content,is_done,priority,cell_color,done_date,description';
   const lines: string[] = [header];
 
   // Create a map of date to cell color for quick lookup
@@ -98,24 +98,25 @@ export function schedulesToCSV(schedules: Schedule[], cellColors: Map<string, st
   // Group schedules by date
   const grouped = new Map<string, Schedule[]>();
   schedules.forEach(s => {
-    if (!grouped.has(s.date)) grouped.set(s.date, []);
-    grouped.get(s.date)!.push(s);
+    if (!grouped.has(s.create_date)) grouped.set(s.create_date, []);
+    grouped.get(s.create_date)!.push(s);
   });
 
   // Export schedules
   schedules.forEach(schedule => {
-    const color = colorMap.get(schedule.date) || '';
+    const color = colorMap.get(schedule.create_date) || '';
     const line = [
-      schedule.date,
+      schedule.create_date,
       escapeCSVField(schedule.content),
       schedule.is_done ? 'true' : 'false',
       String(schedule.priority),
       color,
-      schedule.created_at || ''
+      schedule.done_date || '',
+      escapeCSVField(schedule.description || '')
     ].join(',');
     lines.push(line);
     // Remove from colorMap after processing
-    colorMap.delete(schedule.date);
+    colorMap.delete(schedule.create_date);
   });
 
   // Export dates with only colors (no schedules)
@@ -126,7 +127,8 @@ export function schedulesToCSV(schedules: Schedule[], cellColors: Map<string, st
       'false',
       '0',
       color,
-      '' // empty created_at
+      '', // empty done_date
+      '' // empty description
     ].join(',');
     lines.push(line);
   });
@@ -146,10 +148,23 @@ export function csvToSchedules(csvString: string): ParsedCSVData {
 
   // Validate header
   const header = lines[0].split(',');
-  const expectedHeader = ['date', 'content', 'is_done', 'priority', 'cell_color', 'created_at'];
 
-  if (header.length !== expectedHeader.length || !header.every((h, i) => h.trim() === expectedHeader[i])) {
-    throw new Error('CSV 文件格式不正确，表头应为: ' + expectedHeader.join(','));
+  // New format (create_date, done_date, description)
+  const expectedHeaderNew = ['create_date', 'content', 'is_done', 'priority', 'cell_color', 'done_date', 'description'];
+  // Old format V3 (date, created_at, done_time, description)
+  const expectedHeaderV3 = ['date', 'content', 'is_done', 'priority', 'cell_color', 'created_at', 'done_time', 'description'];
+  // Old format V2 (date, created_at, done_time)
+  const expectedHeaderV2 = ['date', 'content', 'is_done', 'priority', 'cell_color', 'created_at', 'done_time'];
+  // Old format V1 (date, created_at)
+  const expectedHeaderV1 = ['date', 'content', 'is_done', 'priority', 'cell_color', 'created_at'];
+
+  const isNewFormat = header.length === 7 && header.every((h, i) => h.trim() === expectedHeaderNew[i]);
+  const isV3Format = header.length === 8 && header.every((h, i) => h.trim() === expectedHeaderV3[i]);
+  const isV2Format = header.length === 7 && header.every((h, i) => h.trim() === expectedHeaderV2[i]);
+  const isV1Format = header.length === 6 && header.every((h, i) => h.trim() === expectedHeaderV1[i]);
+
+  if (!isNewFormat && !isV3Format && !isV2Format && !isV1Format) {
+    throw new Error('CSV 文件格式不正确，表头应为: ' + expectedHeaderNew.join(','));
   }
 
   const schedules: Schedule[] = [];
@@ -160,76 +175,75 @@ export function csvToSchedules(csvString: string): ParsedCSVData {
   for (let i = 1; i < lines.length; i++) {
     const fields = parseCSVLine(lines[i]);
 
-    if (fields.length < 6) {
+    const expectedFieldCount = isNewFormat ? 7 : (isV3Format ? 8 : (isV2Format ? 7 : 6));
+    if (fields.length < expectedFieldCount) {
       console.warn(`跳过格式错误的第 ${i + 1} 行`);
       continue;
     }
 
-    // Clean all field values to remove carriage returns and extra whitespace
-    let [date, content, isDoneStr, priorityStr, cellColor, createdAt] = fields.map(cleanFieldValue);
+    // Clean all field values
+    let createDate: string, content: string, isDoneStr: string, priorityStr: string, cellColor: string, doneDate: string, description: string;
+
+    if (isNewFormat) {
+      // New format: create_date, content, is_done, priority, cell_color, done_date, description
+      [createDate, content, isDoneStr, priorityStr, cellColor, doneDate, description] = fields.map(cleanFieldValue);
+    } else if (isV3Format) {
+      // V3 format: date, content, is_done, priority, cell_color, created_at, done_time, description
+      // Map to new: create_date=date, done_date=done_time, ignore created_at
+      let createdAt: string;
+      [createDate, content, isDoneStr, priorityStr, cellColor, createdAt, doneDate, description] = fields.map(cleanFieldValue);
+    } else if (isV2Format) {
+      // V2 format: date, content, is_done, priority, cell_color, created_at, done_time
+      let createdAt: string;
+      [createDate, content, isDoneStr, priorityStr, cellColor, createdAt, doneDate] = fields.map(cleanFieldValue);
+      description = '';
+    } else {
+      // V1 format: date, content, is_done, priority, cell_color, created_at
+      let createdAt: string;
+      [createDate, content, isDoneStr, priorityStr, cellColor, createdAt] = fields.map(cleanFieldValue);
+      doneDate = '';
+      description = '';
+    }
 
     // Normalize date format: convert YYYY/M/D to YYYY-MM-DD
-    if (date.includes('/')) {
-      const parts = date.split('/');
+    if (createDate.includes('/')) {
+      const parts = createDate.split('/');
       if (parts.length === 3) {
         const year = parts[0];
         const month = parts[1].padStart(2, '0');
         const day = parts[2].padStart(2, '0');
-        date = `${year}-${month}-${day}`;
+        createDate = `${year}-${month}-${day}`;
       }
     }
 
     // Store cell color
     if (cellColor) {
-      seenColors.set(date, cellColor);
+      seenColors.set(createDate, cellColor);
     }
 
     // Only create schedule if there's content
     if (content.trim()) {
-      // Convert ISO format to SQLite format if needed
-      let formattedCreatedAt = createdAt;
-      if (createdAt) {
-        // If it's ISO format (contains T), convert to SQLite format
-        if (createdAt.includes('T')) {
-          formattedCreatedAt = createdAt
-            .replace('T', ' ')
-            .substring(0, 19); // Remove milliseconds and Z
-        } else if (createdAt.includes('/')) {
-          // If it's YYYY/M/D H:MM format, convert to YYYY-MM-DD HH:MM:SS
-          const parts = createdAt.split(' ');
-          if (parts.length >= 2) {
-            const dateParts = parts[0].split('/');
-            if (dateParts.length === 3) {
-              const year = dateParts[0];
-              const month = dateParts[1].padStart(2, '0');
-              const day = dateParts[2].padStart(2, '0');
-              // Time might not have seconds, add :00 if needed
-              let time = parts[1];
-              const timeParts = time.split(':');
-              if (timeParts.length === 2) {
-                time = `${time}:00`;
-              }
-              formattedCreatedAt = `${year}-${month}-${day} ${time}`;
-            }
-          }
+      // Normalize done_date format (just date part YYYY-MM-DD)
+      if (doneDate && doneDate.includes('/')) {
+        const parts = doneDate.split(' ')[0].split('/');
+        if (parts.length === 3) {
+          const year = parts[0];
+          const month = parts[1].padStart(2, '0');
+          const day = parts[2].padStart(2, '0');
+          doneDate = `${year}-${month}-${day}`;
         }
-      } else {
-        // Generate current timestamp in SQLite format
-        const now = new Date();
-        formattedCreatedAt = now.getFullYear() + '-' +
-          String(now.getMonth() + 1).padStart(2, '0') + '-' +
-          String(now.getDate()).padStart(2, '0') + ' ' +
-          String(now.getHours()).padStart(2, '0') + ':' +
-          String(now.getMinutes()).padStart(2, '0') + ':' +
-          String(now.getSeconds()).padStart(2, '0');
+      } else if (doneDate && doneDate.includes('T')) {
+        // Extract date from ISO format
+        doneDate = doneDate.substring(0, 10);
       }
 
       schedules.push({
-        date,
+        create_date: createDate,
         content,
         is_done: isDoneStr.toLowerCase() === 'true',
         priority: parseInt(priorityStr, 10) || 0,
-        created_at: formattedCreatedAt
+        done_date: doneDate || undefined,
+        description: description || undefined
       });
     }
   }

@@ -19,10 +19,10 @@ export function useSchedules() {
 
   async function refreshSchedules(): Promise<void> {
     const result = await loadSchedules(monthStr.value);
-    
+
     schedules.value.clear();
     result.forEach(schedule => {
-      const dateStr = schedule.date;
+      const dateStr = schedule.create_date;
       if (!schedules.value.has(dateStr)) {
         schedules.value.set(dateStr, []);
       }
