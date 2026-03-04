@@ -182,6 +182,132 @@ export function useDatabase() {
     }
   }
 
+  async function loadTodoSchedules(monthStr: string): Promise<Schedule[]> {
+    if (!db.value) return [];
+
+    try {
+      // 加载所有日程（包括已完成和未完成），按日期和完成状态排序
+      const schedules = await db.value.select<Schedule[]>(`
+        SELECT * FROM schedules
+        WHERE create_date LIKE $1 || '%'
+        ORDER BY create_date ASC, is_done ASC, id ASC
+      `, [monthStr]);
+
+      // 获取颜色元数据
+      const metadata = await db.value.select<{date: string; cell_color: string}[]>(`
+        SELECT * FROM cell_metadata
+        WHERE date LIKE $1 || '%'
+      `, [monthStr]);
+
+      // 创建颜色映射
+      const colorMap = new Map(metadata.map(m => [m.date, m.cell_color]));
+
+      // 按日期分组处理日程
+      const grouped = new Map<string, Schedule[]>();
+      schedules.forEach(s => {
+        if (!grouped.has(s.create_date)) grouped.set(s.create_date, []);
+        grouped.get(s.create_date)!.push(s);
+      });
+
+      const result: Schedule[] = [];
+
+      // 为每个日期的记录附加颜色
+      grouped.forEach((items, date) => {
+        const color = colorMap.get(date);
+        if (color && items.length > 0) {
+          items[0].cell_color = color;
+        }
+        result.push(...items);
+      });
+
+      // 添加只有颜色没有内容的日期（用于显示背景色）
+      colorMap.forEach((color, date) => {
+        if (!grouped.has(date)) {
+          result.push({
+            id: -1,
+            create_date: date,
+            content: '',
+            is_done: false,
+            priority: 0,
+            cell_color: color
+          });
+        }
+      });
+
+      return result;
+    } catch (error) {
+      console.error('Failed to load todo schedules:', error);
+      return [];
+    }
+  }
+
+  async function loadDoneSchedules(monthStr: string): Promise<Schedule[]> {
+    if (!db.value) return [];
+
+    try {
+      // 加载已完成的日程（is_done = 1），按 done_date 分组
+      const schedules = await db.value.select<Schedule[]>(`
+        SELECT * FROM schedules
+        WHERE done_date LIKE $1 || '%' AND is_done = 1
+        ORDER BY done_date, id ASC
+      `, [monthStr]);
+
+      // 获取颜色元数据
+      const metadata = await db.value.select<{date: string; cell_color: string}[]>(`
+        SELECT * FROM cell_metadata
+        WHERE date LIKE $1 || '%'
+      `, [monthStr]);
+
+      // 创建颜色映射
+      const colorMap = new Map(metadata.map(m => [m.date, m.cell_color]));
+
+      // 按 done_date 分组处理日程
+      const grouped = new Map<string, Schedule[]>();
+      schedules.forEach(s => {
+        const date = s.done_date || s.create_date; // 使用 done_date 作为分组依据
+        if (!grouped.has(date)) grouped.set(date, []);
+        grouped.get(date)!.push(s);
+      });
+
+      const result: Schedule[] = [];
+
+      // 为每个日期的记录附加颜色
+      grouped.forEach((items, date) => {
+        const color = colorMap.get(date);
+        if (color && items.length > 0) {
+          items[0].cell_color = color;
+        }
+        // 将 done_date 映射到 create_date 以便前端统一处理
+        items.forEach(item => {
+          if (item.done_date) {
+            item.create_date = item.done_date;
+          }
+        });
+        result.push(...items);
+      });
+
+      // 添加只有颜色没有内容的日期（用于显示背景色）
+      colorMap.forEach((color, date) => {
+        if (!grouped.has(date)) {
+          result.push({
+            id: -1,
+            create_date: date,
+            content: '',
+            is_done: true,
+            priority: 0,
+            cell_color: color,
+            done_date: date
+          });
+        }
+      });
+
+      return result;
+    } catch (error) {
+      console.error('Failed to load done schedules:', error);
+      return [];
+    }
+  }
+
   async function saveSchedule(createDate: string, content: string, isDone: boolean = false, doneDate?: string, description?: string): Promise<void> {
     if (!db.value) return;
 
@@ -398,6 +524,8 @@ export function useDatabase() {
     db,
     initDatabase,
     loadSchedules,
+    loadTodoSchedules,
+    loadDoneSchedules,
     saveSchedule,
     deleteSchedule,
     deleteSchedulesByDate,

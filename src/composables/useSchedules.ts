@@ -1,24 +1,34 @@
 import { ref, computed } from 'vue';
 import dayjs from 'dayjs';
-import type { Schedule } from '../types';
+import type { Schedule, ViewMode } from '../types';
 import { useDatabase } from './useDatabase';
 import { useToast } from './useToast';
 import { schedulesToCSV, exportToFile } from '../utils/export';
 
 export function useSchedules() {
-  const { loadSchedules, saveSchedule, deleteSchedulesByDate, updateScheduleColor, loadAllSchedules, importSchedules, importCellColors, clearAllData, toggleScheduleStatus } = useDatabase();
+  const { loadSchedules, loadTodoSchedules, loadDoneSchedules, saveSchedule, deleteSchedulesByDate, updateScheduleColor, loadAllSchedules, importSchedules, importCellColors, clearAllData, toggleScheduleStatus } = useDatabase();
 
   // 导出 saveSchedule 供撤销功能使用
   const _saveSchedule = saveSchedule;
   const { showError, showSuccess } = useToast();
-  
+
   const schedules = ref<Map<string, Schedule[]>>(new Map());
   const currentDate = ref(dayjs());
+  const viewMode = ref<ViewMode>('todo');
 
   const monthStr = computed(() => currentDate.value.format('YYYY-MM'));
 
   async function refreshSchedules(): Promise<void> {
-    const result = await loadSchedules(monthStr.value);
+    let result: Schedule[];
+
+    // 根据视图模式选择加载函数
+    if (viewMode.value === 'todo') {
+      result = await loadTodoSchedules(monthStr.value);
+    } else if (viewMode.value === 'done') {
+      result = await loadDoneSchedules(monthStr.value);
+    } else {
+      result = await loadSchedules(monthStr.value);
+    }
 
     schedules.value.clear();
     result.forEach(schedule => {
@@ -28,6 +38,11 @@ export function useSchedules() {
       }
       schedules.value.get(dateStr)!.push(schedule);
     });
+  }
+
+  function switchViewMode(mode: ViewMode): void {
+    viewMode.value = mode;
+    refreshSchedules();
   }
 
   function getDateSchedules(date: dayjs.Dayjs): Schedule[] {
@@ -70,25 +85,31 @@ export function useSchedules() {
     const existingSchedules = getDateSchedules(dayjs(date));
     // 过滤掉虚拟记录（只有颜色没有内容的记录 id 为 -1）
     const validExistingSchedules = existingSchedules.filter(s => s.id !== -1);
-    
+
     const existingContent = validExistingSchedules.map(s => ({
       text: s.content,
       done: !!s.is_done
     }));
-    
+
     // 比较内容是否变化（过滤掉空行后）
     const validLines = lines.filter(l => l.text.trim() !== '');
     if (JSON.stringify(existingContent) === JSON.stringify(validLines)) {
       return;
     }
-    
+
     try {
       // 删除该日期的所有日程内容（颜色保留在 cell_metadata 表中）
       await deleteSchedulesByDate(date);
-      
+
+      // 获取当前日期作为 done_date
+      const now = new Date();
+      const today = now.getFullYear() + '-' +
+        String(now.getMonth() + 1).padStart(2, '0') + '-' +
+        String(now.getDate()).padStart(2, '0');
+
       // 插入新的日程行
       for (const line of validLines) {
-        await saveSchedule(date, line.text.trim(), line.done);
+        await saveSchedule(date, line.text.trim(), line.done, line.done ? today : undefined);
       }
       await refreshSchedules();
     } catch (error) {
@@ -184,8 +205,10 @@ export function useSchedules() {
   return {
     schedules,
     currentDate,
+    viewMode,
     getDateSchedules,
     refreshSchedules,
+    switchViewMode,
     addSchedule,
     resetSchedule,
     updateScheduleLines,

@@ -1,10 +1,11 @@
 <script setup lang="ts">
-import { ChevronLeft, ChevronRight, Calendar, MoreVertical, Lock, Unlock, Undo2, Redo2 } from 'lucide-vue-next';
+import { ChevronLeft, ChevronRight, Calendar, MoreVertical, Lock, Unlock, Undo2, Redo2, ListTodo, CheckCircle2 } from 'lucide-vue-next';
 import dayjs from 'dayjs';
 import MiniCalendar from './MiniCalendar.vue';
 import DropdownMenu from './DropdownMenu.vue';
 import { formatMonthYear } from '../utils/date';
 import { startWindowDrag } from '../utils/window';
+import type { ViewMode } from '../types';
 
 defineProps<{
   currentDate: dayjs.Dayjs;
@@ -13,6 +14,7 @@ defineProps<{
   isLocked: boolean;
   canUndo: boolean;
   canRedo: boolean;
+  viewMode: ViewMode;
 }>();
 
 const emit = defineEmits<{
@@ -29,6 +31,7 @@ const emit = defineEmits<{
   (e: 'import'): void;
   (e: 'undo'): void;
   (e: 'redo'): void;
+  (e: 'switchViewMode', mode: ViewMode): void;
 }>();
 
 function handleDrag(event: MouseEvent) {
@@ -86,6 +89,10 @@ function handleUndo() {
 function handleRedo() {
   emit('redo');
 }
+
+function handleSwitchViewMode(mode: ViewMode) {
+  emit('switchViewMode', mode);
+}
 </script>
 
 <template>
@@ -140,6 +147,29 @@ function handleRedo() {
       >
         今天
       </button>
+
+      <div class="flex items-center gap-0.5 ml-2 rounded-lg p-0.5">
+        <button
+          @click="handleSwitchViewMode('todo')"
+          class="p-1.5 rounded transition-colors"
+          :class="viewMode === 'todo'
+            ? 'text-[var(--primary)] bg-[var(--primary-light)]'
+            : 'text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-200 hover:bg-[var(--hover-bg)]'"
+          :title="'待办视图'"
+        >
+          <ListTodo class="w-4 h-4" />
+        </button>
+        <button
+          @click="handleSwitchViewMode('done')"
+          class="p-1.5 rounded transition-colors"
+          :class="viewMode === 'done'
+            ? 'text-[var(--primary)] bg-[var(--primary-light)]'
+            : 'text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-200 hover:bg-[var(--hover-bg)]'"
+          :title="'完成视图'"
+        >
+          <CheckCircle2 class="w-4 h-4" />
+        </button>
+      </div>
 
       <div class="flex items-center gap-1 ml-2">
         <button

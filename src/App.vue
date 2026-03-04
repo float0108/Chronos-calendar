@@ -14,12 +14,14 @@ import { useToast } from './composables/useToast';
 import { useUndoHistory } from './composables/useUndoHistory';
 import { closeWindow, setWindowLocked } from './utils/window';
 import { importFromFile, csvToSchedules } from './utils/export';
-import type { AppSettings, ThemeMode } from './types';
+import type { AppSettings, ThemeMode, ViewMode } from './types';
 const { initDatabase } = useDatabase();
 const {
   schedules,
   currentDate,
+  viewMode,
   refreshSchedules,
+  switchViewMode,
   resetSchedule,
   updateScheduleLines,
   setCellColor,
@@ -253,6 +255,10 @@ function handleSelectDate(day: number) {
   selectDate(day);
   showMiniCalendar.value = false;
 }
+function handleSwitchViewMode(mode: ViewMode) {
+  if (isLocked.value) return;
+  switchViewMode(mode);
+}
 function handleNavigate(dateStr: string) {
   const targetDate = dayjs(dateStr);
   currentDate.value = targetDate;
@@ -391,6 +397,7 @@ onUnmounted(() => {
       :is-locked="isLocked"
       :can-undo="canUndo()"
       :can-redo="canRedo()"
+      :view-mode="viewMode"
       @prev-month="!isLocked && prevMonth()"
       @next-month="!isLocked && nextMonth()"
       @go-today="!isLocked && goToToday()"
@@ -404,6 +411,7 @@ onUnmounted(() => {
       @toggle-lock="toggleLock"
       @undo="handleUndo"
       @redo="handleRedo"
+      @switch-view-mode="handleSwitchViewMode"
     />
     
     <CalendarGrid

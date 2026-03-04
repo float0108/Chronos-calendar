@@ -17,6 +17,9 @@ export interface EditingCell {
 
 export type ResizeDirection = 'East' | 'West' | 'South' | 'SouthEast';
 
+// View mode types
+export type ViewMode = 'todo' | 'done';
+
 // Settings types
 export type ThemeMode = 'light' | 'dark';
 export type WeekStartsOn = 0 | 1;
