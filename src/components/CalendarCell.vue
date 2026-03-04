@@ -350,7 +350,7 @@ function handleEditLineContextMenu(event: MouseEvent, index: number) {
 
       <div v-if="!isEditing" class="content-area h-full overflow-y-auto no-scrollbar px-1">
         <div v-for="(s, i) in schedules.filter(s => s.id !== -1 && s.content.trim() !== '')" :key="i"
-          class="flex items-center gap-1 mb-0.5 text-xs leading-tight transition-all py-0.5 cursor-pointer"
+          class="flex items-center gap-1 mb-0.5 text-xs leading-tight transition-all py-0.5"
           :class="(s.is_done && viewMode !== 'done') ? 'text-gray-500 dark:text-gray-400 line-through opacity-90' : 'text-[var(--text-primary)]'"
           @contextmenu.prevent="handleScheduleContextMenu($event, s)">
           <div class="shrink-0 w-1 h-1 rounded-full bg-current opacity-50"></div>
@@ -409,7 +409,6 @@ function handleEditLineContextMenu(event: MouseEvent, index: number) {
   border-width: var(--cell-border-width, 1px);
   border-style: solid;
   border-color: var(--cell-border-color, var(--border-light, #e5e7eb));
-  cursor: pointer;
 }
 
 .today-cell {
