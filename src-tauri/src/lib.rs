@@ -5,6 +5,7 @@ use tauri::window::{Effect, EffectState};
 use tauri::utils::config::WindowEffectsConfig;
 use font_kit::source::SystemSource;
 use std::collections::HashSet;
+use tauri_plugin_autostart::MacosLauncher;
 
 // === Windows 置底相关的 API 引入 ===
 #[cfg(target_os = "windows")]
@@ -84,6 +85,25 @@ fn get_system_fonts() -> Result<Vec<String>, String> {
     Ok(fonts)
 }
 
+#[tauri::command]
+async fn set_autostart(app: tauri::AppHandle, enable: bool) -> Result<(), String> {
+    let autostart_manager = app.state::<tauri_plugin_autostart::AutoLaunchManager>();
+
+    if enable {
+        autostart_manager.enable().map_err(|e| e.to_string())?;
+    } else {
+        autostart_manager.disable().map_err(|e| e.to_string())?;
+    }
+
+    Ok(())
+}
+
+#[tauri::command]
+async fn get_autostart_status(app: tauri::AppHandle) -> Result<bool, String> {
+    let autostart_manager = app.state::<tauri_plugin_autostart::AutoLaunchManager>();
+    autostart_manager.is_enabled().map_err(|e| e.to_string())
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -91,7 +111,11 @@ pub fn run() {
         .plugin(tauri_plugin_window_state::Builder::default().build())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_fs::init())
-        .invoke_handler(tauri::generate_handler![set_window_vibrancy, get_system_fonts])
+        .plugin(tauri_plugin_autostart::init(
+            MacosLauncher::LaunchAgent,
+            Some(vec!["--autostart"]),
+        ))
+        .invoke_handler(tauri::generate_handler![set_window_vibrancy, get_system_fonts, set_autostart, get_autostart_status])
         .setup(|app| {
             let window = app.get_webview_window("main").unwrap();
             

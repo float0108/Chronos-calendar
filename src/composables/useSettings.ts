@@ -1,11 +1,32 @@
 import { ref } from 'vue';
 import { invoke } from '@tauri-apps/api/core';
 import type { AppSettings, ThemeMode } from '../types';
-import { defaultLightSettings, defaultDarkSettings } from '../types';
+import { defaultLightSettings, defaultDarkSettings, extractCommonParts } from '../types';
 import { hexToRgba, adjustBrightness } from '../utils/color';
 
 const currentSettings = ref<AppSettings | null>(null);
 const currentMode = ref<ThemeMode>('light');
+
+// 初始化自启动状态
+async function initAutostart(): Promise<boolean> {
+  try {
+    const enabled = await invoke<boolean>('get_autostart_status');
+    return enabled;
+  } catch (error) {
+    console.error('Failed to get autostart status:', error);
+    return false;
+  }
+}
+
+// 设置自启动
+async function setAutostart(enable: boolean): Promise<void> {
+  try {
+    await invoke('set_autostart', { enable });
+  } catch (error) {
+    console.error('Failed to set autostart:', error);
+    throw error;
+  }
+}
 
 export function useSettings() {
   async function initSettings(): Promise<void> {
@@ -15,6 +36,17 @@ export function useSettings() {
       // 合并默认配置，防止新增字段为 undefined
       const defaults = parsed.theme_mode === 'dark' ? defaultDarkSettings : defaultLightSettings;
       currentSettings.value = { ...defaults, ...parsed };
+
+      // 同步自启动状态（从系统读取）
+      try {
+        const autostartEnabled = await initAutostart();
+        if (currentSettings.value) {
+          currentSettings.value.autostart = autostartEnabled;
+        }
+      } catch (error) {
+        console.error('Failed to sync autostart status:', error);
+      }
+
       currentMode.value = currentSettings.value?.theme_mode || 'light';
     } else {
       currentSettings.value = { ...defaultLightSettings };
@@ -25,18 +57,16 @@ export function useSettings() {
   async function saveSettings(settings: AppSettings): Promise<void> {
     currentSettings.value = { ...settings };
     currentMode.value = settings.theme_mode;
-    
+
+    // 应用自启动设置
+    try {
+      await setAutostart(settings.autostart);
+    } catch (error) {
+      console.error('Failed to apply autostart setting:', error);
+    }
+
     // 提取公用配置部分
-    const commonParts = {
-      font_family: settings.font_family,
-      font_size: settings.font_size,
-      font_weight: settings.font_weight,
-      cell_gap: settings.cell_gap,
-      cell_border_width: settings.cell_border_width,
-      week_starts_on: settings.week_starts_on,
-      display_mode: settings.display_mode,
-      floating_weeks_count: settings.floating_weeks_count
-    };
+    const commonParts = extractCommonParts(settings);
 
     // 保存当前模式
     localStorage.setItem(`chronos_settings_${settings.theme_mode}`, JSON.stringify(settings));
@@ -138,6 +168,33 @@ export function useSettings() {
     await applySettings();
   }
 
+  function getSetting<K extends keyof AppSettings>(key: K): AppSettings[K] | undefined {
+    if (currentSettings.value) {
+      return currentSettings.value[key];
+    }
+
+    const saved = localStorage.getItem('chronos_settings');
+    if (saved) {
+      const parsed = JSON.parse(saved);
+      return parsed[key];
+    }
+
+    return undefined;
+  }
+
+  function getAllSettings(): AppSettings | null {
+    if (currentSettings.value) {
+      return currentSettings.value;
+    }
+
+    const saved = localStorage.getItem('chronos_settings');
+    if (saved) {
+      return JSON.parse(saved);
+    }
+
+    return null;
+  }
+
   return {
     currentSettings,
     currentMode,
@@ -147,5 +204,7 @@ export function useSettings() {
     getSettingsForMode,
     saveSettingsForMode,
     switchMode,
+    getSetting,
+    getAllSettings,
   };
 }

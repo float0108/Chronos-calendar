@@ -28,10 +28,6 @@ export function useUndoHistory() {
     return action;
   }
 
-  function peekAction(): UndoAction | undefined {
-    return history.value[history.value.length - 1];
-  }
-
   function pushRedo(action: UndoAction) {
     redoHistory.value.push(action);
     if (redoHistory.value.length > maxHistory) {
@@ -61,7 +57,6 @@ export function useUndoHistory() {
     redoHistory,
     pushAction,
     popAction,
-    peekAction,
     pushRedo,
     popRedo,
     clearHistory,

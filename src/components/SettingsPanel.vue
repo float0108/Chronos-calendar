@@ -3,7 +3,7 @@ import { ref, watch, onMounted } from 'vue';
 import { X, Sun, Moon, RotateCcw } from 'lucide-vue-next';
 import { invoke } from '@tauri-apps/api/core';
 import type { AppSettings, ThemeMode } from '../types';
-import { defaultLightSettings, defaultDarkSettings } from '../types/index';
+import { defaultLightSettings, defaultDarkSettings, extractCommonParts } from '../types/index';
 import ColorPicker from './ColorPicker.vue';
 import SliderControl from './SliderControl.vue';
 
@@ -74,16 +74,7 @@ function handleSwitchMode(mode: ThemeMode) {
   activeTab.value = mode;
 
   // 切换模式时，保留当前已修改的【公用配置】
-  const currentCommonParts = {
-    font_family: localSettings.value.font_family,
-    font_size: localSettings.value.font_size,
-    font_weight: localSettings.value.font_weight,
-    cell_gap: localSettings.value.cell_gap,
-    cell_border_width: localSettings.value.cell_border_width,
-    week_starts_on: localSettings.value.week_starts_on,
-    display_mode: localSettings.value.display_mode,
-    floating_weeks_count: localSettings.value.floating_weeks_count,
-  };
+  const currentCommonParts = extractCommonParts(localSettings.value);
 
   const saved = localStorage.getItem(`chronos_settings_${mode}`);
   if (saved) {
@@ -210,6 +201,18 @@ function handleReset() {
                   <span class="text-sm text-gray-500">px</span>
                 </div>
               </div>
+            </div>
+          </div>
+
+          <div class="space-y-6">
+            <h3 class="text-sm font-semibold text-gray-900 border-b pb-2">系统设置</h3>
+            <div class="space-y-2">
+              <label class="flex items-center gap-2 cursor-pointer">
+                <input type="checkbox" v-model="localSettings.autostart"
+                  class="w-4 h-4 text-blue-500 rounded border-gray-300 focus:ring-blue-500" />
+                <span class="text-sm text-gray-700 font-medium">开机自启动</span>
+              </label>
+              <p class="text-xs text-gray-500 ml-6">启动后应用将在后台运行</p>
             </div>
           </div>
 

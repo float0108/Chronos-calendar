@@ -34,6 +34,7 @@ export interface CommonSettings {
   week_starts_on: WeekStartsOn;
   display_mode: 'month' | 'floating_weeks'; // 显示模式：整月或浮动周
   floating_weeks_count: number; // 浮动周数量（默认3）
+  autostart: boolean; // 开机自启动
 }
 
 export interface ModeSettings {
@@ -62,6 +63,7 @@ export const defaultCommonSettings: CommonSettings = {
   week_starts_on: 1,
   display_mode: 'month',
   floating_weeks_count: 3,
+  autostart: false,
 };
 
 // 默认浅色/深色模式配置
@@ -90,3 +92,18 @@ export const defaultDarkSettings: Omit<AppSettings, 'id'> = {
   cell_border_color: '#4b5563',
   enable_blur: true, // 原生毛玻璃开关
 };
+
+// 从 AppSettings 提取公用配置部分
+export function extractCommonParts(settings: AppSettings): CommonSettings {
+  return {
+    font_family: settings.font_family,
+    font_size: settings.font_size,
+    font_weight: settings.font_weight,
+    cell_gap: settings.cell_gap,
+    cell_border_width: settings.cell_border_width,
+    week_starts_on: settings.week_starts_on,
+    display_mode: settings.display_mode,
+    floating_weeks_count: settings.floating_weeks_count,
+    autostart: settings.autostart,
+  };
+}

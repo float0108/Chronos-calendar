@@ -41,17 +41,14 @@ export function getCalendarDays(
     const startOfWeek = currentDate.subtract(adjustedCurrentDay, 'day');
 
     let weeksBefore: number;
-    let weeksAfter: number;
 
     if (floatingWeeksCount % 2 === 1) {
       // 奇数：前 (n-1)/2 周，后 (n-1)/2 周
       const halfWeeks = (floatingWeeksCount - 1) / 2;
       weeksBefore = halfWeeks;
-      weeksAfter = halfWeeks;
     } else {
       // 偶数：前 n/2-1 周，后 n/2+1 周
       weeksBefore = floatingWeeksCount / 2 - 1;
-      weeksAfter = floatingWeeksCount / 2 + 1;
     }
 
     const startDate = startOfWeek.subtract(weeksBefore, 'week');

@@ -190,17 +190,14 @@ export function csvToSchedules(csvString: string): ParsedCSVData {
     } else if (isV3Format) {
       // V3 format: date, content, is_done, priority, cell_color, created_at, done_time, description
       // Map to new: create_date=date, done_date=done_time, ignore created_at
-      let createdAt: string;
-      [createDate, content, isDoneStr, priorityStr, cellColor, createdAt, doneDate, description] = fields.map(cleanFieldValue);
+      [createDate, content, isDoneStr, priorityStr, cellColor, , doneDate, description] = fields.map(cleanFieldValue);
     } else if (isV2Format) {
       // V2 format: date, content, is_done, priority, cell_color, created_at, done_time
-      let createdAt: string;
-      [createDate, content, isDoneStr, priorityStr, cellColor, createdAt, doneDate] = fields.map(cleanFieldValue);
+      [createDate, content, isDoneStr, priorityStr, cellColor, , doneDate] = fields.map(cleanFieldValue);
       description = '';
     } else {
       // V1 format: date, content, is_done, priority, cell_color, created_at
-      let createdAt: string;
-      [createDate, content, isDoneStr, priorityStr, cellColor, createdAt] = fields.map(cleanFieldValue);
+      [createDate, content, isDoneStr, priorityStr, cellColor] = fields.map(cleanFieldValue);
       doneDate = '';
       description = '';
     }
