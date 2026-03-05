@@ -3,15 +3,17 @@ import dayjs from 'dayjs';
 import type { Schedule, ViewMode } from '../types';
 import { useDatabase } from './useDatabase';
 import { useToast } from './useToast';
+import { useSettings } from './useSettings';
 import { schedulesToCSV, exportToFile } from '../utils/export';
 import { getCalendarDays } from '../utils/date';
 
 export function useSchedules() {
-  const { loadSchedules, loadTodoSchedules, loadDoneSchedules, saveSchedule, deleteSchedulesByDate, updateScheduleColor, loadAllSchedules, importSchedules, importCellColors, clearAllData, toggleScheduleStatus } = useDatabase();
+  const { loadSchedules, loadTodoSchedules, loadDoneSchedules, saveSchedule, deleteSchedulesByDate, updateScheduleColor, loadAllSchedules, importSchedules, importCellColors, clearAllData, toggleScheduleStatus, updateScheduleDescription: dbUpdateDescription } = useDatabase();
 
   // 导出 saveSchedule 供撤销功能使用
   const _saveSchedule = saveSchedule;
   const { showError, showSuccess } = useToast();
+  const { getSetting } = useSettings();
 
   const schedules = ref<Map<string, Schedule[]>>(new Map());
   const currentDate = ref(dayjs());
@@ -21,11 +23,9 @@ export function useSchedules() {
 
   // 获取日历视图的日期范围
   const dateRange = computed(() => {
-    const settings = localStorage.getItem('chronos_settings');
-    const parsed = settings ? JSON.parse(settings) : {};
-    const weekStartsOn = parsed.week_starts_on ?? 1;
-    const displayMode = parsed.display_mode ?? 'month';
-    const floatingWeeksCount = parsed.floating_weeks_count ?? 3;
+    const weekStartsOn = getSetting('week_starts_on') ?? 1;
+    const displayMode = getSetting('display_mode') ?? 'month';
+    const floatingWeeksCount = getSetting('floating_weeks_count') ?? 3;
 
     const days = getCalendarDays(currentDate.value, weekStartsOn as 0 | 1, displayMode, floatingWeeksCount);
     if (days.length === 0) return { startDate: monthStr.value, endDate: monthStr.value };
@@ -68,14 +68,17 @@ export function useSchedules() {
     return schedules.value.get(dateStr) || [];
   }
 
+  // 暂时未使用，但保留以便将来使用
+  void addSchedule;
+
   async function addSchedule(date: string, content: string, replace: boolean = false): Promise<void> {
     if (!content.trim()) return;
-    
+
     try {
       if (replace) {
         await deleteSchedulesByDate(date);
       }
-      
+
       await saveSchedule(date, content);
       await refreshSchedules();
     } catch (error) {
@@ -135,36 +138,31 @@ export function useSchedules() {
     }
   }
 
-  function prevMonth(): void {
-    const settings = localStorage.getItem('chronos_settings');
-    const parsed = settings ? JSON.parse(settings) : {};
-    const displayMode = parsed.display_mode ?? 'month';
-    const floatingWeeksCount = parsed.floating_weeks_count ?? 3;
+  function navigateMonth(direction: -1 | 1): void {
+    const displayMode = getSetting('display_mode') ?? 'month';
+    const floatingWeeksCount = getSetting('floating_weeks_count') ?? 3;
 
     if (displayMode === 'floating_weeks') {
-      // 浮动周模式：向上翻 floatingWeeksCount 周
-      currentDate.value = currentDate.value.subtract(floatingWeeksCount, 'week');
+      // 浮动周模式：翻 floatingWeeksCount 周
+      const amount = floatingWeeksCount * direction;
+      currentDate.value = direction > 0
+        ? currentDate.value.add(amount, 'week')
+        : currentDate.value.subtract(-amount, 'week');
     } else {
-      // 整月模式：向上翻一个月
-      currentDate.value = currentDate.value.subtract(1, 'month');
+      // 整月模式：翻一个月
+      currentDate.value = direction > 0
+        ? currentDate.value.add(1, 'month')
+        : currentDate.value.subtract(1, 'month');
     }
     refreshSchedules();
   }
 
-  function nextMonth(): void {
-    const settings = localStorage.getItem('chronos_settings');
-    const parsed = settings ? JSON.parse(settings) : {};
-    const displayMode = parsed.display_mode ?? 'month';
-    const floatingWeeksCount = parsed.floating_weeks_count ?? 3;
+  function prevMonth(): void {
+    navigateMonth(-1);
+  }
 
-    if (displayMode === 'floating_weeks') {
-      // 浮动周模式：向下翻 floatingWeeksCount 周
-      currentDate.value = currentDate.value.add(floatingWeeksCount, 'week');
-    } else {
-      // 整月模式：向下翻一个月
-      currentDate.value = currentDate.value.add(1, 'month');
-    }
-    refreshSchedules();
+  function nextMonth(): void {
+    navigateMonth(1);
   }
 
   function goToToday(): void {
@@ -242,14 +240,17 @@ export function useSchedules() {
     }
   }
 
+  async function updateScheduleDescription(scheduleId: number, description: string): Promise<void> {
+    await dbUpdateDescription(scheduleId, description);
+    await refreshSchedules();
+  }
+
   return {
     schedules,
     currentDate,
     viewMode,
-    getDateSchedules,
     refreshSchedules,
     switchViewMode,
-    addSchedule,
     resetSchedule,
     updateScheduleLines,
     setCellColor,
@@ -261,5 +262,6 @@ export function useSchedules() {
     importSchedulesFromData,
     toggleScheduleStatus,
     saveSchedule: _saveSchedule,
+    updateScheduleDescription,
   };
 }

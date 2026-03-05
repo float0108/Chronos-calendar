@@ -7,14 +7,15 @@ import ResizeHandles from './components/ResizeHandles.vue';
 import SettingsPanel from './components/SettingsPanel.vue';
 import ToastContainer from './components/ToastContainer.vue';
 import ImportDialog from './components/ImportDialog.vue';
+import DescriptionDialog from './components/DescriptionDialog.vue';
 import { useDatabase } from './composables/useDatabase';
 import { useSchedules } from './composables/useSchedules';
 import { useSettings } from './composables/useSettings';
-import { useToast } from './composables/useToast';
-import { useUndoHistory } from './composables/useUndoHistory';
+import { useImport } from './composables/useImport';
+import { useScheduleUndo } from './composables/useScheduleUndo';
 import { closeWindow, setWindowLocked } from './utils/window';
-import { importFromFile, csvToSchedules } from './utils/export';
-import type { AppSettings, ThemeMode, ViewMode } from './types';
+import { colorOptions } from './constants';
+import type { AppSettings, ThemeMode, ViewMode, Schedule } from './types';
 const { initDatabase } = useDatabase();
 const {
   schedules,
@@ -33,6 +34,7 @@ const {
   importSchedulesFromData,
   toggleScheduleStatus,
   saveSchedule,
+  updateScheduleDescription,
 } = useSchedules();
 const {
   currentSettings,
@@ -41,32 +43,27 @@ const {
   saveSettingsForMode,
   switchMode,
 } = useSettings();
-const { showSuccess, showError } = useToast();
-const { pushAction, popAction, pushRedo, popRedo, canUndo, canRedo } = useUndoHistory();
+const { showImportDialog, pendingImportRecordCount, handleImport: handleImportData, performImport: performImportData, cancelImport } = useImport();
+const { pushAction, handleToggleDone: toggleDoneWithUndo, handleUndo: undo, handleRedo: redo, canUndo, canRedo } = useScheduleUndo(
+  schedules,
+  toggleScheduleStatus,
+  refreshSchedules,
+  updateScheduleLines,
+  saveSchedule
+);
 const calendarKey = ref(0);
 const showMenu = ref(false);
 const showMiniCalendar = ref(false);
 const showSettings = ref(false);
-const showImportDialog = ref(false);
+const showDescriptionDialog = ref(false);
+const editingSchedule = ref<Schedule | null>(null);
 const isLocked = ref(false);
-const pendingImportRecordCount = ref(0);
-const pendingImportData = ref<{ schedules: any[], cellColors: { date: string, color: string }[] } | null>(null);
 const contextMenu = ref<{ show: boolean; x: number; y: number; date: string }>({
   show: false,
   x: 0,
   y: 0,
   date: '',
 });
-const colorOptions = [
-  { name: '默认', value: '' },
-  { name: '红', value: '#fecaca' },
-  { name: '橙', value: '#fed7aa' },
-  { name: '黄', value: '#fef08a' },
-  { name: '绿', value: '#bbf7d0' },
-  { name: '蓝', value: '#bfdbfe' },
-  { name: '紫', value: '#ddd6fe' },
-  { name: '粉', value: '#fbcfe8' },
-];
 const contextMenuStyle = computed(() => {
   const menuWidth = 100;
   const menuHeight = 280;
@@ -125,105 +122,22 @@ async function handleExport() {
   showMenu.value = false;
   await exportAllSchedules();
 }
+
 async function handleImport() {
   showMenu.value = false;
-
-  try {
-    const csvContent = await importFromFile();
-
-    if (!csvContent) {
-      // User cancelled
-      return;
-    }
-
-    console.log('CSV content length:', csvContent.length);
-    console.log('CSV first 500 chars:', csvContent.substring(0, 500));
-
-    const { schedules, cellColors } = csvToSchedules(csvContent);
-    console.log('Parsed data:', { schedules, cellColors });
-
-    pendingImportRecordCount.value = schedules.length + cellColors.length;
-
-    if (pendingImportRecordCount.value === 0) {
-      showError('CSV 文件中没有数据');
-      return;
-    }
-
-    // Store the parsed data for later use
-    pendingImportData.value = { schedules, cellColors };
-
-    // Show import dialog to ask user for strategy
-    showImportDialog.value = true;
-  } catch (error) {
-    console.error('Import error:', error);
-    const message = error instanceof Error ? error.message : '导入失败，请重试';
-    showError(message);
-  }
+  await handleImportData(importSchedulesFromData);
 }
+
 async function handleImportMerge() {
-  showImportDialog.value = false;
-
-  if (!pendingImportData.value) {
-    showError('导入数据丢失，请重试');
-    return;
-  }
-
-  const { schedules, cellColors } = pendingImportData.value;
-  pendingImportData.value = null;
-
-  const result = await importSchedulesFromData(schedules, cellColors, 'merge');
-  if (result.success && result.scheduleStats && result.colorStats) {
-    const messages = [];
-    if (result.scheduleStats.inserted > 0) {
-      messages.push(`新增 ${result.scheduleStats.inserted} 条日程`);
-    }
-    if (result.scheduleStats.updated > 0) {
-      messages.push(`更新 ${result.scheduleStats.updated} 条日程`);
-    }
-    if (result.colorStats.inserted > 0) {
-      messages.push(`新增 ${result.colorStats.inserted} 个颜色标记`);
-    }
-    if (result.colorStats.updated > 0) {
-      messages.push(`更新 ${result.colorStats.updated} 个颜色标记`);
-    }
-
-    if (messages.length > 0) {
-      showSuccess(`导入成功：${messages.join('，')}`);
-    } else {
-      showSuccess('导入成功：无数据变化');
-    }
-  }
+  await performImportData('merge', importSchedulesFromData);
 }
+
 async function handleImportOverwrite() {
-  showImportDialog.value = false;
-
-  if (!pendingImportData.value) {
-    showError('导入数据丢失，请重试');
-    return;
-  }
-
-  const { schedules, cellColors } = pendingImportData.value;
-  pendingImportData.value = null;
-
-  const result = await importSchedulesFromData(schedules, cellColors, 'overwrite');
-  if (result.success && result.scheduleStats && result.colorStats) {
-    const messages = [];
-    if (result.scheduleStats.inserted > 0) {
-      messages.push(`${result.scheduleStats.inserted} 条日程`);
-    }
-    if (result.colorStats.inserted > 0) {
-      messages.push(`${result.colorStats.inserted} 个颜色标记`);
-    }
-
-    if (messages.length > 0) {
-      showSuccess(`导入成功：${messages.join('，')}`);
-    } else {
-      showSuccess('导入成功');
-    }
-  }
+  await performImportData('overwrite', importSchedulesFromData);
 }
+
 function handleImportCancel() {
-  showImportDialog.value = false;
+  cancelImport();
 }
 function handleReset(date: string, content: string | null) {
   if (isLocked.value) return;
@@ -274,90 +188,34 @@ function selectColor(color: string) {
   setCellColor(contextMenu.value.date, color);
   contextMenu.value.show = false;
 }
-async function handleToggleDone(schedule: any) {
-  // 保存撤销状态
-  pushAction({
-    type: 'toggleDone',
-    data: {
-      id: schedule.id,
-      previousState: schedule.is_done,
-    },
-    timestamp: Date.now(),
-  });
 
-  // 切换完成状态（传入切换后的状态，而不是当前状态）
-  await toggleScheduleStatus(schedule.id, !schedule.is_done);
-  await refreshSchedules();
+async function handleToggleDone(schedule: any) {
+  await toggleDoneWithUndo(schedule);
+}
+
+function handleEditDescription(schedule: any) {
+  if (isLocked.value) return;
+  editingSchedule.value = schedule;
+  showDescriptionDialog.value = true;
+}
+
+async function handleDescriptionSave(scheduleId: number, description: string) {
+  await updateScheduleDescription(scheduleId, description);
+  showDescriptionDialog.value = false;
+  editingSchedule.value = null;
+}
+
+function handleDescriptionCancel() {
+  showDescriptionDialog.value = false;
+  editingSchedule.value = null;
 }
 
 async function handleUndo() {
-  const action = popAction();
-  if (!action) return;
-
-  try {
-    switch (action.type) {
-      case 'toggleDone': {
-        const { id, previousState } = action.data;
-        await toggleScheduleStatus(id, !previousState);
-        await refreshSchedules();
-        showSuccess('已撤销：切换完成状态');
-        break;
-      }
-      case 'updateLines': {
-        const { date, previousLines } = action.data;
-        // 获取当前状态用于重做
-        const currentSchedules = schedules.value.get(date) || [];
-        const currentLines = currentSchedules
-          .filter(s => s.id !== -1 && s.content.trim() !== '')
-          .map(s => ({ text: s.content.trim(), done: !!s.is_done }));
-        // 保存当前状态到重做历史
-        pushRedo({
-          type: 'updateLines',
-          data: { date, previousLines: currentLines },
-          timestamp: Date.now(),
-        });
-        await updateScheduleLines(date, previousLines);
-        await refreshSchedules();
-        showSuccess('已撤销：编辑操作');
-        break;
-      }
-      case 'deleteSchedule': {
-        const { date, previousSchedules } = action.data;
-        // 恢复删除的日程
-        for (const schedule of previousSchedules) {
-          await saveSchedule(date, schedule.content, schedule.is_done, schedule.done_date, schedule.description);
-        }
-        await refreshSchedules();
-        showSuccess('已撤销：删除操作');
-        break;
-      }
-    }
-  } catch (error) {
-    console.error('Undo failed:', error);
-    showError('撤销失败');
-  }
+  await undo();
 }
 
 async function handleRedo() {
-  const action = popRedo();
-  if (!action) return;
-
-  try {
-    switch (action.type) {
-      case 'updateLines': {
-        const { date, previousLines } = action.data;
-        await updateScheduleLines(date, previousLines);
-        await refreshSchedules();
-        showSuccess('已重做：编辑操作');
-        break;
-      }
-      default:
-        console.warn('Unsupported redo action type:', action.type);
-    }
-  } catch (error) {
-    console.error('Redo failed:', error);
-    showError('重做失败');
-  }
+  await redo();
 }
 
 function toggleLock() {
@@ -365,22 +223,13 @@ function toggleLock() {
   setWindowLocked(isLocked.value);
 }
 
-function handleKeydown(event: KeyboardEvent) {
-  // 全局撤销/重做仅在非输入状态下由按钮触发
-  // 这里不处理键盘快捷键
-}
-
 onMounted(async () => {
   await initDatabase();
   await refreshSchedules();
   await initSettings();
-
-  // 监听键盘事件
-  window.addEventListener('keydown', handleKeydown);
 });
 
 onUnmounted(() => {
-  window.removeEventListener('keydown', handleKeydown);
 });
 </script>
 <template>
@@ -430,6 +279,7 @@ onUnmounted(() => {
       @navigate="handleNavigate"
       @contextmenu="handleContextMenu"
       @toggle-done="handleToggleDone"
+      @edit-description="handleEditDescription"
     />
     
     <div
@@ -474,6 +324,13 @@ onUnmounted(() => {
       @merge="handleImportMerge"
       @overwrite="handleImportOverwrite"
       @cancel="handleImportCancel"
+    />
+
+    <DescriptionDialog
+      :visible="showDescriptionDialog"
+      :schedule="editingSchedule"
+      @save="handleDescriptionSave"
+      @cancel="handleDescriptionCancel"
     />
 
     <ToastContainer />

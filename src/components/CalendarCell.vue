@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, nextTick, onMounted, onUnmounted } from 'vue';
-import { Check, Trash2, Palette } from 'lucide-vue-next';
+import { Trash2, Palette } from 'lucide-vue-next';
 import dayjs from 'dayjs';
 import type { Schedule } from '../types';
 
@@ -29,6 +29,7 @@ const emit = defineEmits<{
   (e: 'navigate', direction: string): void;
   (e: 'contextmenu', event: MouseEvent): void;
   (e: 'toggleDone', schedule: Schedule): void;
+  (e: 'editDescription', schedule: Schedule): void;
 }>();
 
 const isEditing = ref(false);
@@ -38,7 +39,17 @@ const textareaRefs = ref<(HTMLTextAreaElement | null)[]>([]);
 const activeLineIndex = ref<number | null>(null);
 const dateStr = props.date.format('YYYY-MM-DD');
 
-// 编辑历史管理
+// 悬停描述浮窗状态
+const hoveredSchedule = ref<Schedule | null>(null);
+const tooltipPosition = ref({ x: 0, y: 0 });
+let tooltipTimeout: number | null = null;
+let animationFrameId: number | null = null;
+let pendingPosition = { x: 0, y: 0 };
+
+// 编辑历史管理（单元格级别的撤销/重做系统）
+// 注意：这是单元格编辑时的局部撤销/重做，独立于 App.vue 中的全局撤销/重做系统
+// - 单元格级别：仅在编辑时有效，撤销/重做文本编辑操作
+// - 全局级别：在任何时候有效，撤销/重做完成状态切换、日程编辑等操作
 const undoHistory = ref<EditHistory[]>([]);
 const redoHistory = ref<EditHistory[]>([]);
 const maxHistory = 50;
@@ -173,7 +184,15 @@ function handleClickOutside(event: MouseEvent) {
 }
 
 onMounted(() => document.addEventListener('mousedown', handleClickOutside));
-onUnmounted(() => document.removeEventListener('mousedown', handleClickOutside));
+onUnmounted(() => {
+  document.removeEventListener('mousedown', handleClickOutside);
+  if (tooltipTimeout) {
+    clearTimeout(tooltipTimeout);
+  }
+  if (animationFrameId) {
+    cancelAnimationFrame(animationFrameId);
+  }
+});
 
 function startEditing() {
   if (props.isLocked) return;
@@ -222,6 +241,9 @@ function toggleActiveLineDone() {
     activeLine.value.done = !activeLine.value.done;
   }
 }
+
+// 将来可能使用，暂时保留
+void toggleActiveLineDone;
 
 function deleteActiveLine() {
   if (activeLineIndex.value === null) return;
@@ -305,7 +327,7 @@ function autoResize(textarea: HTMLTextAreaElement) {
   textarea.style.height = textarea.scrollHeight + 'px';
 }
 
-function handleInput(event: Event, index: number) {
+function handleInput(event: Event, _index: number) {
   const textarea = event.target as HTMLTextAreaElement;
   autoResize(textarea);
   saveHistoryDebounced();
@@ -315,6 +337,14 @@ function handleScheduleContextMenu(event: MouseEvent, schedule: Schedule) {
   event.preventDefault();
   event.stopPropagation();
   emit('toggleDone', schedule);
+}
+
+function handleScheduleMiddleClick(event: MouseEvent, schedule: Schedule) {
+  if (event.button === 1) {
+    event.preventDefault();
+    event.stopPropagation();
+    emit('editDescription', schedule);
+  }
 }
 
 function handleColorButtonClick(event: MouseEvent) {
@@ -329,6 +359,43 @@ function handleEditLineContextMenu(event: MouseEvent, index: number) {
   // 切换该行的完成状态
   saveHistory();
   editLines.value[index].done = !editLines.value[index].done;
+}
+
+function handleScheduleMouseEnter(event: MouseEvent, schedule: Schedule) {
+  if (!schedule.description) return;
+
+  // 保存初始位置
+  pendingPosition = { x: event.clientX + 10, y: event.clientY + 10 };
+
+  tooltipTimeout = window.setTimeout(() => {
+    hoveredSchedule.value = schedule;
+    tooltipPosition.value = { ...pendingPosition };
+  }, 500); // 500ms 延迟显示
+}
+
+function handleScheduleMouseLeave() {
+  if (tooltipTimeout) {
+    clearTimeout(tooltipTimeout);
+    tooltipTimeout = null;
+  }
+  if (animationFrameId) {
+    cancelAnimationFrame(animationFrameId);
+    animationFrameId = null;
+  }
+  hoveredSchedule.value = null;
+}
+
+function handleScheduleMouseMove(event: MouseEvent) {
+  // 更新待处理位置
+  pendingPosition = { x: event.clientX + 10, y: event.clientY + 10 };
+
+  // 如果浮窗已显示，使用 requestAnimationFrame 更新位置
+  if (hoveredSchedule.value && !animationFrameId) {
+    animationFrameId = requestAnimationFrame(() => {
+      tooltipPosition.value = { ...pendingPosition };
+      animationFrameId = null;
+    });
+  }
 }
 </script>
 
@@ -352,7 +419,11 @@ function handleEditLineContextMenu(event: MouseEvent, index: number) {
         <div v-for="(s, i) in schedules.filter(s => s.id !== -1 && s.content.trim() !== '')" :key="i"
           class="flex items-center gap-1 mb-0.5 text-xs leading-tight transition-all py-0.5"
           :class="(s.is_done && viewMode !== 'done') ? 'text-gray-500 dark:text-gray-400 line-through opacity-90' : 'text-[var(--text-primary)]'"
-          @contextmenu.prevent="handleScheduleContextMenu($event, s)">
+          @contextmenu.prevent="handleScheduleContextMenu($event, s)"
+          @mousedown.prevent="handleScheduleMiddleClick($event, s)"
+          @mouseenter="handleScheduleMouseEnter($event, s)"
+          @mouseleave="handleScheduleMouseLeave"
+          @mousemove="handleScheduleMouseMove">
           <div class="shrink-0 w-1 h-1 rounded-full bg-current opacity-50"></div>
           <span class="content-text flex-1">{{ s.content }}</span>
         </div>
@@ -391,6 +462,21 @@ function handleEditLineContextMenu(event: MouseEvent, index: number) {
       </div>
 
     </div>
+
+    <!-- 描述浮窗 -->
+    <Teleport to="body">
+      <div
+        v-if="hoveredSchedule && hoveredSchedule.description"
+        class="fixed z-[9999] max-w-xs px-3 py-2 text-xs bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg pointer-events-none"
+        :style="{
+          left: tooltipPosition.x + 'px',
+          top: tooltipPosition.y + 'px'
+        }"
+      >
+        <div class="font-medium text-gray-900 dark:text-gray-100 mb-1">{{ hoveredSchedule.content }}</div>
+        <div class="text-gray-600 dark:text-gray-400 whitespace-pre-wrap">{{ hoveredSchedule.description }}</div>
+      </div>
+    </Teleport>
   </div>
 </template>
 

@@ -3,6 +3,7 @@ import { ref, computed } from 'vue';
 import dayjs from 'dayjs';
 import CalendarCell from './CalendarCell.vue';
 import { getCalendarDays } from '../utils/date';
+import { useSettings } from '../composables/useSettings';
 import type { Schedule } from '../types';
 
 const props = defineProps<{
@@ -18,19 +19,14 @@ const emit = defineEmits<{
   (e: 'navigate', direction: string): void;
   (e: 'contextmenu', event: MouseEvent, date: string): void;
   (e: 'toggleDone', schedule: Schedule): void;
+  (e: 'editDescription', schedule: Schedule): void;
 }>();
 
-const settings = computed(() => {
-  const saved = localStorage.getItem('chronos_settings');
-  if (saved) {
-    return JSON.parse(saved);
-  }
-  return null;
-});
+const { getSetting } = useSettings();
 
-const weekStartsOn = computed(() => (settings.value?.week_starts_on ?? 1) as 0 | 1);
-const displayMode = computed(() => (settings.value?.display_mode ?? 'month') as 'month' | 'floating_weeks');
-const floatingWeeksCount = computed(() => (settings.value?.floating_weeks_count ?? 3) as number);
+const weekStartsOn = computed(() => (getSetting('week_starts_on') ?? 1) as 0 | 1);
+const displayMode = computed(() => (getSetting('display_mode') ?? 'month') as 'month' | 'floating_weeks');
+const floatingWeeksCount = computed(() => (getSetting('floating_weeks_count') ?? 3) as number);
 
 const weekdays = computed(() => {
   const weekDays = ['日', '一', '二', '三', '四', '五', '六'];
@@ -78,6 +74,10 @@ function handleCellContextMenu(event: MouseEvent, date: string) {
 
 function handleToggleDone(schedule: Schedule) {
   emit('toggleDone', schedule);
+}
+
+function handleEditDescription(schedule: Schedule) {
+  emit('editDescription', schedule);
 }
 
 function handleCellFocus(index: number) {
@@ -138,6 +138,7 @@ function handleNavigate(direction: string) {
         @navigate="handleNavigate"
         @contextmenu="handleCellContextMenu($event, date.format('YYYY-MM-DD'))"
         @toggle-done="handleToggleDone"
+        @edit-description="handleEditDescription"
       />
     </div>
   </div>

@@ -123,59 +123,88 @@ export function useDatabase() {
     }
   }
 
+  // 辅助函数：加载单元格颜色映射
+  async function loadCellColorMap(startDate: string, endDate: string): Promise<Map<string, string>> {
+    if (!db.value) return new Map();
+
+    try {
+      const metadata = await db.value.select<{date: string; cell_color: string}[]>(`
+        SELECT * FROM cell_metadata
+        WHERE date >= $1 AND date <= $2
+      `, [startDate, endDate]);
+
+      return new Map(metadata.map(m => [m.date, m.cell_color]));
+    } catch (error) {
+      console.error('Failed to load cell colors:', error);
+      return new Map();
+    }
+  }
+
+  // 辅助函数：为日程附加颜色并添加只有颜色的空记录
+  function attachColorsToSchedules(
+    schedules: Schedule[],
+    colorMap: Map<string, string>,
+    dateField: 'create_date' | 'done_date' = 'create_date'
+  ): Schedule[] {
+    // 按日期分组
+    const grouped = new Map<string, Schedule[]>();
+    schedules.forEach(s => {
+      const date = dateField === 'done_date' ? (s.done_date || s.create_date) : s.create_date;
+      if (!grouped.has(date)) grouped.set(date, []);
+      grouped.get(date)!.push(s);
+    });
+
+    const result: Schedule[] = [];
+
+    // 为每个日期的记录附加颜色
+    grouped.forEach((items, date) => {
+      const color = colorMap.get(date);
+      if (color && items.length > 0) {
+        items[0].cell_color = color;
+      }
+
+      // 如果使用 done_date，需要将其映射到 create_date
+      if (dateField === 'done_date') {
+        items.forEach(item => {
+          if (item.done_date) {
+            item.create_date = item.done_date;
+          }
+        });
+      }
+
+      result.push(...items);
+    });
+
+    // 添加只有颜色没有内容的日期（用于显示背景色）
+    colorMap.forEach((color, date) => {
+      if (!grouped.has(date)) {
+        result.push({
+          id: -1,
+          create_date: date,
+          content: '',
+          is_done: dateField === 'done_date',
+          priority: 0,
+          cell_color: color,
+          ...(dateField === 'done_date' && { done_date: date })
+        });
+      }
+    });
+
+    return result;
+  }
+
   async function loadSchedules(startDate: string, endDate: string): Promise<Schedule[]> {
     if (!db.value) return [];
 
     try {
-      // 获取日程内容（使用日期范围）
       const schedules = await db.value.select<Schedule[]>(`
         SELECT * FROM schedules
         WHERE create_date >= $1 AND create_date <= $2
         ORDER BY id ASC
       `, [startDate, endDate]);
 
-      // 获取颜色元数据
-      const metadata = await db.value.select<{date: string; cell_color: string}[]>(`
-        SELECT * FROM cell_metadata
-        WHERE date >= $1 AND date <= $2
-      `, [startDate, endDate]);
-
-      // 创建颜色映射
-      const colorMap = new Map(metadata.map(m => [m.date, m.cell_color]));
-
-      // 按日期分组处理日程
-      const grouped = new Map<string, Schedule[]>();
-      schedules.forEach(s => {
-        if (!grouped.has(s.create_date)) grouped.set(s.create_date, []);
-        grouped.get(s.create_date)!.push(s);
-      });
-
-      const result: Schedule[] = [];
-
-      // 为每个日期的记录附加颜色
-      grouped.forEach((items, date) => {
-        const color = colorMap.get(date);
-        if (color && items.length > 0) {
-          items[0].cell_color = color;
-        }
-        result.push(...items);
-      });
-
-      // 添加只有颜色没有内容的日期（用于显示背景色）
-      colorMap.forEach((color, date) => {
-        if (!grouped.has(date)) {
-          result.push({
-            id: -1, // 标记为虚拟记录
-            create_date: date,
-            content: '',
-            is_done: false,
-            priority: 0,
-            cell_color: color
-          });
-        }
-      });
-
-      return result;
+      const colorMap = await loadCellColorMap(startDate, endDate);
+      return attachColorsToSchedules(schedules, colorMap);
     } catch (error) {
       console.error('Failed to load schedules:', error);
       return [];
@@ -186,55 +215,14 @@ export function useDatabase() {
     if (!db.value) return [];
 
     try {
-      // 加载所有日程（包括已完成和未完成），按日期和完成状态排序
       const schedules = await db.value.select<Schedule[]>(`
         SELECT * FROM schedules
         WHERE create_date >= $1 AND create_date <= $2
         ORDER BY create_date ASC, is_done ASC, id ASC
       `, [startDate, endDate]);
 
-      // 获取颜色元数据
-      const metadata = await db.value.select<{date: string; cell_color: string}[]>(`
-        SELECT * FROM cell_metadata
-        WHERE date >= $1 AND date <= $2
-      `, [startDate, endDate]);
-
-      // 创建颜色映射
-      const colorMap = new Map(metadata.map(m => [m.date, m.cell_color]));
-
-      // 按日期分组处理日程
-      const grouped = new Map<string, Schedule[]>();
-      schedules.forEach(s => {
-        if (!grouped.has(s.create_date)) grouped.set(s.create_date, []);
-        grouped.get(s.create_date)!.push(s);
-      });
-
-      const result: Schedule[] = [];
-
-      // 为每个日期的记录附加颜色
-      grouped.forEach((items, date) => {
-        const color = colorMap.get(date);
-        if (color && items.length > 0) {
-          items[0].cell_color = color;
-        }
-        result.push(...items);
-      });
-
-      // 添加只有颜色没有内容的日期（用于显示背景色）
-      colorMap.forEach((color, date) => {
-        if (!grouped.has(date)) {
-          result.push({
-            id: -1,
-            create_date: date,
-            content: '',
-            is_done: false,
-            priority: 0,
-            cell_color: color
-          });
-        }
-      });
-
-      return result;
+      const colorMap = await loadCellColorMap(startDate, endDate);
+      return attachColorsToSchedules(schedules, colorMap);
     } catch (error) {
       console.error('Failed to load todo schedules:', error);
       return [];
@@ -245,63 +233,14 @@ export function useDatabase() {
     if (!db.value) return [];
 
     try {
-      // 加载已完成的日程（is_done = 1），按 done_date 分组
       const schedules = await db.value.select<Schedule[]>(`
         SELECT * FROM schedules
         WHERE done_date >= $1 AND done_date <= $2 AND is_done = 1
         ORDER BY done_date, id ASC
       `, [startDate, endDate]);
 
-      // 获取颜色元数据
-      const metadata = await db.value.select<{date: string; cell_color: string}[]>(`
-        SELECT * FROM cell_metadata
-        WHERE date >= $1 AND date <= $2
-      `, [startDate, endDate]);
-
-      // 创建颜色映射
-      const colorMap = new Map(metadata.map(m => [m.date, m.cell_color]));
-
-      // 按 done_date 分组处理日程
-      const grouped = new Map<string, Schedule[]>();
-      schedules.forEach(s => {
-        const date = s.done_date || s.create_date; // 使用 done_date 作为分组依据
-        if (!grouped.has(date)) grouped.set(date, []);
-        grouped.get(date)!.push(s);
-      });
-
-      const result: Schedule[] = [];
-
-      // 为每个日期的记录附加颜色
-      grouped.forEach((items, date) => {
-        const color = colorMap.get(date);
-        if (color && items.length > 0) {
-          items[0].cell_color = color;
-        }
-        // 将 done_date 映射到 create_date 以便前端统一处理
-        items.forEach(item => {
-          if (item.done_date) {
-            item.create_date = item.done_date;
-          }
-        });
-        result.push(...items);
-      });
-
-      // 添加只有颜色没有内容的日期（用于显示背景色）
-      colorMap.forEach((color, date) => {
-        if (!grouped.has(date)) {
-          result.push({
-            id: -1,
-            create_date: date,
-            content: '',
-            is_done: true,
-            priority: 0,
-            cell_color: color,
-            done_date: date
-          });
-        }
-      });
-
-      return result;
+      const colorMap = await loadCellColorMap(startDate, endDate);
+      return attachColorsToSchedules(schedules, colorMap, 'done_date');
     } catch (error) {
       console.error('Failed to load done schedules:', error);
       return [];
@@ -370,6 +309,14 @@ export function useDatabase() {
       console.error('Failed to toggle schedule:', error);
       throw error;
     }
+  }
+
+  async function updateScheduleDescription(scheduleId: number, description: string): Promise<void> {
+    if (!db.value) return;
+    await db.value.execute(
+      'UPDATE schedules SET description = $1 WHERE id = $2',
+      [description.trim() || null, scheduleId]
+    );
   }
 
   async function updateScheduleColor(date: string, color: string): Promise<void> {
@@ -530,6 +477,7 @@ export function useDatabase() {
     deleteSchedule,
     deleteSchedulesByDate,
     toggleScheduleStatus,
+    updateScheduleDescription,
     updateScheduleColor,
     getCellColor,
     loadAllSchedules,
