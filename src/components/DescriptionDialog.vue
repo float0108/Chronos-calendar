@@ -27,7 +27,7 @@ watch(() => props.visible, (newVal) => {
 
 const handleSave = () => {
   if (props.schedule) {
-    emit('save', props.schedule.id, description.value);
+    emit('save', props.schedule.id!, description.value);
   }
 };
 

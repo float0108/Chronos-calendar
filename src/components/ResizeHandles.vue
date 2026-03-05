@@ -1,8 +1,8 @@
 <script setup lang="ts">
-import { startWindowResize } from '../utils/window';
 import type { ResizeDirection } from '../types';
+import { startWindowResize } from '../utils/window';
 
-defineProps<{
+const props = defineProps<{
   isLocked: boolean;
 }>();
 
@@ -13,18 +13,19 @@ const handles: { direction: ResizeDirection; class: string }[] = [
   { direction: 'SouthEast', class: 'absolute bottom-0 right-0 w-4 h-4 cursor-se-resize z-50 hover:bg-[var(--resize-hover)] transition-colors' },
 ];
 
-function handleResize(direction: ResizeDirection, event: MouseEvent, isLocked: boolean) {
-  if (isLocked) return;
+function handleResize(direction: ResizeDirection, event: MouseEvent) {
+  if (props.isLocked) return;
   event.preventDefault();
   startWindowResize(direction);
 }
 </script>
 
 <template>
+  <!-- 调整大小手柄 -->
   <div
     v-for="handle in handles"
     :key="handle.direction"
     :class="[handle.class, { 'opacity-30': isLocked, 'pointer-events-none': isLocked }]"
-    @mousedown="(e) => handleResize(handle.direction, e, isLocked)"
+    @mousedown="(e) => handleResize(handle.direction, e)"
   ></div>
 </template>

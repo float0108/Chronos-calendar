@@ -123,15 +123,8 @@ export function useSettings() {
     // 注入新增的边框颜色
     root.style.setProperty('--cell-border-color', settings.cell_border_color || '#d1d5db');
     
-    // 注入 CSS 毛玻璃模糊变量（作为后备）
+    // 注入 CSS 毛玻璃模糊变量
     root.style.setProperty('--backdrop-blur', settings.enable_blur ? '16px' : '0px');
-    
-    // 调用原生 API 设置系统级毛玻璃效果
-    try {
-      await invoke('set_window_vibrancy', { enable: settings.enable_blur });
-    } catch (e) {
-      // 忽略错误（可能在非 Tauri 环境或调用失败）
-    }
     
     // 注入公用配置变量（字体、大小、间距、粗细）
     root.style.setProperty('--font-family-base', settings.font_family);

@@ -34,10 +34,6 @@ const emit = defineEmits<{
   (e: 'switchViewMode', mode: ViewMode): void;
 }>();
 
-function handleDrag(event: MouseEvent) {
-  startWindowDrag(event);
-}
-
 function handlePrev() {
   emit('prevMonth');
 }
@@ -93,6 +89,10 @@ function handleRedo() {
 function handleSwitchViewMode(mode: ViewMode) {
   emit('switchViewMode', mode);
 }
+
+function handleStartDrag(event: MouseEvent) {
+  startWindowDrag(event);
+}
 </script>
 
 <template>
@@ -104,9 +104,8 @@ function handleSwitchViewMode(mode: ViewMode) {
       borderBottomStyle: 'solid',
       borderBottomColor: 'var(--cell-border-color)'
     }"
-    @mousedown="handleDrag"
   >
-    <div class="flex items-center gap-2">
+    <div class="flex items-center gap-2 cursor-move" @mousedown="handleStartDrag">
       <Calendar class="w-5 h-5 text-[var(--primary)]" />
       <span class="font-semibold text-lg text-gray-900">Chronos</span>
     </div>

@@ -16,6 +16,7 @@ import { useScheduleUndo } from './composables/useScheduleUndo';
 import { closeWindow, setWindowLocked } from './utils/window';
 import { colorOptions } from './constants';
 import type { AppSettings, ThemeMode, ViewMode, Schedule } from './types';
+
 const { initDatabase } = useDatabase();
 const {
   schedules,
@@ -51,6 +52,7 @@ const { pushAction, handleToggleDone: toggleDoneWithUndo, handleUndo: undo, hand
   updateScheduleLines,
   saveSchedule
 );
+
 const calendarKey = ref(0);
 const showMenu = ref(false);
 const showMiniCalendar = ref(false);
@@ -233,17 +235,21 @@ onUnmounted(() => {
 });
 </script>
 <template>
+  <!-- 日历界面 -->
   <div
-    class="w-full h-full flex flex-col glass rounded-lg overflow-hidden relative"
+    class="glass rounded-lg overflow-hidden flex flex-col h-screen"
     :style="{
       borderWidth: 'var(--cell-border-width)',
       borderStyle: 'solid',
-      borderColor: 'var(--cell-border-color)'
+      borderColor: 'var(--cell-border-color)',
+      background: currentSettings?.enable_blur ? 'var(--glass-bg)' : 'var(--cell-bg)',
+      backdropFilter: currentSettings?.enable_blur ? 'blur(var(--backdrop-blur)) saturate(var(--backdrop-saturate))' : 'none',
+      WebkitBackdropFilter: currentSettings?.enable_blur ? 'blur(var(--backdrop-blur)) saturate(var(--backdrop-saturate))' : 'none',
     }"
     @contextmenu.prevent
   >
     <ResizeHandles :is-locked="isLocked" />
-    
+
     <CalendarHeader
       :current-date="currentDate"
       :show-mini-calendar="showMiniCalendar"

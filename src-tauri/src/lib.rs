@@ -1,8 +1,4 @@
 use tauri::{Manager, WindowEvent};
-// 1. 引入正确的状态枚举 EffectState
-use tauri::window::{Effect, EffectState};
-// 2. 引入正确的配置结构体 WindowEffectsConfig
-use tauri::utils::config::WindowEffectsConfig;
 use font_kit::source::SystemSource;
 use std::collections::HashSet;
 use tauri_plugin_autostart::MacosLauncher;
@@ -34,35 +30,6 @@ macro_rules! push_to_bottom {
             }
         }
     };
-}
-
-#[tauri::command]
-fn set_window_vibrancy(window: tauri::WebviewWindow, enable: bool) -> Result<(), String> {
-    if enable {
-        #[cfg(target_os = "windows")]
-        {
-            let effects = WindowEffectsConfig {
-                effects: vec![Effect::Mica],
-                state: Some(EffectState::Active),
-                ..Default::default()
-            };
-            window.set_effects(Some(effects)).map_err(|e| e.to_string())?;
-        }
-
-        #[cfg(target_os = "macos")]
-        {
-            let effects = WindowEffectsConfig {
-                effects: vec![Effect::Popover],
-                state: Some(EffectState::Active),
-                ..Default::default()
-            };
-            window.set_effects(Some(effects)).map_err(|e| e.to_string())?;
-        }
-    } else {
-        window.set_effects(None::<WindowEffectsConfig>).map_err(|e| e.to_string())?;
-    }
-
-    Ok(())
 }
 
 #[tauri::command]
@@ -115,35 +82,17 @@ pub fn run() {
             MacosLauncher::LaunchAgent,
             Some(vec!["--autostart"]),
         ))
-        .invoke_handler(tauri::generate_handler![set_window_vibrancy, get_system_fonts, set_autostart, get_autostart_status])
+        .invoke_handler(tauri::generate_handler![get_system_fonts, set_autostart, get_autostart_status])
         .setup(|app| {
             let window = app.get_webview_window("main").unwrap();
-            
+
             // 隐藏任务栏图标
             let _ = window.set_skip_taskbar(true);
-            
-            // 默认启用毛玻璃效果
+
+            // Windows 置底
             #[cfg(target_os = "windows")]
             {
-                let effects = WindowEffectsConfig {
-                    effects: vec![Effect::Mica],
-                    state: Some(EffectState::Active),
-                    ..Default::default()
-                };
-                let _ = window.set_effects(Some(effects));
-                
-                // 使用宏：由于 window 包含 .hwnd() 方法，完美展开！
                 push_to_bottom!(window);
-            }
-            
-            #[cfg(target_os = "macos")]
-            {
-                let effects = WindowEffectsConfig {
-                    effects: vec![Effect::Popover],
-                    state: Some(EffectState::Active),
-                    ..Default::default()
-                };
-                let _ = window.set_effects(Some(effects));
             }
 
             Ok(())
@@ -154,7 +103,7 @@ pub fn run() {
                 // 使用宏：同样无缝支持事件里传来的原生 Window
                 push_to_bottom!(window);
             }
-            
+
             // 2. 核心修复：解决 Win + D 导致窗口丢失的问题
             WindowEvent::Resized(_) => {
                 // 检查窗口是否处于最小化状态（Win + D 的典型结果）

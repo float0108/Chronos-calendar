@@ -10,7 +10,7 @@ export function setWindowLocked(locked: boolean) {
 export async function startWindowDrag(event: MouseEvent): Promise<void> {
   if (isWindowLocked) return;
   if ((event.target as HTMLElement).closest('.no-drag')) return;
-  
+
   try {
     const window = getCurrentWindow();
     await window.startDragging();
@@ -21,7 +21,7 @@ export async function startWindowDrag(event: MouseEvent): Promise<void> {
 
 export async function startWindowResize(direction: ResizeDirection): Promise<void> {
   if (isWindowLocked) return;
-  
+
   try {
     const window = getCurrentWindow();
     await window.startResizeDragging(direction);
