@@ -110,3 +110,13 @@ export function extractCommonParts(settings: AppSettings): CommonSettings {
     header_cell_style: settings.header_cell_style,
   };
 }
+
+// 批量添加任务配置
+export interface BatchTaskConfig {
+  startDate: string;    // YYYY-MM-DD
+  endDate: string;      // YYYY-MM-DD
+  cycleType: 'day' | 'week' | 'month';
+  cycleCount: number;   // 每隔几天/周/月
+  title: string;
+  description?: string;
+}

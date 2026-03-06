@@ -12,7 +12,7 @@ export function useScheduleUndo(
   schedules: Ref<Map<string, Schedule[]>>,
   toggleScheduleStatus: (id: number, isDone: boolean) => Promise<void>,
   refreshSchedules: () => Promise<void>,
-  updateScheduleLines: (date: string, lines: { text: string; done: boolean }[]) => Promise<void>,
+  updateScheduleLines: (date: string, lines: { id?: number; text: string; done: boolean }[]) => Promise<void>,
   saveSchedule: (date: string, content: string, isDone?: boolean, doneDate?: string, description?: string) => Promise<void>
 ) {
   const { showSuccess, showError } = useToast();
@@ -101,7 +101,7 @@ export function useScheduleUndo(
           const currentSchedules = schedules.value.get(date) || [];
           const currentLines = currentSchedules
             .filter(s => s.id !== -1 && s.content.trim() !== '')
-            .map(s => ({ text: s.content.trim(), done: !!s.is_done }));
+            .map(s => ({ id: s.id, text: s.content.trim(), done: !!s.is_done }));
           // 保存当前状态到重做历史
           pushRedo({
             type: 'updateLines',

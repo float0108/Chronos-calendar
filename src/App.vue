@@ -8,6 +8,7 @@ import ResizeHandles from './components/ResizeHandles.vue';
 import ToastContainer from './components/ToastContainer.vue';
 import ImportDialog from './components/ImportDialog.vue';
 import DescriptionDialog from './components/DescriptionDialog.vue';
+import BatchTaskDialog from './components/BatchTaskDialog.vue';
 import SettingsPanel from './components/SettingsPanel.vue';
 import { useDatabase } from './composables/useDatabase';
 import { useSchedules } from './composables/useSchedules';
@@ -17,7 +18,7 @@ import { useScheduleUndo } from './composables/useScheduleUndo';
 import { useFonts } from './composables/useFonts';
 import { closeWindow, setWindowLocked } from './utils/window';
 import { colorOptions } from './constants';
-import type { AppSettings, ThemeMode, ViewMode, Schedule } from './types';
+import type { AppSettings, ThemeMode, ViewMode, Schedule, BatchTaskConfig } from './types';
 
 const { initDatabase } = useDatabase();
 const {
@@ -38,6 +39,7 @@ const {
   toggleScheduleStatus,
   saveSchedule,
   updateScheduleDescription,
+  batchAddSchedules,
 } = useSchedules();
 const {
   currentSettings,
@@ -60,6 +62,7 @@ const calendarKey = ref(0);
 const showMenu = ref(false);
 const showMiniCalendar = ref(false);
 const showDescriptionDialog = ref(false);
+const showBatchTaskDialog = ref(false);
 const editingSchedule = ref<Schedule | null>(null);
 const isLocked = ref(false);
 const contextMenu = ref<{ show: boolean; x: number; y: number; date: string }>({
@@ -130,14 +133,14 @@ function handleReset(date: string, content: string | null) {
   if (isLocked.value) return;
   resetSchedule(date, content);
 }
-function handleUpdate(date: string, lines: { text: string; done: boolean }[]) {
+function handleUpdate(date: string, lines: { id?: number; text: string; done: boolean }[]) {
   if (isLocked.value) return;
 
   // 保存撤销状态 - 获取当前日期的日程
   const currentSchedules = schedules.value.get(date) || [];
   const previousLines = currentSchedules
     .filter(s => s.id !== -1 && s.content.trim() !== '')
-    .map(s => ({ text: s.content.trim(), done: !!s.is_done }));
+    .map(s => ({ id: s.id, text: s.content.trim(), done: !!s.is_done }));
 
   pushAction({
     type: 'updateLines',
@@ -195,6 +198,20 @@ async function handleDescriptionSave(scheduleId: number, description: string) {
 function handleDescriptionCancel() {
   showDescriptionDialog.value = false;
   editingSchedule.value = null;
+}
+
+function handleOpenBatchTask() {
+  if (isLocked.value) return;
+  showBatchTaskDialog.value = true;
+}
+
+async function handleBatchTaskConfirm(config: BatchTaskConfig) {
+  await batchAddSchedules(config);
+  showBatchTaskDialog.value = false;
+}
+
+function handleBatchTaskCancel() {
+  showBatchTaskDialog.value = false;
 }
 
 async function handleUndo() {
@@ -269,6 +286,7 @@ onUnmounted(() => {
       @undo="handleUndo"
       @redo="handleRedo"
       @switch-view-mode="handleSwitchViewMode"
+      @open-batch-task="handleOpenBatchTask"
     />
     
     <CalendarGrid
@@ -327,6 +345,12 @@ onUnmounted(() => {
       :schedule="editingSchedule"
       @save="handleDescriptionSave"
       @cancel="handleDescriptionCancel"
+    />
+
+    <BatchTaskDialog
+      :visible="showBatchTaskDialog"
+      @confirm="handleBatchTaskConfirm"
+      @cancel="handleBatchTaskCancel"
     />
 
     <ToastContainer />

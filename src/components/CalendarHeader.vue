@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ChevronLeft, ChevronRight, Calendar, MoreVertical, Lock, Unlock, Undo2, Redo2, ListTodo, CheckCircle2 } from 'lucide-vue-next';
+import { ChevronLeft, ChevronRight, Calendar, MoreVertical, Lock, Unlock, Undo2, Redo2, ListTodo, CheckCircle2, CalendarPlus } from 'lucide-vue-next';
 import dayjs from 'dayjs';
 import MiniCalendar from './MiniCalendar.vue';
 import DropdownMenu from './DropdownMenu.vue';
@@ -32,6 +32,7 @@ const emit = defineEmits<{
   (e: 'undo'): void;
   (e: 'redo'): void;
   (e: 'switchViewMode', mode: ViewMode): void;
+  (e: 'openBatchTask'): void;
 }>();
 
 function handlePrev() {
@@ -88,6 +89,10 @@ function handleRedo() {
 
 function handleSwitchViewMode(mode: ViewMode) {
   emit('switchViewMode', mode);
+}
+
+function handleOpenBatchTask() {
+  emit('openBatchTask');
 }
 
 function handleStartDrag(event: MouseEvent) {
@@ -156,6 +161,17 @@ function handleStartDrag(event: MouseEvent) {
         class="ml-2 px-2 py-1 text-xs rounded-lg bg-[var(--primary-light)] text-[var(--primary)] hover:bg-[var(--primary-light-hover)] transition-colors"
       >
         今天
+      </button>
+
+      <button
+        @mousedown.stop
+        @click="handleOpenBatchTask"
+        class="ml-2 p-1.5 rounded-lg hover:bg-[var(--hover-bg)] transition-colors"
+        :class="{ 'opacity-50 pointer-events-none': isLocked }"
+        :disabled="isLocked"
+        title="批量添加任务"
+      >
+        <CalendarPlus class="w-4 h-4 text-gray-700" />
       </button>
 
       <div class="flex items-center gap-0.5 ml-2 rounded-lg p-0.5">

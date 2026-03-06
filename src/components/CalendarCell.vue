@@ -5,6 +5,7 @@ import dayjs from 'dayjs';
 import type { Schedule } from '../types';
 
 interface EditLine {
+  id?: number; // 数据库中的 id，用于更新现有日程
   text: string;
   done: boolean;
 }
@@ -79,8 +80,9 @@ function initEditLines() {
   const validSchedules = props.schedules.filter(s => s.id !== -1 && s.content.trim() !== '');
   if (validSchedules.length === 0) return [{ text: '', done: false }];
 
-  // 使用数据库的 is_done 字段，而不是解析 content
+  // 使用数据库的 is_done 字段，并保留 id
   return validSchedules.map(s => ({
+    id: s.id,
     text: s.content.trim(),
     done: !!s.is_done
   }));

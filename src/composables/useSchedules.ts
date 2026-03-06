@@ -1,6 +1,6 @@
 import { ref, computed } from 'vue';
 import dayjs from 'dayjs';
-import type { Schedule, ViewMode } from '../types';
+import type { Schedule, ViewMode, BatchTaskConfig } from '../types';
 import { useDatabase } from './useDatabase';
 import { useToast } from './useToast';
 import { useSettings } from './useSettings';
@@ -8,7 +8,7 @@ import { schedulesToCSV, exportToFile } from '../utils/export';
 import { getCalendarDays } from '../utils/date';
 
 export function useSchedules() {
-  const { loadSchedules, loadTodoSchedules, loadDoneSchedules, saveSchedule, deleteSchedulesByDate, updateScheduleColor, loadAllSchedules, importSchedules, importCellColors, clearAllData, toggleScheduleStatus, updateScheduleDescription: dbUpdateDescription } = useDatabase();
+  const { loadSchedules, loadTodoSchedules, loadDoneSchedules, saveSchedule, deleteSchedule, deleteSchedulesByDate, updateScheduleColor, loadAllSchedules, importSchedules, importCellColors, clearAllData, toggleScheduleStatus, updateScheduleDescription: dbUpdateDescription, updateScheduleContent } = useDatabase();
 
   // 导出 saveSchedule 供撤销功能使用
   const _saveSchedule = saveSchedule;
@@ -102,36 +102,70 @@ export function useSchedules() {
     }
   }
 
-  async function updateScheduleLines(date: string, lines: { text: string; done: boolean }[]): Promise<void> {
+  async function updateScheduleLines(date: string, lines: { id?: number; text: string; done: boolean }[]): Promise<void> {
     const existingSchedules = getDateSchedules(dayjs(date));
     // 过滤掉虚拟记录（只有颜色没有内容的记录 id 为 -1）
     const validExistingSchedules = existingSchedules.filter(s => s.id !== -1);
 
-    const existingContent = validExistingSchedules.map(s => ({
-      text: s.content,
-      done: !!s.is_done
-    }));
-
-    // 比较内容是否变化（过滤掉空行后）
+    // 过滤掉空行
     const validLines = lines.filter(l => l.text.trim() !== '');
-    if (JSON.stringify(existingContent) === JSON.stringify(validLines)) {
-      return;
+
+    // 检查是否有变化
+    const existingMap = new Map(validExistingSchedules.map(s => [s.id, { text: s.content.trim(), done: !!s.is_done }]));
+
+    let hasChanges = validLines.length !== validExistingSchedules.length;
+    if (!hasChanges) {
+      // 检查每一行的内容和完成状态是否匹配
+      for (const line of validLines) {
+        if (line.id !== undefined) {
+          const existing = existingMap.get(line.id);
+          if (!existing || existing.text !== line.text.trim() || existing.done !== line.done) {
+            hasChanges = true;
+            break;
+          }
+        } else {
+          // 新行
+          hasChanges = true;
+          break;
+        }
+      }
     }
 
+    if (!hasChanges) return;
+
     try {
-      // 删除该日期的所有日程内容（颜色保留在 cell_metadata 表中）
-      await deleteSchedulesByDate(date);
+      // 找出需要删除的日程 id
+      const lineIds = new Set(validLines.filter(l => l.id !== undefined).map(l => l.id));
+      const toDelete = validExistingSchedules.filter(s => !lineIds.has(s.id));
 
-      // 获取当前日期作为 done_date
-      const now = new Date();
-      const today = now.getFullYear() + '-' +
-        String(now.getMonth() + 1).padStart(2, '0') + '-' +
-        String(now.getDate()).padStart(2, '0');
-
-      // 插入新的日程行
-      for (const line of validLines) {
-        await saveSchedule(date, line.text.trim(), line.done, line.done ? today : undefined);
+      // 删除不再存在的日程
+      for (const schedule of toDelete) {
+        await deleteSchedule(schedule.id!);
       }
+
+      // 更新或创建日程
+      for (const line of validLines) {
+        if (line.id !== undefined) {
+          // 更新现有日程的内容
+          const existing = existingMap.get(line.id);
+          if (existing && existing.text !== line.text.trim()) {
+            await updateScheduleContent(line.id, line.text.trim());
+          }
+
+          // 如果完成状态改变，更新完成状态
+          if (existing && existing.done !== line.done) {
+            await toggleScheduleStatus(line.id, line.done);
+          }
+        } else {
+          // 创建新日程
+          const now = new Date();
+          const today = now.getFullYear() + '-' +
+            String(now.getMonth() + 1).padStart(2, '0') + '-' +
+            String(now.getDate()).padStart(2, '0');
+          await saveSchedule(date, line.text.trim(), line.done, line.done ? today : undefined);
+        }
+      }
+
       await refreshSchedules();
     } catch (error) {
       showError('保存日程失败，请重试');
@@ -245,6 +279,44 @@ export function useSchedules() {
     await refreshSchedules();
   }
 
+  async function batchAddSchedules(config: BatchTaskConfig): Promise<{ success: boolean; count: number }> {
+    try {
+      const start = dayjs(config.startDate);
+      const end = dayjs(config.endDate);
+      const dates: string[] = [];
+
+      // 生成日期列表
+      let current = start;
+      while (current.isBefore(end) || current.isSame(end, 'day')) {
+        dates.push(current.format('YYYY-MM-DD'));
+        switch (config.cycleType) {
+          case 'day':
+            current = current.add(config.cycleCount, 'day');
+            break;
+          case 'week':
+            current = current.add(config.cycleCount, 'week');
+            break;
+          case 'month':
+            current = current.add(config.cycleCount, 'month');
+            break;
+        }
+      }
+
+      // 批量插入日程
+      for (const date of dates) {
+        await saveSchedule(date, config.title, false, undefined, config.description);
+      }
+
+      await refreshSchedules();
+      showSuccess(`成功创建 ${dates.length} 个任务`);
+      return { success: true, count: dates.length };
+    } catch (error) {
+      const message = error instanceof Error ? error.message : '批量添加任务失败，请重试';
+      showError(message);
+      return { success: false, count: 0 };
+    }
+  }
+
   return {
     schedules,
     currentDate,
@@ -263,5 +335,6 @@ export function useSchedules() {
     toggleScheduleStatus,
     saveSchedule: _saveSchedule,
     updateScheduleDescription,
+    batchAddSchedules,
   };
 }

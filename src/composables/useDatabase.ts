@@ -319,6 +319,14 @@ export function useDatabase() {
     );
   }
 
+  async function updateScheduleContent(scheduleId: number, content: string): Promise<void> {
+    if (!db.value) return;
+    await db.value.execute(
+      'UPDATE schedules SET content = $1 WHERE id = $2',
+      [content.trim(), scheduleId]
+    );
+  }
+
   async function updateScheduleColor(date: string, color: string): Promise<void> {
     if (!db.value) return;
     
@@ -478,6 +486,7 @@ export function useDatabase() {
     deleteSchedulesByDate,
     toggleScheduleStatus,
     updateScheduleDescription,
+    updateScheduleContent,
     updateScheduleColor,
     getCellColor,
     loadAllSchedules,
