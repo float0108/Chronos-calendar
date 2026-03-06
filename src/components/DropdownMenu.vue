@@ -30,10 +30,14 @@ function handleImport() {
 </script>
 
 <template>
-  <div
-    v-if="visible"
-    class="dropdown-menu absolute right-0 top-full mt-1 w-32 bg-white rounded-lg border border-gray-200 shadow-lg overflow-hidden z-50"
-  >
+  <Teleport to="body">
+    <div
+      v-if="visible"
+      class="dropdown-menu fixed bg-white rounded-lg border border-gray-200 shadow-lg overflow-hidden z-50"
+      :style="{ top: '60px', right: '16px' }"
+      @mousedown.stop
+      @click.stop
+    >
     <button
       @click="handleSettings"
       class="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-900 hover:bg-gray-100 transition-colors"
@@ -70,4 +74,5 @@ function handleImport() {
       <span>退出</span>
     </button>
   </div>
+  </Teleport>
 </template>

@@ -1,7 +1,8 @@
-use tauri::{Manager, WindowEvent};
+use tauri::{Manager, WindowEvent, WebviewUrl, WebviewWindowBuilder};
 use font_kit::source::SystemSource;
 use std::collections::HashSet;
 use tauri_plugin_autostart::MacosLauncher;
+use serde::{Deserialize, Serialize};
 
 // === Windows 置底相关的 API 引入 ===
 #[cfg(target_os = "windows")]
@@ -71,6 +72,37 @@ async fn get_autostart_status(app: tauri::AppHandle) -> Result<bool, String> {
     autostart_manager.is_enabled().map_err(|e| e.to_string())
 }
 
+#[tauri::command]
+async fn open_settings_window(app: tauri::AppHandle) -> Result<(), String> {
+    // 如果窗口已存在，聚焦它
+    if let Some(window) = app.get_webview_window("settings") {
+        window.set_focus().map_err(|e| e.to_string())?;
+        return Ok(());
+    }
+
+    // 创建设置窗口
+    let settings_window = WebviewWindowBuilder::new(
+        &app,
+        "settings",
+        WebviewUrl::App("src/settings.html".into())
+    )
+    .title("Chronos - 设置")
+    .inner_size(480.0, 600.0)
+    .min_inner_size(480.0, 500.0)
+    .resizable(true)
+    .decorations(false)
+    .transparent(true)
+    .visible(false)
+    .center()
+    .build()
+    .map_err(|e| e.to_string())?;
+
+    // 隐藏任务栏图标
+    let _ = settings_window.set_skip_taskbar(true);
+
+    Ok(())
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -82,7 +114,7 @@ pub fn run() {
             MacosLauncher::LaunchAgent,
             Some(vec!["--autostart"]),
         ))
-        .invoke_handler(tauri::generate_handler![get_system_fonts, set_autostart, get_autostart_status])
+        .invoke_handler(tauri::generate_handler![get_system_fonts, set_autostart, get_autostart_status, open_settings_window])
         .setup(|app| {
             let window = app.get_webview_window("main").unwrap();
 

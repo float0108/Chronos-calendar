@@ -21,11 +21,13 @@ function handleResize(direction: ResizeDirection, event: MouseEvent) {
 </script>
 
 <template>
-  <!-- 调整大小手柄 -->
-  <div
-    v-for="handle in handles"
-    :key="handle.direction"
-    :class="[handle.class, { 'opacity-30': isLocked, 'pointer-events-none': isLocked }]"
-    @mousedown="(e) => handleResize(handle.direction, e)"
-  ></div>
+  <!-- 锁定模式下不显示调整大小手柄 -->
+  <template v-if="!isLocked">
+    <div
+      v-for="handle in handles"
+      :key="handle.direction"
+      :class="handle.class"
+      @mousedown="(e) => handleResize(handle.direction, e)"
+    ></div>
+  </template>
 </template>

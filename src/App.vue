@@ -1,18 +1,20 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted } from 'vue';
 import dayjs from 'dayjs';
+import { invoke } from '@tauri-apps/api/core';
 import CalendarHeader from './components/CalendarHeader.vue';
 import CalendarGrid from './components/CalendarGrid.vue';
 import ResizeHandles from './components/ResizeHandles.vue';
-import SettingsPanel from './components/SettingsPanel.vue';
 import ToastContainer from './components/ToastContainer.vue';
 import ImportDialog from './components/ImportDialog.vue';
 import DescriptionDialog from './components/DescriptionDialog.vue';
+import SettingsPanel from './components/SettingsPanel.vue';
 import { useDatabase } from './composables/useDatabase';
 import { useSchedules } from './composables/useSchedules';
 import { useSettings } from './composables/useSettings';
 import { useImport } from './composables/useImport';
 import { useScheduleUndo } from './composables/useScheduleUndo';
+import { useFonts } from './composables/useFonts';
 import { closeWindow, setWindowLocked } from './utils/window';
 import { colorOptions } from './constants';
 import type { AppSettings, ThemeMode, ViewMode, Schedule } from './types';
@@ -45,6 +47,7 @@ const {
   switchMode,
 } = useSettings();
 const { showImportDialog, pendingImportRecordCount, handleImport: handleImportData, performImport: performImportData, cancelImport } = useImport();
+const { loadFonts } = useFonts();
 const { pushAction, handleToggleDone: toggleDoneWithUndo, handleUndo: undo, handleRedo: redo, canUndo, canRedo } = useScheduleUndo(
   schedules,
   toggleScheduleStatus,
@@ -56,7 +59,6 @@ const { pushAction, handleToggleDone: toggleDoneWithUndo, handleUndo: undo, hand
 const calendarKey = ref(0);
 const showMenu = ref(false);
 const showMiniCalendar = ref(false);
-const showSettings = ref(false);
 const showDescriptionDialog = ref(false);
 const editingSchedule = ref<Schedule | null>(null);
 const isLocked = ref(false);
@@ -71,7 +73,7 @@ const contextMenuStyle = computed(() => {
   const menuHeight = 280;
   let x = contextMenu.value.x;
   let y = contextMenu.value.y;
-  
+
   if (typeof window !== 'undefined') {
     if (x + menuWidth > window.innerWidth) {
       x = window.innerWidth - menuWidth - 10;
@@ -80,7 +82,7 @@ const contextMenuStyle = computed(() => {
       y = window.innerHeight - menuHeight - 10;
     }
   }
-  
+
   return { left: x + 'px', top: y + 'px' };
 });
 function closeOverlays() {
@@ -96,26 +98,9 @@ function toggleMiniCalendar() {
   showMiniCalendar.value = !showMiniCalendar.value;
   if (showMiniCalendar.value) showMenu.value = false;
 }
-function openSettings() {
-  showSettings.value = true;
+async function openSettings() {
   showMenu.value = false;
-}
-function closeSettings() {
-  showSettings.value = false;
-  // 强制刷新日历网格以应用新设置（如每周开始于周一/周日）
-  calendarKey.value++;
-}
-async function handleSaveSettings(settings: AppSettings) {
-  await saveSettingsForMode(settings.theme_mode, settings);
-  if (currentMode.value !== settings.theme_mode) {
-    await switchMode(settings.theme_mode);
-  }
-  // 强制刷新日历网格和日程数据以应用新设置（如每周开始于周一/周日、显示模式等）
-  calendarKey.value++;
-  await refreshSchedules();
-}
-async function handleSwitchMode(mode: ThemeMode) {
-  await switchMode(mode);
+  await invoke('open_settings_window');
 }
 async function quitApp() {
   await closeWindow();
@@ -225,13 +210,25 @@ function toggleLock() {
   setWindowLocked(isLocked.value);
 }
 
+// 监听设置窗口保存事件
+async function handleSettingsUpdate() {
+  await initSettings();
+  calendarKey.value++;
+  await refreshSchedules();
+}
+
 onMounted(async () => {
   await initDatabase();
   await refreshSchedules();
   await initSettings();
+  await loadFonts(); // 应用启动时加载字体缓存
+
+  // 监听 storage 事件，当设置窗口保存时更新
+  window.addEventListener('storage', handleSettingsUpdate);
 });
 
 onUnmounted(() => {
+  window.removeEventListener('storage', handleSettingsUpdate);
 });
 </script>
 <template>
@@ -294,20 +291,12 @@ onUnmounted(() => {
       @click="closeOverlays"
     ></div>
     
-    <SettingsPanel
-      :visible="showSettings"
-      :current-settings="currentSettings"
-      :current-mode="currentMode"
-      @close="closeSettings"
-      @save="handleSaveSettings"
-      @switch-mode="handleSwitchMode"
-    />
-    
-    <div
-      v-if="contextMenu.show"
-      class="fixed z-50 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 py-1"
-      :style="contextMenuStyle"
-    >
+    <Teleport to="body">
+      <div
+        v-if="contextMenu.show"
+        class="fixed z-50 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 py-1"
+        :style="contextMenuStyle"
+      >
       <button
         v-for="color in colorOptions"
         :key="color.value"
@@ -322,7 +311,8 @@ onUnmounted(() => {
         <span v-else class="w-4 h-4 rounded border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-700"></span>
         <span class="text-gray-700 dark:text-gray-300">{{ color.name }}</span>
       </button>
-    </div>
+      </div>
+    </Teleport>
 
     <ImportDialog
       :visible="showImportDialog"

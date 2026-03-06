@@ -35,6 +35,7 @@ export interface CommonSettings {
   display_mode: 'month' | 'floating_weeks'; // 显示模式：整月或浮动周
   floating_weeks_count: number; // 浮动周数量（默认3）
   autostart: boolean; // 开机自启动
+  header_cell_style: boolean; // 标题栏应用单元格风格
 }
 
 export interface ModeSettings {
@@ -64,6 +65,7 @@ export const defaultCommonSettings: CommonSettings = {
   display_mode: 'month',
   floating_weeks_count: 3,
   autostart: false,
+  header_cell_style: false,
 };
 
 // 默认浅色/深色模式配置
@@ -105,5 +107,6 @@ export function extractCommonParts(settings: AppSettings): CommonSettings {
     display_mode: settings.display_mode,
     floating_weeks_count: settings.floating_weeks_count,
     autostart: settings.autostart,
+    header_cell_style: settings.header_cell_style,
   };
 }

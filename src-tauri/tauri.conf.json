@@ -27,7 +27,8 @@
         "center": true,
         "visible": true,
         "shadow": false,
-        "dragDropEnabled": false
+        "dragDropEnabled": false,
+        "label": "main"
       }
     ],
     "security": {

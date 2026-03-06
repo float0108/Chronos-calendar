@@ -31,10 +31,14 @@ function handleNext() {
 </script>
 
 <template>
-  <div 
-    v-if="visible"
-    class="mini-calendar absolute top-full left-1/2 -translate-x-1/2 mt-2 w-64 bg-white rounded-xl border border-gray-200 shadow-xl p-3 z-50"
-  >
+  <Teleport to="body">
+    <div
+      v-if="visible"
+      class="mini-calendar fixed bg-white rounded-xl border border-gray-200 shadow-xl p-3 z-50"
+      :style="{ top: '60px', left: '50%', transform: 'translateX(-50%)' }"
+      @mousedown.stop
+      @click.stop
+    >
     <div class="flex items-center justify-between mb-2">
       <button @click="handlePrev" class="p-1 hover:bg-gray-100 rounded transition-colors">
         <ChevronLeft class="w-4 h-4 text-gray-700" />
@@ -64,6 +68,7 @@ function handleNext() {
       </button>
     </div>
   </div>
+  </Teleport>
 </template>
 
 <style scoped>

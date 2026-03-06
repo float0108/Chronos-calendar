@@ -122,9 +122,20 @@ export function useSettings() {
     root.style.setProperty('--border-light', hexToRgba('#000000', 0.1));
     // 注入新增的边框颜色
     root.style.setProperty('--cell-border-color', settings.cell_border_color || '#d1d5db');
-    
+
     // 注入 CSS 毛玻璃模糊变量
     root.style.setProperty('--backdrop-blur', settings.enable_blur ? '16px' : '0px');
+
+    // 注入标题栏样式变量
+    if (settings.header_cell_style) {
+      // 标题栏应用单元格风格
+      root.style.setProperty('--header-bg', 'var(--cell-bg)');
+      root.style.setProperty('--header-border-color', 'var(--cell-border-color)');
+    } else {
+      // 标题栏使用默认样式（透明）
+      root.style.setProperty('--header-bg', 'transparent');
+      root.style.setProperty('--header-border-color', settings.cell_border_color || '#d1d5db');
+    }
     
     // 注入公用配置变量（字体、大小、间距、粗细）
     root.style.setProperty('--font-family-base', settings.font_family);
