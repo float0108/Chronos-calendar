@@ -51,9 +51,14 @@ export function useFonts() {
     return cachedFonts.value;
   }
 
+  function isFontsLoaded(): boolean {
+    return fontsLoaded;
+  }
+
   return {
     loadFonts,
     getFonts,
+    isFontsLoaded,
     cachedFonts
   };
 }

@@ -62,18 +62,22 @@ export function useScheduleUndo(
   }
 
   async function handleToggleDone(schedule: Schedule): Promise<void> {
+    // 计算新的完成状态
+    const newDoneState = !schedule.is_done;
+
     // 保存撤销状态
     pushAction({
       type: 'toggleDone',
       data: {
         id: schedule.id,
         previousState: schedule.is_done,
+        newState: newDoneState,
       },
       timestamp: Date.now(),
     });
 
-    // 切换完成状态（传入切换后的状态，而不是当前状态）
-    await toggleScheduleStatus(schedule.id!, !schedule.is_done);
+    // 切换完成状态
+    await toggleScheduleStatus(schedule.id!, newDoneState);
     await refreshSchedules();
   }
 
@@ -85,7 +89,8 @@ export function useScheduleUndo(
       switch (action.type) {
         case 'toggleDone': {
           const { id, previousState } = action.data;
-          await toggleScheduleStatus(id, !previousState);
+          // 撤销：恢复为之前的状态
+          await toggleScheduleStatus(id, previousState);
           await refreshSchedules();
           showSuccess('已撤销：切换完成状态');
           break;
@@ -132,8 +137,9 @@ export function useScheduleUndo(
     try {
       switch (action.type) {
         case 'toggleDone': {
-          const { id, previousState } = action.data;
-          await toggleScheduleStatus(id, !previousState);
+          const { id, newState } = action.data;
+          // 重做：恢复为新的状态
+          await toggleScheduleStatus(id, newState);
           await refreshSchedules();
           showSuccess('已重做：切换完成状态');
           break;

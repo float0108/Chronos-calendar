@@ -10,6 +10,9 @@ import { useFonts } from '../composables/useFonts';
 import ColorPicker from './ColorPicker.vue';
 import SliderControl from './SliderControl.vue';
 
+// 使用字体缓存
+const { loadFonts, cachedFonts, isFontsLoaded } = useFonts();
+
 // 主 Tab: common (公用) / mode (模式)
 const activeMainTab = ref<'common' | 'mode'>('common');
 const activeTab = ref<ThemeMode>('light');
@@ -17,10 +20,7 @@ const localSettings = ref<AppSettings>({ ...defaultLightSettings });
 const originalSettings = ref<AppSettings | null>(null);
 const hasChanges = ref(false);
 const isRefreshingFonts = ref(false);
-const fontsLoading = ref(true);
-
-// 使用字体缓存
-const { loadFonts, cachedFonts } = useFonts();
+const fontsLoading = ref(!isFontsLoaded());
 
 // 刷新字体列表
 async function refreshFonts() {
