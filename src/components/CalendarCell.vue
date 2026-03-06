@@ -42,9 +42,8 @@ const dateStr = props.date.format('YYYY-MM-DD');
 // 悬停描述浮窗状态
 const hoveredSchedule = ref<Schedule | null>(null);
 const tooltipPosition = ref({ x: 0, y: 0 });
+const tooltipRef = ref<HTMLElement | null>(null);
 let tooltipTimeout: number | null = null;
-let animationFrameId: number | null = null;
-let pendingPosition = { x: 0, y: 0 };
 
 // 编辑历史管理（单元格级别的撤销/重做系统）
 // 注意：这是单元格编辑时的局部撤销/重做，独立于 App.vue 中的全局撤销/重做系统
@@ -183,9 +182,28 @@ function handleClickOutside(event: MouseEvent) {
   }
 }
 
-onMounted(() => document.addEventListener('mousedown', handleClickOutside));
+function handleGlobalClick(event: MouseEvent) {
+  // 如果浮窗显示且点击的不是触发浮窗的元素，则关闭浮窗
+  if (hoveredSchedule.value) {
+    const target = event.target as HTMLElement;
+    // 检查点击的是否是日程条目
+    if (!target.closest('.schedule-item')) {
+      hoveredSchedule.value = null;
+      if (tooltipTimeout) {
+        clearTimeout(tooltipTimeout);
+        tooltipTimeout = null;
+      }
+    }
+  }
+}
+
+onMounted(() => {
+  document.addEventListener('mousedown', handleClickOutside);
+  document.addEventListener('click', handleGlobalClick);
+});
 onUnmounted(() => {
   document.removeEventListener('mousedown', handleClickOutside);
+  document.removeEventListener('click', handleGlobalClick);
   if (tooltipTimeout) {
     clearTimeout(tooltipTimeout);
   }
@@ -196,6 +214,14 @@ onUnmounted(() => {
 
 function startEditing() {
   if (props.isLocked) return;
+
+  // 关闭描述浮窗
+  hoveredSchedule.value = null;
+  if (tooltipTimeout) {
+    clearTimeout(tooltipTimeout);
+    tooltipTimeout = null;
+  }
+
   editLines.value = initEditLines();
   isEditing.value = true;
   activeLineIndex.value = editLines.value.length - 1;
@@ -364,12 +390,20 @@ function handleEditLineContextMenu(event: MouseEvent, index: number) {
 function handleScheduleMouseEnter(event: MouseEvent, schedule: Schedule) {
   if (!schedule.description) return;
 
-  // 保存初始位置
-  pendingPosition = { x: event.clientX + 10, y: event.clientY + 10 };
+  // 清除之前的定时器
+  if (tooltipTimeout) {
+    clearTimeout(tooltipTimeout);
+  }
+
+  // 计算并固定浮窗位置
+  const rect = (event.target as HTMLElement).getBoundingClientRect();
+  tooltipPosition.value = {
+    x: rect.right + 10,
+    y: rect.top
+  };
 
   tooltipTimeout = window.setTimeout(() => {
     hoveredSchedule.value = schedule;
-    tooltipPosition.value = { ...pendingPosition };
   }, 500); // 500ms 延迟显示
 }
 
@@ -378,23 +412,19 @@ function handleScheduleMouseLeave() {
     clearTimeout(tooltipTimeout);
     tooltipTimeout = null;
   }
-  if (animationFrameId) {
-    cancelAnimationFrame(animationFrameId);
-    animationFrameId = null;
-  }
+  // 立即关闭浮窗
   hoveredSchedule.value = null;
 }
 
-function handleScheduleMouseMove(event: MouseEvent) {
-  // 更新待处理位置
-  pendingPosition = { x: event.clientX + 10, y: event.clientY + 10 };
-
-  // 如果浮窗已显示，使用 requestAnimationFrame 更新位置
-  if (hoveredSchedule.value && !animationFrameId) {
-    animationFrameId = requestAnimationFrame(() => {
-      tooltipPosition.value = { ...pendingPosition };
-      animationFrameId = null;
-    });
+function handleScheduleWheel(event: WheelEvent) {
+  // 如果浮窗显示且有滚动条，将滚动事件转发给浮窗
+  if (hoveredSchedule.value && tooltipRef.value) {
+    const tooltip = tooltipRef.value;
+    // 检查是否有滚动内容
+    if (tooltip.scrollHeight > tooltip.clientHeight) {
+      event.preventDefault();
+      tooltip.scrollTop += event.deltaY;
+    }
   }
 }
 </script>
@@ -417,13 +447,13 @@ function handleScheduleMouseMove(event: MouseEvent) {
 
       <div v-if="!isEditing" class="content-area h-full overflow-y-auto no-scrollbar px-1">
         <div v-for="(s, i) in schedules.filter(s => s.id !== -1 && s.content.trim() !== '')" :key="i"
-          class="flex items-center gap-1 mb-0.5 text-xs leading-tight transition-all py-0.5"
+          class="schedule-item flex items-center gap-1 mb-0.5 text-xs leading-tight transition-all py-0.5"
           :class="(s.is_done && viewMode !== 'done') ? 'text-gray-500 dark:text-gray-400 line-through opacity-90' : 'text-[var(--text-primary)]'"
           @contextmenu.prevent="handleScheduleContextMenu($event, s)"
           @mousedown.prevent="handleScheduleMiddleClick($event, s)"
           @mouseenter="handleScheduleMouseEnter($event, s)"
           @mouseleave="handleScheduleMouseLeave"
-          @mousemove="handleScheduleMouseMove">
+          @wheel="handleScheduleWheel">
           <div class="shrink-0 w-1 h-1 rounded-full bg-current opacity-50"></div>
           <span class="content-text flex-1">{{ s.content }}</span>
         </div>
@@ -467,7 +497,8 @@ function handleScheduleMouseMove(event: MouseEvent) {
     <Teleport to="body">
       <div
         v-if="hoveredSchedule && hoveredSchedule.description"
-        class="fixed z-[9999] max-w-xs px-3 py-2 text-xs bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg pointer-events-none"
+        ref="tooltipRef"
+        class="fixed z-[9999] max-w-xs max-h-48 px-3 py-2 text-xs bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg overflow-y-auto tooltip-scroll pointer-events-none"
         :style="{
           left: tooltipPosition.x + 'px',
           top: tooltipPosition.y + 'px'
@@ -518,5 +549,27 @@ function handleScheduleMouseMove(event: MouseEvent) {
   word-wrap: break-word;
   overflow-wrap: anywhere;
   word-break: break-word;
+}
+
+.tooltip-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(156, 163, 175, 0.5) transparent;
+}
+
+.tooltip-scroll::-webkit-scrollbar {
+  width: 4px;
+}
+
+.tooltip-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.tooltip-scroll::-webkit-scrollbar-thumb {
+  background-color: rgba(156, 163, 175, 0.5);
+  border-radius: 2px;
+}
+
+.tooltip-scroll::-webkit-scrollbar-thumb:hover {
+  background-color: rgba(156, 163, 175, 0.7);
 }
 </style>

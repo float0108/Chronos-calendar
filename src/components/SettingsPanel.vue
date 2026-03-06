@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, watch, onMounted, computed, nextTick } from 'vue';
+import { ref, watch, onMounted, nextTick } from 'vue';
 import { X, Check, Sun, Moon, RotateCcw, RefreshCw } from 'lucide-vue-next';
 import { getCurrentWindow } from '@tauri-apps/api/window';
 import { ask } from '@tauri-apps/plugin-dialog';
@@ -9,22 +9,6 @@ import { hexToRgba, adjustBrightness } from '../utils/color';
 import { useFonts } from '../composables/useFonts';
 import ColorPicker from './ColorPicker.vue';
 import SliderControl from './SliderControl.vue';
-
-// Props 和 Emits 可选（支持弹窗模式和独立窗口模式）
-const props = defineProps<{
-  visible?: boolean;
-  currentSettings?: AppSettings | null;
-  currentMode?: ThemeMode;
-}>();
-
-const emit = defineEmits<{
-  (e: 'close'): void;
-  (e: 'save', settings: AppSettings): void;
-  (e: 'switchMode', mode: ThemeMode): void;
-}>();
-
-// 判断是否为独立窗口模式
-const isStandalone = computed(() => !props.visible);
 
 // 主 Tab: common (公用) / mode (模式)
 const activeMainTab = ref<'common' | 'mode'>('common');
@@ -45,7 +29,7 @@ async function refreshFonts() {
   isRefreshingFonts.value = false;
 }
 
-// 加载当前设置（独立窗口模式）
+// 加载当前设置
 async function loadSettings() {
   try {
     const saved = localStorage.getItem('chronos_settings');
@@ -69,7 +53,7 @@ watch(localSettings, () => {
   }
 }, { deep: true });
 
-// 应用设置到窗口（独立窗口模式）
+// 应用设置到窗口
 function applySettings() {
   const s = localSettings.value;
   const root = document.documentElement;
@@ -109,101 +93,72 @@ function applySettings() {
   root.setAttribute('data-theme', s.theme_mode);
 }
 
-// 监听弹窗模式的 visible 变化
-watch(() => props.visible, (visible) => {
-  if (visible && props.currentSettings) {
-    const defaults = props.currentMode === 'dark' ? defaultDarkSettings : defaultLightSettings;
-    localSettings.value = { ...defaults, ...props.currentSettings };
-    activeTab.value = props.currentMode || 'light';
-  }
-});
-
 onMounted(async () => {
-  // 独立窗口模式
-  if (isStandalone.value) {
-    // 先加载设置（快速）
-    await loadSettings();
+  // 先加载设置（快速）
+  await loadSettings();
 
-    // 确保 DOM 已经根据设置渲染完毕，再显示窗口
-    await nextTick();
-    requestAnimationFrame(async () => {
-      const win = getCurrentWindow();
-      await win.show();
-      await win.setFocus();
-    });
+  // 确保 DOM 已经根据设置渲染完毕，再显示窗口
+  await nextTick();
+  requestAnimationFrame(async () => {
+    const win = getCurrentWindow();
+    await win.show();
+    await win.setFocus();
+  });
 
-    // 字体异步加载，不阻塞窗口显示
-    loadFonts().finally(() => {
-      fontsLoading.value = false;
-    });
-  } else {
-    // 弹窗模式
-    loadFonts().finally(() => {
-      fontsLoading.value = false;
-    });
-  }
+  // 字体异步加载，不阻塞窗口显示
+  loadFonts().finally(() => {
+    fontsLoading.value = false;
+  });
 });
 
 async function handleClose() {
-  if (isStandalone.value) {
-    // 独立窗口模式：检查修改并关闭窗口
-    if (hasChanges.value) {
-      const shouldClose = await ask('设置已修改但未保存，是否放弃修改？', {
-        title: '确认关闭',
-        kind: 'warning',
-        okLabel: '放弃修改',
-        cancelLabel: '取消',
-      });
+  // 检查修改并关闭窗口
+  if (hasChanges.value) {
+    const shouldClose = await ask('设置已修改但未保存，是否放弃修改？', {
+      title: '确认关闭',
+      kind: 'warning',
+      okLabel: '放弃修改',
+      cancelLabel: '取消',
+    });
 
-      if (!shouldClose) {
-        return;
-      }
+    if (!shouldClose) {
+      return;
     }
-    getCurrentWindow().close();
-  } else {
-    // 弹窗模式：发出关闭事件
-    emit('close');
   }
+  getCurrentWindow().close();
 }
 
 async function handleSave() {
   const savedSettings = { ...localSettings.value, theme_mode: activeTab.value };
 
-  if (isStandalone.value) {
-    // 独立窗口模式：保存到 localStorage 并关闭窗口
-    try {
-      localStorage.setItem('chronos_settings', JSON.stringify(savedSettings));
-      localStorage.setItem(`chronos_settings_${activeTab.value}`, JSON.stringify(savedSettings));
+  try {
+    localStorage.setItem('chronos_settings', JSON.stringify(savedSettings));
+    localStorage.setItem(`chronos_settings_${activeTab.value}`, JSON.stringify(savedSettings));
 
-      // 触发 storage 事件通知主窗口
-      window.dispatchEvent(new StorageEvent('storage', {
-        key: 'chronos_settings',
-        newValue: JSON.stringify(savedSettings),
-        url: window.location.href
-      }));
+    // 触发 storage 事件通知主窗口
+    window.dispatchEvent(new StorageEvent('storage', {
+      key: 'chronos_settings',
+      newValue: JSON.stringify(savedSettings),
+      url: window.location.href
+    }));
 
-      // 同步到另一种模式
-      const commonParts = extractCommonParts(savedSettings);
-      const otherMode = activeTab.value === 'light' ? 'dark' : 'light';
-      const otherSaved = localStorage.getItem(`chronos_settings_${otherMode}`);
-      if (otherSaved) {
-        const otherSettings = JSON.parse(otherSaved);
-        const updatedOther = { ...otherSettings, ...commonParts };
-        localStorage.setItem(`chronos_settings_${otherMode}`, JSON.stringify(updatedOther));
-      } else {
-        const otherDefaults = otherMode === 'light' ? defaultLightSettings : defaultDarkSettings;
-        localStorage.setItem(`chronos_settings_${otherMode}`, JSON.stringify({ ...otherDefaults, ...commonParts }));
-      }
-
-      hasChanges.value = false;
-      getCurrentWindow().close();
-    } catch (error) {
-      console.error('Failed to save settings:', error);
+    // 同步到另一种模式
+    const commonParts = extractCommonParts(savedSettings);
+    const otherMode = activeTab.value === 'light' ? 'dark' : 'light';
+    const otherSaved = localStorage.getItem(`chronos_settings_${otherMode}`);
+    if (otherSaved) {
+      const otherSettings = JSON.parse(otherSaved);
+      const updatedOther = { ...otherSettings, ...commonParts };
+      localStorage.setItem(`chronos_settings_${otherMode}`, JSON.stringify(updatedOther));
+    } else {
+      const otherDefaults = otherMode === 'light' ? defaultLightSettings : defaultDarkSettings;
+      localStorage.setItem(`chronos_settings_${otherMode}`, JSON.stringify({ ...otherDefaults, ...commonParts }));
     }
-  } else {
-    // 弹窗模式：发出保存事件
-    emit('save', savedSettings);
-    emit('close');
+
+    hasChanges.value = false;
+    getCurrentWindow().close();
+  } catch (error) {
+    console.error('Failed to save settings:', error);
   }
 }
 
@@ -219,10 +174,6 @@ function handleSwitchMode(mode: ThemeMode) {
       ? { ...defaultLightSettings, ...currentCommonParts, theme_mode: mode }
       : { ...defaultDarkSettings, ...currentCommonParts, theme_mode: mode };
   }
-
-  if (!isStandalone.value) {
-    emit('switchMode', mode);
-  }
 }
 
 function handleReset() {
@@ -232,20 +183,9 @@ function handleReset() {
 </script>
 
 <template>
-  <div v-if="isStandalone || visible" 
-       class="settings-overlay fixed inset-0 z-[9999] flex"
-       :class="isStandalone ? 'w-full h-full bg-transparent' : 'items-center justify-center px-4'">
-    
-    <div v-if="!isStandalone" class="settings-backdrop absolute inset-0 bg-slate-900/40 backdrop-blur-sm" @click="handleClose"></div>
-
-    <div
-      class="settings-panel relative bg-white/70 backdrop-blur-2xl flex flex-col overflow-hidden"
-      :class="isStandalone 
-        ? 'w-full h-full rounded-none border-0' 
-        : 'border border-white/60 rounded-3xl w-full max-w-[480px] h-[85vh] max-h-[800px]'">
-
-      <div class="flex items-center px-6 border-b border-white/40 bg-white/30 z-10 shrink-0"
-           :data-tauri-drag-region="isStandalone ? '' : undefined">
+  <div class="settings-overlay fixed inset-0 z-[9999] flex w-full h-full bg-transparent">
+    <div class="settings-panel relative bg-white/70 backdrop-blur-2xl flex flex-col overflow-hidden w-full h-full rounded-none border-0">
+      <div class="flex items-center px-6 border-b border-white/40 bg-white/30 z-10 shrink-0" data-tauri-drag-region>
         <button @click="activeMainTab = 'common'"
           :class="['py-4 px-4 text-sm font-medium transition-colors relative border-b-2 -mb-px', activeMainTab === 'common' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-800']">
           公用配置
@@ -254,7 +194,7 @@ function handleReset() {
           :class="['py-4 px-4 text-sm font-medium transition-colors relative border-b-2 -mb-px', activeMainTab === 'mode' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-800']">
           模式配置
         </button>
-        <div class="flex-1" :data-tauri-drag-region="isStandalone ? '' : undefined"></div>
+        <div class="flex-1" data-tauri-drag-region></div>
         <button @click="handleClose" class="p-1.5 rounded-lg hover:bg-white/50 text-gray-500 hover:text-gray-800 transition-colors" title="关闭">
           <X class="w-5 h-5 pointer-events-none" />
         </button>
@@ -487,20 +427,6 @@ function handleReset() {
 </template>
 
 <style scoped>
-/* 仅在弹窗模式下（未占满全屏时）执行向上滑动的动画 */
-.settings-panel:not(.w-full) {
-  animation: slideUp 0.4s cubic-bezier(0.16, 1, 0.3, 1);
-}
-
-/* 独立窗口模式禁用动画，避免延迟 */
-.settings-overlay:not(.w-full) {
-  animation: fadeIn 0.25s cubic-bezier(0.16, 1, 0.3, 1);
-}
-
-.settings-backdrop {
-  animation: fadeIn 0.25s ease-out;
-}
-
 /* 自定义纤细滚动条以匹配玻璃质感 */
 .custom-scrollbar::-webkit-scrollbar {
   width: 6px;
@@ -514,25 +440,5 @@ function handleReset() {
 }
 .custom-scrollbar::-webkit-scrollbar-thumb:hover {
   background: rgba(0, 0, 0, 0.2);
-}
-
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-  }
-  to {
-    opacity: 1;
-  }
-}
-
-@keyframes slideUp {
-  from {
-    opacity: 0;
-    transform: translateY(20px) scale(0.97);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0) scale(1);
-  }
 }
 </style>

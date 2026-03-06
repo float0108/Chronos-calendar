@@ -131,6 +131,13 @@ export function useScheduleUndo(
 
     try {
       switch (action.type) {
+        case 'toggleDone': {
+          const { id, previousState } = action.data;
+          await toggleScheduleStatus(id, !previousState);
+          await refreshSchedules();
+          showSuccess('已重做：切换完成状态');
+          break;
+        }
         case 'updateLines': {
           const { date, previousLines } = action.data;
           await updateScheduleLines(date, previousLines);
