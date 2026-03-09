@@ -3,18 +3,8 @@ import { ref, computed, nextTick, onMounted, onUnmounted } from 'vue';
 import { Trash2, Palette } from 'lucide-vue-next';
 import dayjs from 'dayjs';
 import type { Schedule } from '../types';
-
-interface EditLine {
-  id?: number; // 数据库中的 id，用于更新现有日程
-  text: string;
-  done: boolean;
-}
-
-interface EditHistory {
-  lines: EditLine[];
-  activeLineIndex: number | null;
-  cursorPosition: number;
-}
+import { useEditHistory, type EditLine } from '../composables/useEditHistory';
+import ScheduleTooltip from './ScheduleTooltip.vue';
 
 const props = defineProps<{
   date: dayjs.Dayjs;
@@ -33,6 +23,8 @@ const emit = defineEmits<{
   (e: 'editDescription', schedule: Schedule): void;
 }>();
 
+const { saveHistory, saveHistoryDebounced, handleEditUndo, handleEditRedo, resetHistory } = useEditHistory();
+
 const isEditing = ref(false);
 const editLines = ref<EditLine[]>([]);
 const cellRef = ref<HTMLElement | null>(null);
@@ -43,140 +35,34 @@ const dateStr = props.date.format('YYYY-MM-DD');
 // 悬停描述浮窗状态
 const hoveredSchedule = ref<Schedule | null>(null);
 const tooltipPosition = ref({ x: 0, y: 0 });
-const tooltipRef = ref<HTMLElement | null>(null);
 let tooltipTimeout: number | null = null;
-let animationFrameId: number | null = null;
-
-// 编辑历史管理（单元格级别的撤销/重做系统）
-// 注意：这是单元格编辑时的局部撤销/重做，独立于 App.vue 中的全局撤销/重做系统
-// - 单元格级别：仅在编辑时有效，撤销/重做文本编辑操作
-// - 全局级别：在任何时候有效，撤销/重做完成状态切换、日程编辑等操作
-const undoHistory = ref<EditHistory[]>([]);
-const redoHistory = ref<EditHistory[]>([]);
-const maxHistory = 50;
-let lastSaveTime = 0;
-const saveDelay = 500; // 500ms 防抖
 
 const cellStyle = computed(() => {
   if (props.schedules.length > 0 && props.schedules[0].cell_color) {
     const color = props.schedules[0].cell_color;
-    return { 
-      // 1. 动态混合颜色与全局透明度变量
-      // 使用 color-mix 将用户选定的颜色与透明度混合
+    return {
       backgroundColor: `color-mix(in srgb, ${color} calc(var(--cell-bg-opacity, 1) * 100%), transparent)`,
-      // 2. 移除 borderColor 显式设置
-      // 这样它就会自动回退到 .calendar-cell 类中定义的 var(--cell-border-color)
-    }; 
+    };
   }
   return {};
 });
 
-const activeLine = computed(() => {
+// activeLine 用于将来的功能扩展（如行内完成状态切换）
+const _activeLine = computed(() => {
   if (activeLineIndex.value === null || !editLines.value[activeLineIndex.value]) return null;
   return editLines.value[activeLineIndex.value];
 });
+void _activeLine; // 避免未使用警告
 
-function initEditLines() {
-  // 过滤掉虚拟记录（id 为 -1 表示只有颜色没有内容）和空内容记录
+function initEditLines(): EditLine[] {
   const validSchedules = props.schedules.filter(s => s.id !== -1 && s.content.trim() !== '');
   if (validSchedules.length === 0) return [{ text: '', done: false }];
 
-  // 使用数据库的 is_done 字段，并保留 id
   return validSchedules.map(s => ({
     id: s.id,
     text: s.content.trim(),
     done: !!s.is_done
   }));
-}
-
-// 保存当前编辑状态到历史
-function saveHistory() {
-  const textarea = activeLineIndex.value !== null ? textareaRefs.value[activeLineIndex.value] : null;
-  const cursorPosition = textarea ? textarea.selectionStart : 0;
-
-  undoHistory.value.push({
-    lines: JSON.parse(JSON.stringify(editLines.value)),
-    activeLineIndex: activeLineIndex.value,
-    cursorPosition,
-  });
-
-  if (undoHistory.value.length > maxHistory) {
-    undoHistory.value.shift();
-  }
-
-  // 清空重做历史
-  redoHistory.value = [];
-}
-
-// 防抖保存历史（用于文本输入）
-function saveHistoryDebounced() {
-  const now = Date.now();
-  if (now - lastSaveTime > saveDelay) {
-    saveHistory();
-    lastSaveTime = now;
-  }
-}
-
-// 撤销
-function handleEditUndo() {
-  if (undoHistory.value.length === 0) return;
-
-  const textarea = activeLineIndex.value !== null ? textareaRefs.value[activeLineIndex.value] : null;
-  const cursorPosition = textarea ? textarea.selectionStart : 0;
-
-  // 保存当前状态到重做历史
-  redoHistory.value.push({
-    lines: JSON.parse(JSON.stringify(editLines.value)),
-    activeLineIndex: activeLineIndex.value,
-    cursorPosition,
-  });
-
-  // 恢复上一个状态
-  const history = undoHistory.value.pop()!;
-  editLines.value = history.lines;
-  activeLineIndex.value = history.activeLineIndex;
-
-  // 恢复光标位置
-  nextTick(() => {
-    if (history.activeLineIndex !== null) {
-      const textarea = textareaRefs.value[history.activeLineIndex];
-      if (textarea) {
-        textarea.focus();
-        textarea.setSelectionRange(history.cursorPosition, history.cursorPosition);
-      }
-    }
-  });
-}
-
-// 重做
-function handleEditRedo() {
-  if (redoHistory.value.length === 0) return;
-
-  const textarea = activeLineIndex.value !== null ? textareaRefs.value[activeLineIndex.value] : null;
-  const cursorPosition = textarea ? textarea.selectionStart : 0;
-
-  // 保存当前状态到撤销历史
-  undoHistory.value.push({
-    lines: JSON.parse(JSON.stringify(editLines.value)),
-    activeLineIndex: activeLineIndex.value,
-    cursorPosition,
-  });
-
-  // 恢复下一个状态
-  const history = redoHistory.value.pop()!;
-  editLines.value = history.lines;
-  activeLineIndex.value = history.activeLineIndex;
-
-  // 恢复光标位置
-  nextTick(() => {
-    if (history.activeLineIndex !== null) {
-      const textarea = textareaRefs.value[history.activeLineIndex];
-      if (textarea) {
-        textarea.focus();
-        textarea.setSelectionRange(history.cursorPosition, history.cursorPosition);
-      }
-    }
-  });
 }
 
 function handleClickOutside(event: MouseEvent) {
@@ -186,10 +72,8 @@ function handleClickOutside(event: MouseEvent) {
 }
 
 function handleGlobalClick(event: MouseEvent) {
-  // 如果浮窗显示且点击的不是触发浮窗的元素，则关闭浮窗
   if (hoveredSchedule.value) {
     const target = event.target as HTMLElement;
-    // 检查点击的是否是日程条目
     if (!target.closest('.schedule-item')) {
       hoveredSchedule.value = null;
       if (tooltipTimeout) {
@@ -204,21 +88,18 @@ onMounted(() => {
   document.addEventListener('mousedown', handleClickOutside);
   document.addEventListener('click', handleGlobalClick);
 });
+
 onUnmounted(() => {
   document.removeEventListener('mousedown', handleClickOutside);
   document.removeEventListener('click', handleGlobalClick);
   if (tooltipTimeout) {
     clearTimeout(tooltipTimeout);
   }
-  if (animationFrameId) {
-    cancelAnimationFrame(animationFrameId);
-  }
 });
 
 function startEditing() {
   if (props.isLocked) return;
 
-  // 关闭描述浮窗
   hoveredSchedule.value = null;
   if (tooltipTimeout) {
     clearTimeout(tooltipTimeout);
@@ -229,13 +110,10 @@ function startEditing() {
   isEditing.value = true;
   activeLineIndex.value = editLines.value.length - 1;
 
-  // 初始化历史
-  undoHistory.value = [];
-  redoHistory.value = [];
+  resetHistory();
 
   nextTick(() => {
     focusInput(activeLineIndex.value!);
-    // 初始化所有 textarea 的高度
     textareaRefs.value.forEach(textarea => {
       if (textarea) {
         autoResize(textarea);
@@ -264,30 +142,18 @@ function focusInput(index: number) {
   });
 }
 
-function toggleActiveLineDone() {
-  if (activeLine.value) {
-    saveHistory();
-    activeLine.value.done = !activeLine.value.done;
-  }
-}
-
-// 将来可能使用，暂时保留
-void toggleActiveLineDone;
-
 function deleteActiveLine() {
   if (activeLineIndex.value === null) return;
 
-  // 如果只有一个条目且为空，清空内容
   if (editLines.value.length === 1) {
     if (editLines.value[0].text !== '') {
-      saveHistory();
+      saveHistory(editLines.value, activeLineIndex.value, textareaRefs.value);
       editLines.value[0].text = '';
     }
     return;
   }
 
-  // 如果有多个条目，删除当前条目
-  saveHistory();
+  saveHistory(editLines.value, activeLineIndex.value, textareaRefs.value);
   const newIndex = Math.max(0, activeLineIndex.value - 1);
   editLines.value.splice(activeLineIndex.value, 1);
   activeLineIndex.value = newIndex;
@@ -298,39 +164,69 @@ function handleInputKeydown(event: KeyboardEvent, index: number) {
   // Ctrl+Z 撤销
   if ((event.ctrlKey || event.metaKey) && event.key === 'z' && !event.shiftKey) {
     event.preventDefault();
-    handleEditUndo();
+    handleEditUndo(
+      editLines.value,
+      activeLineIndex.value,
+      textareaRefs.value,
+      (history) => {
+        editLines.value = history.lines;
+        activeLineIndex.value = history.activeLineIndex;
+      }
+    );
     return;
   }
 
   // Ctrl+Y 重做
   if ((event.ctrlKey || event.metaKey) && event.key === 'y') {
     event.preventDefault();
-    handleEditRedo();
+    handleEditRedo(
+      editLines.value,
+      activeLineIndex.value,
+      textareaRefs.value,
+      (history) => {
+        editLines.value = history.lines;
+        activeLineIndex.value = history.activeLineIndex;
+      }
+    );
     return;
   }
 
   // Ctrl+Shift+Z 也支持重做
   if ((event.ctrlKey || event.metaKey) && event.key === 'z' && event.shiftKey) {
     event.preventDefault();
-    handleEditRedo();
+    handleEditRedo(
+      editLines.value,
+      activeLineIndex.value,
+      textareaRefs.value,
+      (history) => {
+        editLines.value = history.lines;
+        activeLineIndex.value = history.activeLineIndex;
+      }
+    );
     return;
   }
 
-  if (event.key === 'Escape') { saveEdit(); return; }
-  // Enter 创建新条目（每个换行就是一个新条目）
+  if (event.key === 'Escape') {
+    saveEdit();
+    return;
+  }
+
+  // Enter 创建新条目
   if (event.key === 'Enter' && !event.shiftKey && !event.ctrlKey) {
     event.preventDefault();
-    saveHistory();
+    saveHistory(editLines.value, activeLineIndex.value, textareaRefs.value);
     editLines.value.splice(index + 1, 0, { text: '', done: false });
     focusInput(index + 1);
     return;
   }
+
   if (event.key === 'Backspace' && editLines.value[index].text === '' && editLines.value.length > 1) {
     event.preventDefault();
-    saveHistory();
+    saveHistory(editLines.value, activeLineIndex.value, textareaRefs.value);
     editLines.value.splice(index, 1);
     focusInput(Math.max(0, index - 1));
   }
+
   // 上下箭头导航
   if (['ArrowUp', 'ArrowDown'].includes(event.key)) {
     const textarea = textareaRefs.value[index];
@@ -338,12 +234,10 @@ function handleInputKeydown(event: KeyboardEvent, index: number) {
     const cursorPos = textarea.selectionStart;
     const text = textarea.value;
 
-    // ArrowUp: 只在光标在开头时导航到上一条目
     if (event.key === 'ArrowUp' && index > 0 && cursorPos === 0) {
       event.preventDefault();
       focusInput(index - 1);
     }
-    // ArrowDown: 只在光标在末尾时导航到下一条目
     if (event.key === 'ArrowDown' && index < editLines.value.length - 1 && cursorPos === text.length) {
       event.preventDefault();
       focusInput(index + 1);
@@ -359,7 +253,7 @@ function autoResize(textarea: HTMLTextAreaElement) {
 function handleInput(event: Event, _index: number) {
   const textarea = event.target as HTMLTextAreaElement;
   autoResize(textarea);
-  saveHistoryDebounced();
+  saveHistoryDebounced(editLines.value, activeLineIndex.value, textareaRefs.value);
 }
 
 function handleScheduleContextMenu(event: MouseEvent, schedule: Schedule) {
@@ -385,20 +279,17 @@ function handleColorButtonClick(event: MouseEvent) {
 function handleEditLineContextMenu(event: MouseEvent, index: number) {
   event.preventDefault();
   event.stopPropagation();
-  // 切换该行的完成状态
-  saveHistory();
+  saveHistory(editLines.value, activeLineIndex.value, textareaRefs.value);
   editLines.value[index].done = !editLines.value[index].done;
 }
 
 function handleScheduleMouseEnter(event: MouseEvent, schedule: Schedule) {
   if (!schedule.description) return;
 
-  // 清除之前的定时器
   if (tooltipTimeout) {
     clearTimeout(tooltipTimeout);
   }
 
-  // 计算并固定浮窗位置
   const rect = (event.target as HTMLElement).getBoundingClientRect();
   tooltipPosition.value = {
     x: rect.right + 10,
@@ -407,7 +298,7 @@ function handleScheduleMouseEnter(event: MouseEvent, schedule: Schedule) {
 
   tooltipTimeout = window.setTimeout(() => {
     hoveredSchedule.value = schedule;
-  }, 500); // 500ms 延迟显示
+  }, 500);
 }
 
 function handleScheduleMouseLeave() {
@@ -415,20 +306,7 @@ function handleScheduleMouseLeave() {
     clearTimeout(tooltipTimeout);
     tooltipTimeout = null;
   }
-  // 立即关闭浮窗
   hoveredSchedule.value = null;
-}
-
-function handleScheduleWheel(event: WheelEvent) {
-  // 如果浮窗显示且有滚动条，将滚动事件转发给浮窗
-  if (hoveredSchedule.value && tooltipRef.value) {
-    const tooltip = tooltipRef.value;
-    // 检查是否有滚动内容
-    if (tooltip.scrollHeight > tooltip.clientHeight) {
-      event.preventDefault();
-      tooltip.scrollTop += event.deltaY;
-    }
-  }
 }
 </script>
 
@@ -447,7 +325,6 @@ function handleScheduleWheel(event: WheelEvent) {
     </div>
 
     <div class="flex-1 overflow-hidden px-1 pb-1 flex flex-col relative">
-
       <div v-if="!isEditing" class="content-area h-full overflow-y-auto no-scrollbar px-1">
         <div v-for="(s, i) in schedules.filter(s => s.id !== -1 && s.content.trim() !== '')" :key="i"
           class="schedule-item flex items-center gap-1 mb-0.5 text-xs leading-tight transition-all py-0.5"
@@ -455,8 +332,7 @@ function handleScheduleWheel(event: WheelEvent) {
           @contextmenu.prevent="handleScheduleContextMenu($event, s)"
           @mousedown.prevent="handleScheduleMiddleClick($event, s)"
           @mouseenter="handleScheduleMouseEnter($event, s)"
-          @mouseleave="handleScheduleMouseLeave"
-          @wheel="handleScheduleWheel">
+          @mouseleave="handleScheduleMouseLeave">
           <div class="shrink-0 w-1 h-1 rounded-full bg-current opacity-50"></div>
           <span class="content-text flex-1">{{ s.content }}</span>
         </div>
@@ -493,24 +369,13 @@ function handleScheduleWheel(event: WheelEvent) {
           <Palette class="w-3 h-3" />
         </button>
       </div>
-
     </div>
 
     <!-- 描述浮窗 -->
-    <Teleport to="body">
-      <div
-        v-if="hoveredSchedule && hoveredSchedule.description"
-        ref="tooltipRef"
-        class="fixed z-[9999] max-w-xs max-h-48 px-3 py-2 text-xs bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg overflow-y-auto tooltip-scroll pointer-events-none"
-        :style="{
-          left: tooltipPosition.x + 'px',
-          top: tooltipPosition.y + 'px'
-        }"
-      >
-        <div class="font-medium text-gray-900 dark:text-gray-100 mb-1">{{ hoveredSchedule.content }}</div>
-        <div class="text-gray-600 dark:text-gray-400 whitespace-pre-wrap">{{ hoveredSchedule.description }}</div>
-      </div>
-    </Teleport>
+    <ScheduleTooltip
+      :schedule="hoveredSchedule"
+      :position="tooltipPosition"
+    />
   </div>
 </template>
 
@@ -552,27 +417,5 @@ function handleScheduleWheel(event: WheelEvent) {
   word-wrap: break-word;
   overflow-wrap: anywhere;
   word-break: break-word;
-}
-
-.tooltip-scroll {
-  scrollbar-width: thin;
-  scrollbar-color: rgba(156, 163, 175, 0.5) transparent;
-}
-
-.tooltip-scroll::-webkit-scrollbar {
-  width: 4px;
-}
-
-.tooltip-scroll::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-.tooltip-scroll::-webkit-scrollbar-thumb {
-  background-color: rgba(156, 163, 175, 0.5);
-  border-radius: 2px;
-}
-
-.tooltip-scroll::-webkit-scrollbar-thumb:hover {
-  background-color: rgba(156, 163, 175, 0.7);
 }
 </style>

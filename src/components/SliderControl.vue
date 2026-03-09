@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed, inject } from 'vue';
 
 const props = defineProps<{
   modelValue?: number;
@@ -14,6 +14,15 @@ const emit = defineEmits<{
   (e: 'update:modelValue', value: number): void;
 }>();
 
+// 从父组件注入主题颜色
+const themeColors = inject<{ primary: string; text: string; textMuted: string; border: string; bg: string }>('themeColors', {
+  primary: '#3b82f6',
+  text: '#1f2937',
+  textMuted: '#6b7280',
+  border: 'rgba(0,0,0,0.1)',
+  bg: 'rgba(0,0,0,0.02)'
+});
+
 const displayValue = computed(() => {
   if (props.modelValue === undefined || isNaN(props.modelValue)) {
     return props.min;
@@ -24,15 +33,26 @@ const displayValue = computed(() => {
 function handleChange(event: Event) {
   emit('update:modelValue', Number((event.target as HTMLInputElement).value));
 }
+
+// 计算进度条样式
+const sliderStyle = computed(() => {
+  const percent = ((displayValue.value - props.min) / (props.max - props.min)) * 100;
+  return {
+    '--thumb-color': themeColors.primary,
+    '--track-bg': themeColors.bg,
+    '--progress-percent': `${percent}%`,
+    background: `linear-gradient(to right, ${themeColors.primary} ${percent}%, ${themeColors.bg} ${percent}%)`
+  };
+});
 </script>
 
 <template>
   <div class="slider-control">
     <div class="flex items-center justify-between mb-2">
-      <label class="text-sm font-medium text-gray-700">
+      <label class="text-[13px] font-medium" :style="{ color: themeColors.textMuted }">
         {{ label }}
       </label>
-      <span class="text-sm text-gray-900 font-mono">
+      <span class="text-[13px] font-mono" :style="{ color: themeColors.text }">
         {{ displayValue }}{{ unit || '' }}
       </span>
     </div>
@@ -43,28 +63,29 @@ function handleChange(event: Event) {
       :step="step || 1"
       :value="displayValue"
       @input="handleChange"
-      class="w-full h-2 rounded-lg appearance-none cursor-pointer bg-gray-200"
+      class="w-full h-2 rounded-lg appearance-none cursor-pointer slider-input"
+      :style="sliderStyle"
     />
   </div>
 </template>
 
 <style scoped>
-input[type="range"]::-webkit-slider-thumb {
+.slider-input::-webkit-slider-thumb {
   appearance: none;
   width: 16px;
   height: 16px;
   border-radius: 50%;
-  background: #3b82f6;
+  background: var(--thumb-color, #3b82f6);
   cursor: pointer;
   border: 2px solid white;
   box-shadow: 0 1px 3px rgba(0,0,0,0.2);
 }
 
-input[type="range"]::-moz-range-thumb {
+.slider-input::-moz-range-thumb {
   width: 16px;
   height: 16px;
   border-radius: 50%;
-  background: #3b82f6;
+  background: var(--thumb-color, #3b82f6);
   cursor: pointer;
   border: 2px solid white;
   box-shadow: 0 1px 3px rgba(0,0,0,0.2);

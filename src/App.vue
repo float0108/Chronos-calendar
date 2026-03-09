@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted } from 'vue';
+import { ref, onMounted, onUnmounted } from 'vue';
 import dayjs from 'dayjs';
 import { invoke } from '@tauri-apps/api/core';
 import CalendarHeader from './components/CalendarHeader.vue';
@@ -15,8 +15,8 @@ import { useSettings } from './composables/useSettings';
 import { useImport } from './composables/useImport';
 import { useScheduleUndo } from './composables/useScheduleUndo';
 import { useFonts } from './composables/useFonts';
+import { useContextMenu } from './composables/useContextMenu';
 import { closeWindow, setWindowLocked } from './utils/window';
-import { colorOptions } from './constants';
 import type { ViewMode, Schedule, BatchTaskConfig } from './types';
 
 const { initDatabase } = useDatabase();
@@ -40,10 +40,7 @@ const {
   updateScheduleDescription,
   batchAddSchedules,
 } = useSchedules();
-const {
-  currentSettings,
-  initSettings,
-} = useSettings();
+const { currentSettings, initSettings } = useSettings();
 const { showImportDialog, pendingImportRecordCount, handleImport: handleImportData, performImport: performImportData, cancelImport } = useImport();
 const { loadFonts } = useFonts();
 const { pushAction, handleToggleDone: toggleDoneWithUndo, handleUndo: undo, handleRedo: redo, canUndo, canRedo } = useScheduleUndo(
@@ -53,6 +50,7 @@ const { pushAction, handleToggleDone: toggleDoneWithUndo, handleUndo: undo, hand
   updateScheduleLines,
   saveSchedule
 );
+const { contextMenu, contextMenuStyle, showContextMenu, hideContextMenu, getSelectedDate, getColorOptions } = useContextMenu();
 
 const calendarKey = ref(0);
 const showMenu = ref(false);
@@ -61,49 +59,32 @@ const showDescriptionDialog = ref(false);
 const showBatchTaskDialog = ref(false);
 const editingSchedule = ref<Schedule | null>(null);
 const isLocked = ref(false);
-const contextMenu = ref<{ show: boolean; x: number; y: number; date: string }>({
-  show: false,
-  x: 0,
-  y: 0,
-  date: '',
-});
-const contextMenuStyle = computed(() => {
-  const menuWidth = 100;
-  const menuHeight = 280;
-  let x = contextMenu.value.x;
-  let y = contextMenu.value.y;
 
-  if (typeof window !== 'undefined') {
-    if (x + menuWidth > window.innerWidth) {
-      x = window.innerWidth - menuWidth - 10;
-    }
-    if (y + menuHeight > window.innerHeight) {
-      y = window.innerHeight - menuHeight - 10;
-    }
-  }
-
-  return { left: x + 'px', top: y + 'px' };
-});
 function closeOverlays() {
   showMenu.value = false;
   showMiniCalendar.value = false;
-  contextMenu.value.show = false;
+  hideContextMenu();
 }
+
 function toggleMenu() {
   showMenu.value = !showMenu.value;
   if (showMenu.value) showMiniCalendar.value = false;
 }
+
 function toggleMiniCalendar() {
   showMiniCalendar.value = !showMiniCalendar.value;
   if (showMiniCalendar.value) showMenu.value = false;
 }
+
 async function openSettings() {
   showMenu.value = false;
   await invoke('open_settings_window');
 }
+
 async function quitApp() {
   await closeWindow();
 }
+
 async function handleExport() {
   showMenu.value = false;
   await exportAllSchedules();
@@ -125,14 +106,15 @@ async function handleImportOverwrite() {
 function handleImportCancel() {
   cancelImport();
 }
+
 function handleReset(date: string, content: string | null) {
   if (isLocked.value) return;
   resetSchedule(date, content);
 }
+
 function handleUpdate(date: string, lines: { id?: number; text: string; done: boolean }[]) {
   if (isLocked.value) return;
 
-  // 保存撤销状态 - 获取当前日期的日程
   const currentSchedules = schedules.value.get(date) || [];
   const previousLines = currentSchedules
     .filter(s => s.id !== -1 && s.content.trim() !== '')
@@ -140,46 +122,42 @@ function handleUpdate(date: string, lines: { id?: number; text: string; done: bo
 
   pushAction({
     type: 'updateLines',
-    data: {
-      date,
-      previousLines,
-    },
+    data: { date, previousLines },
     timestamp: Date.now(),
   });
 
   updateScheduleLines(date, lines);
 }
+
 function handleSelectDate(day: number) {
   selectDate(day);
   showMiniCalendar.value = false;
 }
+
 function handleSwitchViewMode(mode: ViewMode) {
   switchViewMode(mode);
 }
+
 function handleNavigate(dateStr: string) {
-  const targetDate = dayjs(dateStr);
-  currentDate.value = targetDate;
+  currentDate.value = dayjs(dateStr);
   refreshSchedules();
 }
+
 function handleContextMenu(event: MouseEvent, date: string) {
   if (isLocked.value) return;
-  contextMenu.value = {
-    show: true,
-    x: event.clientX,
-    y: event.clientY,
-    date,
-  };
-}
-function selectColor(color: string) {
-  setCellColor(contextMenu.value.date, color);
-  contextMenu.value.show = false;
+  showContextMenu(event, date);
 }
 
-async function handleToggleDone(schedule: any) {
+function selectColor(color: string) {
+  setCellColor(getSelectedDate(), color);
+  hideContextMenu();
+}
+
+async function handleToggleDone(schedule: Schedule) {
   await toggleDoneWithUndo(schedule);
 }
 
-function handleEditDescription(schedule: any) {
+function handleEditDescription(schedule: Schedule) {
   if (isLocked.value) return;
   editingSchedule.value = schedule;
   showDescriptionDialog.value = true;
@@ -223,7 +201,6 @@ function toggleLock() {
   setWindowLocked(isLocked.value);
 }
 
-// 监听设置窗口保存事件
 async function handleSettingsUpdate() {
   await initSettings();
   calendarKey.value++;
@@ -234,9 +211,7 @@ onMounted(async () => {
   await initDatabase();
   await refreshSchedules();
   await initSettings();
-  await loadFonts(); // 应用启动时加载字体缓存
-
-  // 监听 storage 事件，当设置窗口保存时更新
+  await loadFonts();
   window.addEventListener('storage', handleSettingsUpdate);
 });
 
@@ -244,8 +219,8 @@ onUnmounted(() => {
   window.removeEventListener('storage', handleSettingsUpdate);
 });
 </script>
+
 <template>
-  <!-- 日历界面 -->
   <div
     class="glass rounded-lg overflow-hidden flex flex-col h-screen"
     :style="{
@@ -284,7 +259,7 @@ onUnmounted(() => {
       @switch-view-mode="handleSwitchViewMode"
       @open-batch-task="handleOpenBatchTask"
     />
-    
+
     <CalendarGrid
       :key="calendarKey"
       :current-date="currentDate"
@@ -298,33 +273,33 @@ onUnmounted(() => {
       @toggle-done="handleToggleDone"
       @edit-description="handleEditDescription"
     />
-    
+
     <div
       v-if="showMenu || showMiniCalendar || contextMenu.show"
       class="fixed inset-0 z-40"
       @click="closeOverlays"
     ></div>
-    
+
     <Teleport to="body">
       <div
         v-if="contextMenu.show"
         class="fixed z-50 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 py-1"
         :style="contextMenuStyle"
       >
-      <button
-        v-for="color in colorOptions"
-        :key="color.value"
-        @click="selectColor(color.value)"
-        class="w-full px-3 py-1.5 text-center text-sm hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center justify-center gap-2"
-      >
-        <span
-          v-if="color.value"
-          class="w-4 h-4 rounded border border-gray-200 dark:border-gray-600"
-          :style="{ backgroundColor: color.value }"
-        ></span>
-        <span v-else class="w-4 h-4 rounded border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-700"></span>
-        <span class="text-gray-700 dark:text-gray-300">{{ color.name }}</span>
-      </button>
+        <button
+          v-for="color in getColorOptions()"
+          :key="color.value"
+          @click="selectColor(color.value)"
+          class="w-full px-3 py-1.5 text-center text-sm hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center justify-center gap-2"
+        >
+          <span
+            v-if="color.value"
+            class="w-4 h-4 rounded border border-gray-200 dark:border-gray-600"
+            :style="{ backgroundColor: color.value }"
+          ></span>
+          <span v-else class="w-4 h-4 rounded border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-700"></span>
+          <span class="text-gray-700 dark:text-gray-300">{{ color.name }}</span>
+        </button>
       </div>
     </Teleport>
 
