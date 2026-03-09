@@ -1,28 +1,48 @@
-use tauri::{Manager, WindowEvent, WebviewUrl, WebviewWindowBuilder};
+use tauri::{Manager, WebviewUrl, WebviewWindowBuilder, WindowEvent};
 use font_kit::source::SystemSource;
 use std::collections::HashSet;
 use tauri_plugin_autostart::MacosLauncher;
 
-// === Windows 窗口样式相关的 API 引入 ===
+// === Windows 窗口样式和 Hook 相关的 API 引入 ===
 #[cfg(target_os = "windows")]
-use windows::Win32::Foundation::HWND;
+use windows::Win32::Foundation::{HWND, LPARAM, LRESULT, WPARAM};
 #[cfg(target_os = "windows")]
 use windows::Win32::UI::WindowsAndMessaging::{
     SetWindowPos, SetWindowLongPtrW, GetWindowLongPtrW, GetShellWindow,
-    HWND_BOTTOM, GWL_EXSTYLE, GWLP_HWNDPARENT,
+    HWND_BOTTOM, GWL_EXSTYLE, GWLP_HWNDPARENT, GWL_WNDPROC,
     SWP_NOMOVE, SWP_NOSIZE, SWP_NOACTIVATE,
     WS_EX_TOOLWINDOW, WS_EX_APPWINDOW,
+    CallWindowProcW, WM_WINDOWPOSCHANGING, WINDOWPOS, SWP_NOZORDER,
 };
 
-// === 置底函数 ===
+// === 全局变量：存储原始窗口过程 ===
 #[cfg(target_os = "windows")]
-unsafe fn push_hwnd_to_bottom(hwnd: HWND) {
-    let _ = SetWindowPos(
-        hwnd,
-        HWND_BOTTOM,
-        0, 0, 0, 0,
-        SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE,
-    );
+static mut OLD_WNDPROC: Option<isize> = None;
+
+// === 窗口子类化消息处理函数 ===
+// 拦截 WM_WINDOWPOSCHANGING，在系统改变窗口层级前强行锁定到底层
+#[cfg(target_os = "windows")]
+unsafe extern "system" fn subclass_proc(
+    hwnd: HWND,
+    msg: u32,
+    wparam: WPARAM,
+    lparam: LPARAM,
+) -> LRESULT {
+    if msg == WM_WINDOWPOSCHANGING {
+        let wp = &mut *(lparam.0 as *mut WINDOWPOS);
+
+        // 检查系统是否试图改变 Z-Order（如果 SWP_NOZORDER 标志不存在，说明要改层级）
+        if (wp.flags.0 & SWP_NOZORDER.0) == 0 {
+            // 强行篡改目的地：无论系统想把我放到哪，都给我回到底层！
+            wp.hwndInsertAfter = HWND_BOTTOM;
+        }
+    }
+
+    if let Some(old_proc) = OLD_WNDPROC {
+        CallWindowProcW(std::mem::transmute(old_proc), hwnd, msg, wparam, lparam)
+    } else {
+        LRESULT(0)
+    }
 }
 
 #[tauri::command]
@@ -143,8 +163,22 @@ pub fn run() {
                             eprintln!("[Setup] 已将桌面设置为 Owner Window");
                         }
 
-                        // 3. 置底（有 Owner 兜底，只会置于普通应用之下，永远在桌面之上）
-                        push_hwnd_to_bottom(hwnd);
+                        // 3. 初始置底
+                        let _ = SetWindowPos(
+                            hwnd,
+                            HWND_BOTTOM,
+                            0, 0, 0, 0,
+                            SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE,
+                        );
+
+                        // 4. 挂载 Z-Order 锁定钩子（拦截 WM_WINDOWPOSCHANGING）
+                        let prev_wndproc = SetWindowLongPtrW(
+                            hwnd,
+                            GWL_WNDPROC,
+                            subclass_proc as *const () as isize,
+                        );
+                        OLD_WNDPROC = Some(prev_wndproc);
+                        eprintln!("[Setup] 已挂载 Z-Order 锁定钩子");
                     }
                 }
             }
@@ -152,14 +186,18 @@ pub fn run() {
             Ok(())
         })
         .on_window_event(|window, event| match event {
-            // 获得焦点时置底
-            WindowEvent::Focused(true) => {
+            // 窗口关闭时恢复原始窗口过程
+            WindowEvent::CloseRequested { .. } => {
                 #[cfg(target_os = "windows")]
                 {
                     if let Ok(tauri_hwnd) = window.hwnd() {
                         unsafe {
                             let hwnd: HWND = std::mem::transmute(tauri_hwnd);
-                            push_hwnd_to_bottom(hwnd);
+                            // 恢复原始窗口过程
+                            if let Some(old_proc) = OLD_WNDPROC {
+                                SetWindowLongPtrW(hwnd, GWL_WNDPROC, old_proc);
+                                OLD_WNDPROC = None;
+                            }
                         }
                     }
                 }
