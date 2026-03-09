@@ -2,6 +2,7 @@
 import { ref, computed, nextTick, onMounted, onUnmounted } from 'vue';
 import { Trash2, Palette } from 'lucide-vue-next';
 import dayjs from 'dayjs';
+import { getCurrentWindow } from '@tauri-apps/api/window';
 import type { Schedule } from '../types';
 import { useEditHistory, type EditLine } from '../composables/useEditHistory';
 import ScheduleTooltip from './ScheduleTooltip.vue';
@@ -36,6 +37,7 @@ const dateStr = props.date.format('YYYY-MM-DD');
 const hoveredSchedule = ref<Schedule | null>(null);
 const tooltipPosition = ref({ x: 0, y: 0 });
 let tooltipTimeout: number | null = null;
+let unlistenFocus: (() => void) | null = null;
 
 const cellStyle = computed(() => {
   if (props.schedules.length > 0 && props.schedules[0].cell_color) {
@@ -84,9 +86,18 @@ function handleGlobalClick(event: MouseEvent) {
   }
 }
 
-onMounted(() => {
+onMounted(async () => {
   document.addEventListener('mousedown', handleClickOutside);
   document.addEventListener('click', handleGlobalClick);
+  try {
+    unlistenFocus = await getCurrentWindow().onFocusChanged(({ payload }) => {
+      if (!payload && isEditing.value) {
+        saveEdit();
+      }
+    });
+  } catch (error) {
+    console.error('Failed to listen focus change:', error);
+  }
 });
 
 onUnmounted(() => {
@@ -94,6 +105,9 @@ onUnmounted(() => {
   document.removeEventListener('click', handleGlobalClick);
   if (tooltipTimeout) {
     clearTimeout(tooltipTimeout);
+  }
+  if (unlistenFocus) {
+    unlistenFocus();
   }
 });
 
