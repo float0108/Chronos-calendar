@@ -186,17 +186,18 @@ pub fn run() {
             Ok(())
         })
         .on_window_event(|window, event| match event {
-            // 窗口关闭时恢复原始窗口过程
-            WindowEvent::CloseRequested { .. } => {
+            // 窗口真正销毁时恢复原始窗口过程，做干净的清理
+            WindowEvent::Destroyed => {
                 #[cfg(target_os = "windows")]
                 {
                     if let Ok(tauri_hwnd) = window.hwnd() {
                         unsafe {
                             let hwnd: HWND = std::mem::transmute(tauri_hwnd);
-                            // 恢复原始窗口过程
+                            // 恢复系统原始的 WndProc
                             if let Some(old_proc) = OLD_WNDPROC {
                                 SetWindowLongPtrW(hwnd, GWL_WNDPROC, old_proc);
                                 OLD_WNDPROC = None;
+                                eprintln!("[Cleanup] 已安全卸载 Z-Order 锁定钩子");
                             }
                         }
                     }
