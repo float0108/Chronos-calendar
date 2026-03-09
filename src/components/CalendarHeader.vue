@@ -5,7 +5,7 @@ import MiniCalendar from './MiniCalendar.vue';
 import DropdownMenu from './DropdownMenu.vue';
 import { formatMonthYear } from '../utils/date';
 import { startWindowDrag } from '../utils/window';
-import type { ViewMode, AppSettings } from '../types';
+import type { ViewMode } from '../types';
 
 defineProps<{
   currentDate: dayjs.Dayjs;

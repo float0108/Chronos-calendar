@@ -45,6 +45,7 @@ const hoveredSchedule = ref<Schedule | null>(null);
 const tooltipPosition = ref({ x: 0, y: 0 });
 const tooltipRef = ref<HTMLElement | null>(null);
 let tooltipTimeout: number | null = null;
+let animationFrameId: number | null = null;
 
 // 编辑历史管理（单元格级别的撤销/重做系统）
 // 注意：这是单元格编辑时的局部撤销/重做，独立于 App.vue 中的全局撤销/重做系统

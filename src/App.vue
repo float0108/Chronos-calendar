@@ -9,7 +9,6 @@ import ToastContainer from './components/ToastContainer.vue';
 import ImportDialog from './components/ImportDialog.vue';
 import DescriptionDialog from './components/DescriptionDialog.vue';
 import BatchTaskDialog from './components/BatchTaskDialog.vue';
-import SettingsPanel from './components/SettingsPanel.vue';
 import { useDatabase } from './composables/useDatabase';
 import { useSchedules } from './composables/useSchedules';
 import { useSettings } from './composables/useSettings';
@@ -18,7 +17,7 @@ import { useScheduleUndo } from './composables/useScheduleUndo';
 import { useFonts } from './composables/useFonts';
 import { closeWindow, setWindowLocked } from './utils/window';
 import { colorOptions } from './constants';
-import type { AppSettings, ThemeMode, ViewMode, Schedule, BatchTaskConfig } from './types';
+import type { ViewMode, Schedule, BatchTaskConfig } from './types';
 
 const { initDatabase } = useDatabase();
 const {
@@ -43,10 +42,7 @@ const {
 } = useSchedules();
 const {
   currentSettings,
-  currentMode,
   initSettings,
-  saveSettingsForMode,
-  switchMode,
 } = useSettings();
 const { showImportDialog, pendingImportRecordCount, handleImport: handleImportData, performImport: performImportData, cancelImport } = useImport();
 const { loadFonts } = useFonts();
