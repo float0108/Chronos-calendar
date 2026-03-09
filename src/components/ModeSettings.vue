@@ -4,6 +4,7 @@ import { Sun, Moon } from 'lucide-vue-next';
 import type { AppSettings, ThemeMode } from '../types';
 import ColorPicker from './ColorPicker.vue';
 import SliderControl from './SliderControl.vue';
+import { hexToRgba } from '../utils/color';
 
 const props = defineProps<{
   settings: AppSettings;
@@ -27,6 +28,15 @@ const themeColors = computed(() => ({
   bg: props.settings.theme_mode === 'dark' ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.02)',
   border: props.settings.theme_mode === 'dark' ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.04)',
 }));
+
+// 单元格样式（用于信息面板）
+const cellStyle = computed(() => {
+  const cellOpacity = props.settings.cell_opacity / 100;
+  return {
+    backgroundColor: hexToRgba(props.settings.cell_color, cellOpacity),
+    border: `${props.settings.cell_border_width}px solid ${props.settings.cell_border_color || (props.settings.theme_mode === 'dark' ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.06)')}`,
+  };
+});
 
 // 提供给子组件使用
 provide('themeColors', themeColors);
@@ -65,7 +75,7 @@ provide('themeColors', themeColors);
         <h3 class="text-[13px] font-semibold flex items-center gap-2" :style="{ color: themeColors.text }">
           <span class="w-1 h-1 rounded-full" :style="{ backgroundColor: themeColors.primary }"></span> 核心色彩
         </h3>
-        <div class="space-y-3 rounded-xl p-4" :style="{ backgroundColor: themeColors.bg }">
+        <div class="space-y-3 rounded-xl p-4" :style="cellStyle">
           <ColorPicker :model-value="settings.primary_color" @update:model-value="updateSetting('primary_color', $event)" label="主题色" />
           <ColorPicker :model-value="settings.text_color" @update:model-value="updateSetting('text_color', $event)" label="文字颜色" />
           <ColorPicker :model-value="settings.bg_color" @update:model-value="updateSetting('bg_color', $event)" label="窗口背景" :allow-transparent="true" />
@@ -80,7 +90,7 @@ provide('themeColors', themeColors);
         <h3 class="text-[13px] font-semibold flex items-center gap-2" :style="{ color: themeColors.text }">
           <span class="w-1 h-1 rounded-full" :style="{ backgroundColor: themeColors.primary }"></span> 特效与透明度
         </h3>
-        <div class="space-y-3 rounded-xl p-4" :style="{ backgroundColor: themeColors.bg }">
+        <div class="space-y-3 rounded-xl p-4" :style="cellStyle">
           <div class="flex items-center justify-between">
             <div>
               <h3 class="text-[13px] font-medium" :style="{ color: themeColors.text }">毛玻璃背景特效</h3>

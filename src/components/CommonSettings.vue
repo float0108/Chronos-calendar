@@ -3,6 +3,7 @@ import { computed } from 'vue';
 import { RefreshCw } from 'lucide-vue-next';
 import type { AppSettings } from '../types';
 import { useFonts } from '../composables/useFonts';
+import { hexToRgba } from '../utils/color';
 
 const props = defineProps<{
   settings: AppSettings;
@@ -30,6 +31,15 @@ const themeColors = computed(() => ({
   bg: props.settings.theme_mode === 'dark' ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.02)',
   border: props.settings.theme_mode === 'dark' ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.04)',
 }));
+
+// 单元格样式（用于信息面板）
+const cellStyle = computed(() => {
+  const cellOpacity = props.settings.cell_opacity / 100;
+  return {
+    backgroundColor: hexToRgba(props.settings.cell_color, cellOpacity),
+    border: `${props.settings.cell_border_width}px solid ${props.settings.cell_border_color || (props.settings.theme_mode === 'dark' ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.06)')}`,
+  };
+});
 </script>
 
 <template>
@@ -40,7 +50,7 @@ const themeColors = computed(() => ({
         <span class="w-1 h-1 rounded-full" :style="{ backgroundColor: themeColors.primary }"></span> 排版与字体
       </h3>
 
-      <div class="space-y-3 rounded-xl p-4" :style="{ backgroundColor: themeColors.bg }">
+      <div class="space-y-3 rounded-xl p-4" :style="cellStyle">
         <div class="space-y-1.5">
           <label class="text-[13px] font-medium ml-0.5" :style="{ color: themeColors.textMuted }">全局字体</label>
           <div class="flex items-center gap-2">
@@ -109,7 +119,7 @@ const themeColors = computed(() => ({
         <span class="w-1 h-1 rounded-full" :style="{ backgroundColor: themeColors.primary }"></span> 网格与外观
       </h3>
 
-      <div class="space-y-3 rounded-xl p-4" :style="{ backgroundColor: themeColors.bg }">
+      <div class="space-y-3 rounded-xl p-4" :style="cellStyle">
         <div class="flex items-center justify-between">
           <div>
             <label class="text-[13px] font-medium cursor-pointer" :style="{ color: themeColors.textMuted }">标题栏应用单元格风格</label>
@@ -159,7 +169,7 @@ const themeColors = computed(() => ({
         <span class="w-1 h-1 rounded-full" :style="{ backgroundColor: themeColors.primary }"></span> 系统与日历
       </h3>
 
-      <div class="space-y-3 rounded-xl p-4" :style="{ backgroundColor: themeColors.bg }">
+      <div class="space-y-3 rounded-xl p-4" :style="cellStyle">
         <div class="flex items-center justify-between">
           <div>
             <label class="text-[13px] font-medium cursor-pointer" :style="{ color: themeColors.textMuted }">开机自启动</label>
