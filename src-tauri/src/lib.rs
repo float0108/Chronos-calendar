@@ -8,30 +8,21 @@ use tauri_plugin_autostart::MacosLauncher;
 use windows::Win32::Foundation::HWND;
 #[cfg(target_os = "windows")]
 use windows::Win32::UI::WindowsAndMessaging::{
-    SetWindowPos, SetWindowLongPtrW, GetWindowLongPtrW,
-    HWND_BOTTOM, GWL_EXSTYLE,
+    SetWindowPos, SetWindowLongPtrW, GetWindowLongPtrW, GetShellWindow,
+    HWND_BOTTOM, GWL_EXSTYLE, GWLP_HWNDPARENT,
     SWP_NOMOVE, SWP_NOSIZE, SWP_NOACTIVATE,
     WS_EX_TOOLWINDOW, WS_EX_APPWINDOW,
 };
 
-// === 置底宏 ===
-macro_rules! push_to_bottom {
-    ($window:expr) => {
-        #[cfg(target_os = "windows")]
-        {
-            if let Ok(tauri_hwnd) = $window.hwnd() {
-                unsafe {
-                    let hwnd: HWND = std::mem::transmute(tauri_hwnd);
-                    let _ = SetWindowPos(
-                        hwnd,
-                        HWND_BOTTOM,
-                        0, 0, 0, 0,
-                        SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE,
-                    );
-                }
-            }
-        }
-    };
+// === 置底函数 ===
+#[cfg(target_os = "windows")]
+unsafe fn push_hwnd_to_bottom(hwnd: HWND) {
+    let _ = SetWindowPos(
+        hwnd,
+        HWND_BOTTOM,
+        0, 0, 0, 0,
+        SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE,
+    );
 }
 
 #[tauri::command]
@@ -130,30 +121,30 @@ pub fn run() {
             // 隐藏任务栏图标
             let _ = window.set_skip_taskbar(true);
 
-            // Windows 平台样式设置
+            // Windows 平台设置
             #[cfg(target_os = "windows")]
             {
                 if let Ok(tauri_hwnd) = window.hwnd() {
                     unsafe {
                         let hwnd: HWND = std::mem::transmute(tauri_hwnd);
 
-                        // 设置 WS_EX_TOOLWINDOW 样式
-                        // 这让窗口避开 Win+D 的系统扫描，不会消失
+                        // 1. 设置 WS_EX_TOOLWINDOW 样式（隐藏任务栏图标）
                         let ex_style = GetWindowLongPtrW(hwnd, GWL_EXSTYLE);
-                        let new_ex_style = ex_style
-                            | WS_EX_TOOLWINDOW.0 as isize      // 工具窗口，不在任务栏显示
-                            & !(WS_EX_APPWINDOW.0 as isize);   // 移除应用窗口标记
+                        let new_ex_style = (ex_style | WS_EX_TOOLWINDOW.0 as isize)
+                            & !(WS_EX_APPWINDOW.0 as isize);
                         SetWindowLongPtrW(hwnd, GWL_EXSTYLE, new_ex_style);
 
-                        // 置底
-                        let _ = SetWindowPos(
-                            hwnd,
-                            HWND_BOTTOM,
-                            0, 0, 0, 0,
-                            SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE,
-                        );
+                        // 2. 核心黑科技：将桌面设为 Owner Window
+                        // 这不是 SetParent！保留独立窗口的所有交互能力，
+                        // 但强制在层级上绑定桌面，Win+D 时自动跟随桌面显示
+                        let shell_hwnd = GetShellWindow();
+                        if !shell_hwnd.0.is_null() {
+                            SetWindowLongPtrW(hwnd, GWLP_HWNDPARENT, shell_hwnd.0 as isize);
+                            eprintln!("[Setup] 已将桌面设置为 Owner Window");
+                        }
 
-                        eprintln!("[Setup] WS_EX_TOOLWINDOW 已应用");
+                        // 3. 置底（有 Owner 兜底，只会置于普通应用之下，永远在桌面之上）
+                        push_hwnd_to_bottom(hwnd);
                     }
                 }
             }
@@ -163,15 +154,14 @@ pub fn run() {
         .on_window_event(|window, event| match event {
             // 获得焦点时置底
             WindowEvent::Focused(true) => {
-                push_to_bottom!(window);
-            }
-
-            // 核心：监听最小化事件，Win+D 会触发窗口最小化
-            WindowEvent::Resized(_) => {
-                if window.is_minimized().unwrap_or(false) {
-                    eprintln!("[Minimized] 检测到最小化，正在恢复...");
-                    let _ = window.unminimize();
-                    push_to_bottom!(window);
+                #[cfg(target_os = "windows")]
+                {
+                    if let Ok(tauri_hwnd) = window.hwnd() {
+                        unsafe {
+                            let hwnd: HWND = std::mem::transmute(tauri_hwnd);
+                            push_hwnd_to_bottom(hwnd);
+                        }
+                    }
                 }
             }
             _ => {}
