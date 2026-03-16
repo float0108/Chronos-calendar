@@ -8,7 +8,7 @@ import { schedulesToCSV, exportToFile } from '../utils/export';
 import { getCalendarDays } from '../utils/date';
 
 export function useSchedules() {
-  const { loadSchedules, loadTodoSchedules, loadDoneSchedules, saveSchedule, deleteSchedule, deleteSchedulesByDate, updateScheduleColor, loadAllSchedules, importSchedules, importCellColors, clearAllData, toggleScheduleStatus, updateScheduleDescription: dbUpdateDescription, updateScheduleContent } = useDatabase();
+  const { loadSchedules, loadTodoSchedules, loadDoneSchedules, saveSchedule, deleteSchedule, deleteSchedulesByDate, updateScheduleColor, loadAllSchedules, importSchedules, importCellColors, clearAllData, toggleScheduleStatus, updateScheduleDescription: dbUpdateDescription, updateScheduleContent, updateScheduleDate: dbUpdateDate } = useDatabase();
 
   // 导出 saveSchedule 供撤销功能使用
   const _saveSchedule = saveSchedule;
@@ -279,6 +279,11 @@ export function useSchedules() {
     await refreshSchedules();
   }
 
+  async function updateScheduleDate(scheduleId: number, field: 'create_date' | 'done_date', date: string): Promise<void> {
+    await dbUpdateDate(scheduleId, field, date);
+    await refreshSchedules();
+  }
+
   async function batchAddSchedules(config: BatchTaskConfig): Promise<{ success: boolean; count: number }> {
     try {
       const start = dayjs(config.startDate);
@@ -335,6 +340,7 @@ export function useSchedules() {
     toggleScheduleStatus,
     saveSchedule: _saveSchedule,
     updateScheduleDescription,
+    updateScheduleDate,
     batchAddSchedules,
   };
 }

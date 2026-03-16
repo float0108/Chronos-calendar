@@ -100,6 +100,29 @@ export async function initDatabase(): Promise<void> {
         cell_color TEXT DEFAULT ''
       )
     `);
+
+    // 主任务表 - 独立的待办任务列表
+    await db.value!.execute(`
+      CREATE TABLE IF NOT EXISTS main_tasks (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        content TEXT NOT NULL,
+        description TEXT,
+        is_done INTEGER DEFAULT 0,
+        priority INTEGER DEFAULT 0,
+        create_date TEXT NOT NULL,
+        done_date TEXT
+      )
+    `);
+
+    // 备忘录表 - 存储备忘录内容
+    await db.value!.execute(`
+      CREATE TABLE IF NOT EXISTS notes (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        title TEXT NOT NULL,
+        content TEXT DEFAULT '',
+        create_date TEXT NOT NULL
+      )
+    `);
   } catch (error) {
     console.error('Database initialization failed:', error);
     throw error;

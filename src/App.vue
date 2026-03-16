@@ -38,6 +38,7 @@ const {
   toggleScheduleStatus,
   saveSchedule,
   updateScheduleDescription,
+  updateScheduleDate,
   batchAddSchedules,
 } = useSchedules();
 const { currentSettings, initSettings } = useSettings();
@@ -59,6 +60,8 @@ const showDescriptionDialog = ref(false);
 const showBatchTaskDialog = ref(false);
 const editingSchedule = ref<Schedule | null>(null);
 const isLocked = ref(false);
+const isBoardVisible = ref(false);
+const isNoteVisible = ref(false);
 
 function closeOverlays() {
   showMenu.value = false;
@@ -163,8 +166,11 @@ function handleEditDescription(schedule: Schedule) {
   showDescriptionDialog.value = true;
 }
 
-async function handleDescriptionSave(scheduleId: number, description: string) {
+async function handleDescriptionSave(scheduleId: number, description: string, dateField: 'create_date' | 'done_date' | null, dateValue: string | null) {
   await updateScheduleDescription(scheduleId, description);
+  if (dateField && dateValue) {
+    await updateScheduleDate(scheduleId, dateField, dateValue);
+  }
   showDescriptionDialog.value = false;
   editingSchedule.value = null;
 }
@@ -207,11 +213,41 @@ async function handleSettingsUpdate() {
   await refreshSchedules();
 }
 
+async function loadBoardVisibility() {
+  const saved = localStorage.getItem('chronos_board_visible');
+  if (saved === 'true') {
+    isBoardVisible.value = true;
+    await invoke('open_board_window');
+  }
+}
+
+async function toggleBoard() {
+  const isVisible = await invoke<boolean>('toggle_board_window');
+  isBoardVisible.value = isVisible;
+  localStorage.setItem('chronos_board_visible', String(isVisible));
+}
+
+async function loadNoteVisibility() {
+  const saved = localStorage.getItem('chronos_note_visible');
+  if (saved === 'true') {
+    isNoteVisible.value = true;
+    await invoke('open_note_window');
+  }
+}
+
+async function toggleNote() {
+  const isVisible = await invoke<boolean>('toggle_note_window');
+  isNoteVisible.value = isVisible;
+  localStorage.setItem('chronos_note_visible', String(isVisible));
+}
+
 onMounted(async () => {
   await initDatabase();
   await refreshSchedules();
   await initSettings();
   await loadFonts();
+  await loadBoardVisibility();
+  await loadNoteVisibility();
   window.addEventListener('storage', handleSettingsUpdate);
 });
 
@@ -243,6 +279,8 @@ onUnmounted(() => {
       :can-undo="canUndo()"
       :can-redo="canRedo()"
       :view-mode="viewMode"
+      :is-board-visible="isBoardVisible"
+      :is-note-visible="isNoteVisible"
       @prev-month="prevMonth()"
       @next-month="nextMonth()"
       @go-today="goToToday()"
@@ -258,6 +296,8 @@ onUnmounted(() => {
       @redo="handleRedo"
       @switch-view-mode="handleSwitchViewMode"
       @open-batch-task="handleOpenBatchTask"
+      @toggle-board="toggleBoard"
+      @toggle-note="toggleNote"
     />
 
     <CalendarGrid
@@ -314,6 +354,7 @@ onUnmounted(() => {
     <DescriptionDialog
       :visible="showDescriptionDialog"
       :schedule="editingSchedule"
+      :view-mode="viewMode"
       @save="handleDescriptionSave"
       @cancel="handleDescriptionCancel"
     />

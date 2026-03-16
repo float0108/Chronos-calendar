@@ -248,3 +248,18 @@ export async function updateScheduleContent(scheduleId: number, content: string)
     [content.trim(), scheduleId]
   );
 }
+
+/**
+ * 更新日程日期
+ * @param scheduleId 日程 ID
+ * @param field 要更新的字段: 'create_date' 或 'done_date'
+ * @param date 新日期值 (YYYY-MM-DD 格式)
+ */
+export async function updateScheduleDate(scheduleId: number, field: 'create_date' | 'done_date', date: string): Promise<void> {
+  const db = getDatabase();
+  if (!db) return;
+  await db.execute(
+    `UPDATE schedules SET ${field} = $1 WHERE id = $2`,
+    [date, scheduleId]
+  );
+}

@@ -30,6 +30,7 @@ const isEditing = ref(false);
 const editLines = ref<EditLine[]>([]);
 const cellRef = ref<HTMLElement | null>(null);
 const textareaRefs = ref<(HTMLTextAreaElement | null)[]>([]);
+const tooltipRef = ref<InstanceType<typeof ScheduleTooltip> | null>(null);
 const activeLineIndex = ref<number | null>(null);
 const dateStr = props.date.format('YYYY-MM-DD');
 
@@ -322,6 +323,12 @@ function handleScheduleMouseLeave() {
   }
   hoveredSchedule.value = null;
 }
+
+function handleScheduleWheel(event: WheelEvent) {
+  if (hoveredSchedule.value && tooltipRef.value) {
+    tooltipRef.value.scrollBy(event.deltaY);
+  }
+}
 </script>
 
 <template>
@@ -346,7 +353,8 @@ function handleScheduleMouseLeave() {
           @contextmenu.prevent="handleScheduleContextMenu($event, s)"
           @mousedown.prevent="handleScheduleMiddleClick($event, s)"
           @mouseenter="handleScheduleMouseEnter($event, s)"
-          @mouseleave="handleScheduleMouseLeave">
+          @mouseleave="handleScheduleMouseLeave"
+          @wheel="handleScheduleWheel">
           <div class="shrink-0 w-1 h-1 rounded-full bg-current opacity-50"></div>
           <span class="content-text flex-1">{{ s.content }}</span>
         </div>
@@ -387,6 +395,7 @@ function handleScheduleMouseLeave() {
 
     <!-- 描述浮窗 -->
     <ScheduleTooltip
+      ref="tooltipRef"
       :schedule="hoveredSchedule"
       :position="tooltipPosition"
     />

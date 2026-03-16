@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onUnmounted } from 'vue';
+import { ref, watch } from 'vue';
 import type { Schedule } from '../types';
 
 const props = defineProps<{
@@ -8,20 +8,24 @@ const props = defineProps<{
 }>();
 
 const tooltipRef = ref<HTMLElement | null>(null);
+const scrollTop = ref(0);
 
-function handleWheel(event: WheelEvent) {
+// 暴露滚动方法给父组件
+function scrollBy(delta: number) {
   if (tooltipRef.value) {
-    const tooltip = tooltipRef.value;
-    if (tooltip.scrollHeight > tooltip.clientHeight) {
-      event.preventDefault();
-      tooltip.scrollTop += event.deltaY;
-    }
+    tooltipRef.value.scrollTop += delta;
   }
 }
 
-onUnmounted(() => {
-  // 清理工作在这里进行
+// 重置滚动位置当内容变化时
+watch(() => props.schedule, () => {
+  scrollTop.value = 0;
+  if (tooltipRef.value) {
+    tooltipRef.value.scrollTop = 0;
+  }
 });
+
+defineExpose({ scrollBy });
 </script>
 
 <template>
@@ -34,7 +38,6 @@ onUnmounted(() => {
         left: props.position.x + 'px',
         top: props.position.y + 'px'
       }"
-      @wheel="handleWheel"
     >
       <div class="font-medium text-gray-900 dark:text-gray-100 mb-1">{{ props.schedule.content }}</div>
       <div class="text-gray-600 dark:text-gray-400 whitespace-pre-wrap">{{ props.schedule.description }}</div>

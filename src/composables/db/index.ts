@@ -10,6 +10,7 @@ export {
   toggleScheduleStatus,
   updateScheduleDescription,
   updateScheduleContent,
+  updateScheduleDate,
 } from './schedule';
 export {
   updateScheduleColor,
@@ -20,3 +21,25 @@ export {
   importCellColors,
   clearAllData,
 } from './import';
+export {
+  loadMainTasks,
+  searchMainTasks,
+  saveMainTask,
+  updateMainTaskContent,
+  updateMainTaskDescription,
+  toggleMainTaskStatus,
+  updateMainTaskPriority,
+  deleteMainTask,
+  type MainTask,
+} from './mainTask';
+export {
+  loadNotes,
+  searchNotes,
+  getNote,
+  createNote,
+  updateNote,
+  updateNoteTitle,
+  updateNoteContent,
+  deleteNote,
+  type Note,
+} from './note';
