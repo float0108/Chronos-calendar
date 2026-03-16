@@ -20,8 +20,6 @@ const settings = ref<AppSettings>({ ...defaultLightSettings });
 const tasks = ref<MainTask[]>([]);
 const newTaskContent = ref('');
 const searchKeyword = ref('');
-const editingTaskId = ref<number | null>(null);
-const editingContent = ref('');
 
 // 搜索框焦点状态
 const isSearchFocused = ref(false);
@@ -63,8 +61,6 @@ function loadSettings() {
 function applyTheme() {
   const s = settings.value;
   const root = document.documentElement;
-  const bgOpacity = s.bg_opacity / 100;
-  const cellOpacity = s.cell_opacity / 100;
 
   root.style.setProperty('--primary', s.primary_color);
   root.style.setProperty('--text-primary', s.text_color);
@@ -116,36 +112,20 @@ async function handleDeleteTask(taskId: number) {
   }
 }
 
-function startEdit(task: MainTask) {
+async function handleUpdateTask(task: MainTask, newContent: string) {
   if (!task.id) return;
-  editingTaskId.value = task.id;
-  editingContent.value = task.content;
-}
-
-async function finishEdit() {
-  if (editingTaskId.value !== null && editingContent.value.trim()) {
-    try {
-      await updateMainTaskContent(editingTaskId.value, editingContent.value.trim());
-    } catch (error) {
-      console.error('Failed to update task:', error);
-    }
+  const trimmed = newContent.trim();
+  if (!trimmed) {
+    // 如果内容为空，删除任务
+    await handleDeleteTask(task.id);
+    return;
   }
-  editingTaskId.value = null;
-  editingContent.value = '';
-  await loadTasks();
-}
-
-function cancelEdit() {
-  editingTaskId.value = null;
-  editingContent.value = '';
-}
-
-function handleKeydown(event: KeyboardEvent) {
-  if (event.key === 'Enter') {
-    event.preventDefault();
-    finishEdit();
-  } else if (event.key === 'Escape') {
-    cancelEdit();
+  if (trimmed === task.content) return;
+  try {
+    await updateMainTaskContent(task.id, trimmed);
+    await loadTasks();
+  } catch (error) {
+    console.error('Failed to update task:', error);
   }
 }
 
@@ -261,33 +241,25 @@ onUnmounted(() => {
           </div>
 
           <div v-for="task in tasks" :key="task.id"
-            class="note-item w-full flex items-start gap-2.5 px-3 py-2.5 rounded-lg transition-all duration-300 hover:bg-black/5 dark:hover:bg-white/5 hover:shadow-sm cursor-pointer"
+            class="note-item w-full flex items-start gap-2.5 px-3 py-2.5 rounded-lg transition-all duration-300 hover:bg-black/5 dark:hover:bg-white/5 hover:shadow-sm"
             :style="{
               backgroundColor: task.is_done ? 'transparent' : 'var(--theme-cell)',
               border: '1px solid',
               borderColor: task.is_done ? 'transparent' : 'var(--theme-border)',
             }"
             :class="task.is_done ? 'opacity-50' : ''"
-            @contextmenu.prevent="handleToggleDone(task)"
-            @dblclick="startEdit(task)">
+            @contextmenu.prevent="handleToggleDone(task)">
             <div class="note-dot shrink-0 w-1.5 h-1.5 rounded-full mt-[7px] transition-all duration-200"
               :style="{ backgroundColor: 'var(--theme-text-muted)', opacity: 0.4 }"></div>
 
-            <div class="flex-1 min-w-0 text-left">
-              <template v-if="editingTaskId === task.id">
-                <input v-model="editingContent" type="text"
-                  class="w-full bg-transparent outline-none text-[13px] leading-relaxed selection:bg-[var(--theme-primary-alpha)] caret-[var(--theme-text)]"
-                  :style="{ color: 'var(--theme-text)' }" @keydown="handleKeydown" @blur="finishEdit"
-                  ref="editInput" />
-              </template>
-              <template v-else>
-                <div class="text-[13px] font-medium leading-relaxed truncate"
-                  :style="{ color: 'var(--theme-text)' }"
-                  :class="{ 'line-through decoration-gray-400/50': task.is_done }">
-                  {{ task.content }}
-                </div>
-              </template>
-            </div>
+            <input type="text"
+              :value="task.content"
+              class="flex-1 min-w-0 w-full bg-transparent outline-none p-0 text-[13px] font-medium leading-relaxed selection:bg-[var(--theme-primary-alpha)] caret-[var(--theme-text)]"
+              :style="{ color: 'var(--theme-text)' }"
+              :class="{ 'line-through decoration-gray-400/50': task.is_done }"
+              @blur="(($event.target as HTMLInputElement).value.trim() !== task.content) && handleUpdateTask(task, ($event.target as HTMLInputElement).value)"
+              @keydown.enter="($event.target as HTMLInputElement).blur()"
+              @keydown.escape="($event.target as HTMLInputElement).value = task.content; ($event.target as HTMLInputElement).blur()" />
 
             <button @click.stop="handleDeleteTask(task.id!)"
               class="note-delete shrink-0 w-6 h-6 flex items-center justify-center rounded transition-all opacity-0 hover:bg-red-50 dark:hover:bg-red-900/30 mt-0.5"
