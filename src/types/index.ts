@@ -8,6 +8,7 @@ export interface Schedule {
   cell_color?: string;
   done_date?: string; // 完成日期
   description?: string; // 描述/备注
+  father_task?: number; // 关联的主任务 ID
 }
 
 export interface EditingCell {

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ChevronLeft, ChevronRight, Calendar, MoreVertical, Lock, Unlock, Undo2, Redo2, ListTodo, CheckCircle2, CalendarPlus, Kanban, StickyNote } from 'lucide-vue-next';
+import { ChevronLeft, ChevronRight, MoreVertical, Lock, Unlock, Undo2, Redo2, ListTodo, CheckCircle2, CalendarPlus, Kanban, StickyNote } from 'lucide-vue-next';
 import dayjs from 'dayjs';
 import MiniCalendar from './MiniCalendar.vue';
 import DropdownMenu from './DropdownMenu.vue';

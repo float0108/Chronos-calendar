@@ -165,3 +165,21 @@ export async function deleteNote(noteId: number): Promise<void> {
     throw error;
   }
 }
+
+/**
+ * 更新备忘录创建日期
+ */
+export async function updateNoteCreateDate(noteId: number, createDate: string): Promise<void> {
+  const db = getDatabase();
+  if (!db) return;
+
+  try {
+    await db.execute(
+      'UPDATE notes SET create_date = $1 WHERE id = $2',
+      [createDate, noteId]
+    );
+  } catch (error) {
+    console.error('Failed to update note create date:', error);
+    throw error;
+  }
+}

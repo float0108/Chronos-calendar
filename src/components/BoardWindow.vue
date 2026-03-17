@@ -1,12 +1,15 @@
 <script setup lang="ts">
 import { ref, onMounted, nextTick, computed, onUnmounted, watch } from 'vue';
 import { getCurrentWindow } from '@tauri-apps/api/window';
-import { X, Trash2, LayoutList, Plus } from 'lucide-vue-next';
+import { invoke } from '@tauri-apps/api/core';
+import { X, LayoutList } from 'lucide-vue-next';
+import ListItem from './ListItem.vue';
 import {
   loadMainTasks,
   searchMainTasks,
   saveMainTask,
   updateMainTaskContent,
+  updateMainTaskCreateDate,
   toggleMainTaskStatus,
   deleteMainTask,
   type MainTask
@@ -39,7 +42,7 @@ const themeStyle = computed(() => {
     '--theme-text-secondary': adjustBrightness(s.text_color, 30),
     '--theme-text-muted': adjustBrightness(s.text_color, 50),
     '--theme-primary': s.primary_color,
-    '--theme-primary-alpha': hexToRgba(s.primary_color, 0.2), // 用于选中文本的柔和高亮
+    '--theme-primary-alpha': hexToRgba(s.primary_color, 0.2),
     '--theme-border': s.cell_border_color || (s.theme_mode === 'dark' ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.05)'),
     '--theme-font-family': s.font_family,
     '--theme-font-size': `${s.font_size}px`,
@@ -61,7 +64,6 @@ function loadSettings() {
 function applyTheme() {
   const s = settings.value;
   const root = document.documentElement;
-
   root.style.setProperty('--primary', s.primary_color);
   root.style.setProperty('--text-primary', s.text_color);
   root.style.setProperty('--text-muted', adjustBrightness(s.text_color, 60));
@@ -116,7 +118,6 @@ async function handleUpdateTask(task: MainTask, newContent: string) {
   if (!task.id) return;
   const trimmed = newContent.trim();
   if (!trimmed) {
-    // 如果内容为空，删除任务
     await handleDeleteTask(task.id);
     return;
   }
@@ -126,6 +127,16 @@ async function handleUpdateTask(task: MainTask, newContent: string) {
     await loadTasks();
   } catch (error) {
     console.error('Failed to update task:', error);
+  }
+}
+
+async function handleUpdateTaskDate(task: MainTask, newDate: string) {
+  if (!task.id) return;
+  try {
+    await updateMainTaskCreateDate(task.id, newDate);
+    await loadTasks();
+  } catch (error) {
+    console.error('Failed to update task date:', error);
   }
 }
 
@@ -148,6 +159,15 @@ async function handleIconDrag() {
     await win.startDragging();
   } catch (error) {
     console.error('Drag failed:', error);
+  }
+}
+
+async function handleOpenTaskWindow(task: MainTask) {
+  if (!task.id) return;
+  try {
+    await invoke('open_task_window', { taskId: task.id });
+  } catch (error) {
+    console.error('Failed to open task window:', error);
   }
 }
 
@@ -192,7 +212,7 @@ onUnmounted(() => {
         <div class="flex-1 min-w-0 flex justify-center items-center relative h-6"
           @mousedown="(e) => e.target === e.currentTarget && handleIconDrag()">
           <span v-show="!isSearchFocused"
-            class="text-[14px] font-medium leading-relaxed transition-opacity cursor-text"
+            class="text-[14px] font-medium leading-relaxed transition-opacity"
             :style="{ color: 'var(--theme-text)' }"
             @click="isSearchFocused = true">
             Board
@@ -211,12 +231,6 @@ onUnmounted(() => {
           />
         </div>
 
-        <button @click="handleAddTask"
-          class="shrink-0 w-6 h-6 flex items-center justify-center rounded transition-all opacity-0 group-hover:opacity-100 hover:bg-black/10 dark:hover:bg-white/10 active:scale-95"
-          :style="{ color: 'var(--theme-text)' }">
-          <Plus class="w-4 h-4" />
-        </button>
-
         <button @click="handleClose"
           class="close-btn shrink-0 w-6 h-6 flex items-center justify-center rounded transition-all opacity-0 group-hover:opacity-100 hover:bg-black/10 dark:hover:bg-white/10 active:scale-95"
           :style="{ color: 'var(--theme-text)' }">
@@ -227,11 +241,12 @@ onUnmounted(() => {
       <div class="flex-1 overflow-y-auto custom-scrollbar px-3 pt-2 pb-3">
         <TransitionGroup name="list" tag="div" class="space-y-2">
           <div key="inline-add-task"
-            class="note-item group flex items-start gap-2.5 px-3 py-2.5 rounded-lg transition-all duration-300 cursor-text"
+            class="note-item group flex items-start gap-2.5 px-3 py-2.5 rounded-lg transition-all duration-300"
             :style="{
               backgroundColor: 'var(--theme-cell)',
               border: '1px solid var(--theme-border)',
-            }">
+            }"
+            @click.stop>
             <div class="note-dot shrink-0 w-1.5 h-1.5 rounded-full mt-[7px] transition-all duration-200"
               :style="{ backgroundColor: 'var(--theme-text-muted)', opacity: 0.4 }"></div>
             <input v-model="newTaskContent" type="text" placeholder="..."
@@ -240,33 +255,18 @@ onUnmounted(() => {
               @keydown.escape="newTaskContent = ''" />
           </div>
 
-          <div v-for="task in tasks" :key="task.id"
-            class="note-item w-full flex items-start gap-2.5 px-3 py-2.5 rounded-lg transition-all duration-300 hover:bg-black/5 dark:hover:bg-white/5 hover:shadow-sm"
-            :style="{
-              backgroundColor: task.is_done ? 'transparent' : 'var(--theme-cell)',
-              border: '1px solid',
-              borderColor: task.is_done ? 'transparent' : 'var(--theme-border)',
-            }"
-            :class="task.is_done ? 'opacity-50' : ''"
-            @contextmenu.prevent="handleToggleDone(task)">
-            <div class="note-dot shrink-0 w-1.5 h-1.5 rounded-full mt-[7px] transition-all duration-200"
-              :style="{ backgroundColor: 'var(--theme-text-muted)', opacity: 0.4 }"></div>
-
-            <input type="text"
-              :value="task.content"
-              class="flex-1 min-w-0 w-full bg-transparent outline-none p-0 text-[13px] font-medium leading-relaxed selection:bg-[var(--theme-primary-alpha)] caret-[var(--theme-text)]"
-              :style="{ color: 'var(--theme-text)' }"
-              :class="{ 'line-through decoration-gray-400/50': task.is_done }"
-              @blur="(($event.target as HTMLInputElement).value.trim() !== task.content) && handleUpdateTask(task, ($event.target as HTMLInputElement).value)"
-              @keydown.enter="($event.target as HTMLInputElement).blur()"
-              @keydown.escape="($event.target as HTMLInputElement).value = task.content; ($event.target as HTMLInputElement).blur()" />
-
-            <button @click.stop="handleDeleteTask(task.id!)"
-              class="note-delete shrink-0 w-6 h-6 flex items-center justify-center rounded transition-all opacity-0 hover:bg-red-50 dark:hover:bg-red-900/30 mt-0.5"
-              :style="{ color: 'var(--theme-text-muted)' }">
-              <Trash2 class="w-3.5 h-3.5 hover:text-red-500 dark:hover:text-red-400 transition-colors" />
-            </button>
-          </div>
+          <ListItem
+            v-for="task in tasks"
+            :key="task.id"
+            :title="task.content"
+            :date="task.create_date"
+            :is-done="task.is_done"
+            @update:title="(val) => handleUpdateTask(task, val)"
+            @update:date="(val) => handleUpdateTaskDate(task, val)"
+            @delete="handleDeleteTask(task.id!)"
+            @toggle-done="handleToggleDone(task)"
+            @click="handleOpenTaskWindow(task)"
+          />
         </TransitionGroup>
 
         <div v-if="tasks.length === 0" class="flex flex-col items-center justify-center py-20 pointer-events-none transition-opacity">
@@ -338,16 +338,5 @@ input, textarea {
 .list-leave-active {
   position: absolute;
   width: calc(100% - 24px);
-}
-
-/* 交互反馈：悬浮变色、显示删除按钮 */
-.note-item:hover .note-dot {
-  background-color: var(--theme-primary) !important;
-  opacity: 1 !important;
-  transform: scale(1.1);
-}
-
-.note-item:hover .note-delete {
-  opacity: 1;
 }
 </style>

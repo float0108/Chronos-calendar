@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, watch, nextTick, onUnmounted, computed } from 'vue';
 import type { Schedule, ViewMode } from '../types';
+import ScheduleEditor from './ScheduleEditor.vue';
 
 const props = defineProps<{
   visible: boolean;
@@ -9,34 +10,56 @@ const props = defineProps<{
 }>();
 
 const emit = defineEmits<{
-  (e: 'save', scheduleId: number, description: string, dateField: 'create_date' | 'done_date' | null, dateValue: string | null): void;
+  (e: 'save', scheduleId: number, content: string, description: string, dateField: 'create_date' | 'done_date' | null, dateValue: string | null, fatherTask: number | null, markDone: boolean): void;
   (e: 'cancel'): void;
 }>();
 
+const content = ref('');
 const description = ref('');
-const dateValue = ref('');
-const textareaRef = ref<HTMLTextAreaElement | null>(null);
+const createDateValue = ref('');
+const doneDateValue = ref('');
+const fatherTaskId = ref<number | null>(null);
+const titleInputRef = ref<HTMLInputElement | null>(null);
 
-// 根据视图模式决定日期字段的标签和类型
-const dateLabel = computed(() => {
-  return props.viewMode === 'todo' ? '完成日期' : '创建日期';
+// 根据视图模式决定显示哪个日期
+const showCreateDate = computed(() => props.viewMode === 'done');
+const showDoneDate = computed(() => props.viewMode === 'todo');
+
+// 计算实际的日期字段
+const dateField = computed((): 'create_date' | 'done_date' | null => {
+  if (props.viewMode === 'todo' && doneDateValue.value) return 'done_date';
+  if (props.viewMode === 'done' && createDateValue.value) return 'create_date';
+  return null;
 });
 
-const dateField = computed((): 'create_date' | 'done_date' | null => {
-  if (!dateValue.value) return null;
-  return props.viewMode === 'todo' ? 'done_date' : 'create_date';
+// 获取日期值
+const dateValue = computed(() => {
+  return props.viewMode === 'todo' ? doneDateValue.value : createDateValue.value;
 });
 
 watch(() => props.visible, (newVal) => {
   if (newVal) {
+    content.value = props.schedule?.content || '';
     description.value = props.schedule?.description || '';
-    // 根据视图模式初始化日期值
-    if (props.viewMode === 'todo') {
-      dateValue.value = props.schedule?.done_date || '';
+    fatherTaskId.value = props.schedule?.father_task || null;
+
+    // 日期初始化逻辑：
+    // - 如果 is_done=false，日期栏留空
+    // - 如果 is_done=true，显示 done_date 或 create_date
+    if (props.schedule?.is_done) {
+      if (props.viewMode === 'todo') {
+        doneDateValue.value = props.schedule?.done_date || '';
+        createDateValue.value = '';
+      } else {
+        createDateValue.value = props.schedule?.create_date || '';
+        doneDateValue.value = '';
+      }
     } else {
-      dateValue.value = props.schedule?.create_date || '';
+      createDateValue.value = '';
+      doneDateValue.value = '';
     }
-    nextTick(() => textareaRef.value?.focus());
+
+    nextTick(() => titleInputRef.value?.focus());
     document.body.style.overflow = 'hidden';
   } else {
     document.body.style.overflow = '';
@@ -45,7 +68,9 @@ watch(() => props.visible, (newVal) => {
 
 const handleSave = () => {
   if (props.schedule) {
-    emit('save', props.schedule.id!, description.value, dateField.value, dateValue.value || null);
+    // 如果日期有值且原来未完成，需要标记为完成
+    const markDone = !!dateValue.value && !props.schedule.is_done;
+    emit('save', props.schedule.id!, content.value.trim() || props.schedule.content, description.value, dateField.value, dateValue.value || null, fatherTaskId.value, markDone);
   }
 };
 
@@ -54,14 +79,14 @@ const handleCancel = () => emit('cancel');
 const handleKeydown = (e: KeyboardEvent) => {
   const isCmdOrCtrl = e.ctrlKey || e.metaKey;
 
-  // 1. Ctrl/Cmd + Enter 或 Ctrl/Cmd + S 保存
+  // Ctrl/Cmd + Enter 或 Ctrl/Cmd + S 保存
   if (isCmdOrCtrl && (e.key === 'Enter' || e.key === 's' || e.key === 'S')) {
-    e.preventDefault(); // 阻止浏览器默认的保存行为 (如 Ctrl+S 弹出网页保存)
+    e.preventDefault();
     handleSave();
     return;
   }
 
-  // 2. Escape 取消
+  // Escape 取消
   if (e.key === 'Escape') {
     handleCancel();
   }
@@ -81,32 +106,28 @@ onUnmounted(() => { document.body.style.overflow = ''; });
         <div class="bg-white/75 dark:bg-black/50 backdrop-blur-2xl w-full max-w-[320px] rounded-2xl shadow-[0_32px_64px_-12px_rgba(0,0,0,0.15)] border border-white/40 dark:border-white/10 overflow-hidden flex flex-col">
 
           <div class="px-5 pt-5 pb-2">
-            <h3 class="text-[14px] font-bold text-gray-900 dark:text-white tracking-tight flex items-center gap-2">
-              <span class="w-1.5 h-1.5 bg-blue-500 rounded-full animate-pulse"></span>
-              {{ schedule?.content || '详细备注' }}
-            </h3>
-          </div>
-
-          <!-- 日期选择器 -->
-          <div class="px-5 pb-2">
-            <label class="flex items-center gap-2 text-[13px] text-gray-600 dark:text-gray-300">
-              <span>{{ dateLabel }}</span>
-              <input
-                type="date"
-                v-model="dateValue"
-                class="flex-1 px-2.5 py-1.5 rounded-lg text-[13px] bg-white/50 dark:bg-white/10 border border-gray-200/60 dark:border-white/10 focus:outline-none focus:ring-2 focus:ring-blue-500/30 text-gray-800 dark:text-gray-100"
-              />
-            </label>
+            <input
+              ref="titleInputRef"
+              v-model="content"
+              type="text"
+              class="w-full text-[14px] font-bold text-gray-900 dark:text-white tracking-tight bg-transparent border-none focus:outline-none focus:ring-0 placeholder:text-gray-400"
+              placeholder="输入标题..."
+              @keydown="handleKeydown"
+            />
           </div>
 
           <div class="px-5 flex-grow">
-            <textarea
-              ref="textareaRef"
-              v-model="description"
-              class="w-full min-h-[200px] py-3 text-[15px] bg-transparent border-none focus:ring-0 outline-none resize-none text-gray-800 dark:text-gray-100 placeholder:text-gray-400/60 leading-relaxed font-medium"
-              placeholder="输入描述内容... (Ctrl + S 保存)"
-              @keydown="handleKeydown"
-            ></textarea>
+            <ScheduleEditor
+              v-model:description="description"
+              v-model:create-date="createDateValue"
+              v-model:done-date="doneDateValue"
+              v-model:father-task-id="fatherTaskId"
+              :show-content="false"
+              :show-create-date="showCreateDate"
+              :show-done-date="showDoneDate"
+              :show-father-task="true"
+              :editable-father-task="true"
+            />
           </div>
 
           <div class="px-5 pb-4 flex justify-between items-center mt-2">
@@ -145,7 +166,4 @@ onUnmounted(() => { document.body.style.overflow = ''; });
 .pop-leave-active { transition: all 0.25s cubic-bezier(0.4, 0, 1, 1); }
 .pop-enter-from { opacity: 0; transform: scale(0.92) translateY(12px); }
 .pop-leave-to { opacity: 0; transform: scale(0.95) translateY(4px); }
-
-/* 隐藏滚动条但保留功能 */
-textarea::-webkit-scrollbar { width: 0; }
 </style>

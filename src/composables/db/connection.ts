@@ -44,18 +44,20 @@ export async function initDatabase(): Promise<void> {
       await db.value!.execute(`
         CREATE TABLE IF NOT EXISTS schedules_new (
           id INTEGER PRIMARY KEY AUTOINCREMENT,
-          create_date TEXT NOT NULL,
+          create_date TEXT,
           content TEXT NOT NULL,
           is_done INTEGER DEFAULT 0,
           priority INTEGER DEFAULT 0,
           done_date TEXT,
-          description TEXT
+          description TEXT,
+          father_task INTEGER,
+          FOREIGN KEY (father_task) REFERENCES main_tasks(id)
         )
       `);
 
       // 迁移数据（从旧列映射到新列）
       await db.value!.execute(`
-        INSERT INTO schedules_new (id, create_date, content, is_done, priority, done_date, description)
+        INSERT INTO schedules_new (id, create_date, content, is_done, priority, done_date, description, father_task)
         SELECT
           id,
           date,
@@ -63,7 +65,8 @@ export async function initDatabase(): Promise<void> {
           is_done,
           priority,
           done_time,
-          description
+          description,
+          father_task
         FROM schedules
       `);
 
@@ -79,14 +82,56 @@ export async function initDatabase(): Promise<void> {
       await db.value!.execute(`
         CREATE TABLE IF NOT EXISTS schedules (
           id INTEGER PRIMARY KEY AUTOINCREMENT,
-          create_date TEXT NOT NULL,
+          create_date TEXT,
           content TEXT NOT NULL,
           is_done INTEGER DEFAULT 0,
           priority INTEGER DEFAULT 0,
           done_date TEXT,
-          description TEXT
+          description TEXT,
+          father_task INTEGER,
+          FOREIGN KEY (father_task) REFERENCES main_tasks(id)
         )
       `);
+    }
+
+    // 迁移：添加 father_task 列
+    try {
+      await db.value!.execute('ALTER TABLE schedules ADD COLUMN father_task INTEGER REFERENCES main_tasks(id)');
+    } catch (e: any) {
+      console.log('father_task column migration:', e?.message || 'ignored');
+    }
+
+    // 迁移：让 create_date 可以为空（子任务可能没有日期）
+    try {
+      // SQLite 不支持直接修改列约束，需要重建表
+      const createDateNullable = await db.value!.select<{name: string}[]>(
+        "SELECT name FROM pragma_table_info('schedules') WHERE name = 'create_date' AND notnull = 0"
+      );
+      if (createDateNullable.length === 0) {
+        console.log('Migrating create_date to nullable...');
+        await db.value!.execute(`
+          CREATE TABLE IF NOT EXISTS schedules_new (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            create_date TEXT,
+            content TEXT NOT NULL,
+            is_done INTEGER DEFAULT 0,
+            priority INTEGER DEFAULT 0,
+            done_date TEXT,
+            description TEXT,
+            father_task INTEGER,
+            FOREIGN KEY (father_task) REFERENCES main_tasks(id)
+          )
+        `);
+        await db.value!.execute(`
+          INSERT INTO schedules_new (id, create_date, content, is_done, priority, done_date, description, father_task)
+          SELECT id, create_date, content, is_done, priority, done_date, description, father_task FROM schedules
+        `);
+        await db.value!.execute('DROP TABLE schedules');
+        await db.value!.execute('ALTER TABLE schedules_new RENAME TO schedules');
+        console.log('create_date migration completed');
+      }
+    } catch (e: any) {
+      console.log('create_date nullable migration:', e?.message || 'ignored');
     }
 
     await db.value!.execute(`

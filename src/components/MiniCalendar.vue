@@ -6,12 +6,14 @@ import { getMiniCalendarDays } from '../utils/date';
 const props = defineProps<{
   currentDate: dayjs.Dayjs;
   visible: boolean;
+  position?: { top: number; left: number };
 }>();
 
 const emit = defineEmits<{
   (e: 'select', day: number): void;
   (e: 'prevMonth'): void;
   (e: 'nextMonth'): void;
+  (e: 'close'): void;
 }>();
 
 const days = getMiniCalendarDays(props.currentDate.year(), props.currentDate.month());
@@ -34,34 +36,38 @@ function handleNext() {
   <Teleport to="body">
     <div
       v-if="visible"
-      class="mini-calendar fixed bg-white rounded-xl border border-gray-200 shadow-xl p-3 z-50"
-      :style="{ top: '60px', left: '50%', transform: 'translateX(-50%)' }"
+      class="mini-calendar fixed bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-600 shadow-xl p-3 z-[10000]"
+      :style="{
+        top: position ? `${position.top}px` : '60px',
+        left: position ? `${position.left}px` : '50%',
+        transform: position ? 'none' : 'translateX(-50%)'
+      }"
       @mousedown.stop
       @click.stop
     >
     <div class="flex items-center justify-between mb-2">
-      <button @click="handlePrev" class="p-1 hover:bg-gray-100 rounded transition-colors">
-        <ChevronLeft class="w-4 h-4 text-gray-700" />
+      <button @click="handlePrev" class="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-colors">
+        <ChevronLeft class="w-4 h-4 text-gray-700 dark:text-gray-300" />
       </button>
-      <span class="text-sm font-medium text-gray-900">{{ currentDate.format('YYYY年 M月') }}</span>
-      <button @click="handleNext" class="p-1 hover:bg-gray-100 rounded transition-colors">
-        <ChevronRight class="w-4 h-4 text-gray-700" />
+      <span class="text-sm font-medium text-gray-900 dark:text-gray-100">{{ currentDate.format('YYYY年 M月') }}</span>
+      <button @click="handleNext" class="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-colors">
+        <ChevronRight class="w-4 h-4 text-gray-700 dark:text-gray-300" />
       </button>
     </div>
-    
-    <div class="grid grid-cols-7 gap-1 text-center text-xs text-gray-500 mb-1">
+
+    <div class="grid grid-cols-7 gap-1 text-center text-xs text-gray-500 dark:text-gray-400 mb-1">
       <span v-for="d in weekdays" :key="d">{{ d }}</span>
     </div>
-    
+
     <div class="grid grid-cols-7 gap-1">
       <button
         v-for="day in days"
         :key="day"
         @click="handleSelect(day)"
-        class="aspect-square flex items-center justify-center text-sm rounded-lg transition-colors"
+        class="aspect-square w-7 flex items-center justify-center text-sm rounded-lg transition-colors"
         :class="{
           'bg-blue-500 text-white': day === currentDate.date(),
-          'hover:bg-gray-100 text-gray-900': day !== currentDate.date()
+          'hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-900 dark:text-gray-100': day !== currentDate.date()
         }"
       >
         {{ day }}

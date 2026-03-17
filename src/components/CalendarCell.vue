@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, nextTick, onMounted, onUnmounted } from 'vue';
-import { Trash2, Palette } from 'lucide-vue-next';
+import { Trash2, Palette, Pencil, Check } from 'lucide-vue-next';
 import dayjs from 'dayjs';
 import { getCurrentWindow } from '@tauri-apps/api/window';
 import type { Schedule } from '../types';
@@ -17,7 +17,7 @@ const props = defineProps<{
 }>();
 
 const emit = defineEmits<{
-  (e: 'update', date: string, lines: EditLine[]): void;
+  (e: 'update', date: string, lines: EditLine[], viewMode?: 'todo' | 'done'): void;
   (e: 'navigate', direction: string): void;
   (e: 'contextmenu', event: MouseEvent): void;
   (e: 'toggleDone', schedule: Schedule): void;
@@ -140,7 +140,7 @@ function startEditing() {
 function saveEdit() {
   if (!isEditing.value) return;
   const validLines = editLines.value.filter(line => line.text.trim() !== '');
-  emit('update', dateStr, validLines);
+  emit('update', dateStr, validLines, props.viewMode);
   isEditing.value = false;
   activeLineIndex.value = null;
 }
@@ -271,18 +271,15 @@ function handleInput(event: Event, _index: number) {
   saveHistoryDebounced(editLines.value, activeLineIndex.value, textareaRefs.value);
 }
 
+function handleScheduleClick(event: MouseEvent, schedule: Schedule) {
+  event.stopPropagation();
+  emit('editDescription', schedule);
+}
+
 function handleScheduleContextMenu(event: MouseEvent, schedule: Schedule) {
   event.preventDefault();
   event.stopPropagation();
   emit('toggleDone', schedule);
-}
-
-function handleScheduleMiddleClick(event: MouseEvent, schedule: Schedule) {
-  if (event.button === 1) {
-    event.preventDefault();
-    event.stopPropagation();
-    emit('editDescription', schedule);
-  }
 }
 
 function handleColorButtonClick(event: MouseEvent) {
@@ -336,22 +333,29 @@ function handleScheduleWheel(event: WheelEvent) {
     'bg-[var(--cell-bg)]': isCurrentMonth && !cellStyle.backgroundColor,
     'bg-[var(--cell-bg-muted)]': !isCurrentMonth && !cellStyle.backgroundColor,
     'today-cell': isToday && !isEditing,
-    'editing shadow-2xl z-30 bg-white dark:bg-gray-800 scale-[1.02] !border-transparent': isEditing,
-    'hover:shadow-md hover:brightness-95 dark:hover:brightness-110': !isEditing && !isLocked
-  }" :style="cellStyle" @click="!isEditing && startEditing()">
+    'editing shadow-2xl z-30 bg-white dark:bg-gray-800 scale-[1.02] !border-transparent': isEditing
+  }" :style="cellStyle">
     <div class="px-2 py-1 shrink-0 flex items-center justify-between select-none">
       <span class="font-semibold w-5 h-5 flex items-center justify-center rounded-full text-xs transition-colors text-[var(--text-primary)]">
         {{ date.date() }}
       </span>
+      <!-- 编辑/保存按钮 -->
+      <button v-if="!isLocked"
+        @click.stop="isEditing ? saveEdit() : startEditing()"
+        class="edit-btn w-5 h-5 flex items-center justify-center rounded opacity-0 hover:bg-black/5 dark:hover:bg-white/10 transition-all"
+        :style="{ color: 'var(--text-muted)' }">
+        <Check v-if="isEditing" class="w-3.5 h-3.5" />
+        <Pencil v-else class="w-3 h-3" />
+      </button>
     </div>
 
     <div class="flex-1 overflow-hidden px-1 pb-1 flex flex-col relative">
       <div v-if="!isEditing" class="content-area h-full overflow-y-auto no-scrollbar px-1">
         <div v-for="(s, i) in schedules.filter(s => s.id !== -1 && s.content.trim() !== '')" :key="i"
-          class="schedule-item flex items-center gap-1 mb-0.5 text-xs leading-tight transition-all py-0.5"
-          :class="(s.is_done && viewMode !== 'done') ? 'text-gray-500 dark:text-gray-400 line-through opacity-90' : 'text-[var(--text-primary)]'"
+          class="schedule-item flex items-center gap-1 mb-0.5 text-xs leading-tight transition-all py-0.5 px-1 -mx-1 rounded"
+          :class="(s.is_done && viewMode !== 'done') ? 'text-gray-500 dark:text-gray-400 opacity-90' : 'text-[var(--text-primary)]'"
+          @click="handleScheduleClick($event, s)"
           @contextmenu.prevent="handleScheduleContextMenu($event, s)"
-          @mousedown.prevent="handleScheduleMiddleClick($event, s)"
           @mouseenter="handleScheduleMouseEnter($event, s)"
           @mouseleave="handleScheduleMouseLeave"
           @wheel="handleScheduleWheel">
@@ -440,5 +444,24 @@ function handleScheduleWheel(event: WheelEvent) {
   word-wrap: break-word;
   overflow-wrap: anywhere;
   word-break: break-word;
+}
+
+/* 条目级别悬停效果 */
+.schedule-item:hover {
+  background-color: rgba(0, 0, 0, 0.05);
+}
+
+.dark .schedule-item:hover {
+  background-color: rgba(255, 255, 255, 0.08);
+}
+
+/* 单元格悬停显示编辑按钮 */
+.calendar-cell:hover .edit-btn {
+  opacity: 1;
+}
+
+/* 编辑状态始终显示保存按钮 */
+.calendar-cell.editing .edit-btn {
+  opacity: 1;
 }
 </style>

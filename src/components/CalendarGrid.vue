@@ -15,7 +15,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   (e: 'reset', date: string, content: string | null): void;
-  (e: 'update', date: string, lines: { text: string; done: boolean }[]): void;
+  (e: 'update', date: string, lines: { text: string; done: boolean }[], viewMode?: 'todo' | 'done'): void;
   (e: 'navigate', direction: string): void;
   (e: 'contextmenu', event: MouseEvent, date: string): void;
   (e: 'toggleDone', schedule: Schedule): void;
@@ -64,8 +64,8 @@ function handleReset(date: string, content: string | null) {
   emit('reset', date, content);
 }
 
-function handleUpdate(date: string, lines: { text: string; done: boolean }[]) {
-  emit('update', date, lines);
+function handleUpdate(date: string, lines: { text: string; done: boolean }[], viewMode?: 'todo' | 'done') {
+  emit('update', date, lines, viewMode);
 }
 
 function handleCellContextMenu(event: MouseEvent, date: string) {

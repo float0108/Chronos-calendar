@@ -2,6 +2,7 @@
 import { ref, onMounted, onUnmounted } from 'vue';
 import dayjs from 'dayjs';
 import { invoke } from '@tauri-apps/api/core';
+import { listen } from '@tauri-apps/api/event';
 import CalendarHeader from './components/CalendarHeader.vue';
 import CalendarGrid from './components/CalendarGrid.vue';
 import ResizeHandles from './components/ResizeHandles.vue';
@@ -38,7 +39,9 @@ const {
   toggleScheduleStatus,
   saveSchedule,
   updateScheduleDescription,
+  updateScheduleContent,
   updateScheduleDate,
+  updateScheduleFatherTask,
   batchAddSchedules,
 } = useSchedules();
 const { currentSettings, initSettings } = useSettings();
@@ -115,7 +118,7 @@ function handleReset(date: string, content: string | null) {
   resetSchedule(date, content);
 }
 
-function handleUpdate(date: string, lines: { id?: number; text: string; done: boolean }[]) {
+function handleUpdate(date: string, lines: { id?: number; text: string; done: boolean }[], viewMode?: ViewMode) {
   if (isLocked.value) return;
 
   const currentSchedules = schedules.value.get(date) || [];
@@ -129,7 +132,7 @@ function handleUpdate(date: string, lines: { id?: number; text: string; done: bo
     timestamp: Date.now(),
   });
 
-  updateScheduleLines(date, lines);
+  updateScheduleLines(date, lines, viewMode === 'done');
 }
 
 function handleSelectDate(day: number) {
@@ -166,10 +169,18 @@ function handleEditDescription(schedule: Schedule) {
   showDescriptionDialog.value = true;
 }
 
-async function handleDescriptionSave(scheduleId: number, description: string, dateField: 'create_date' | 'done_date' | null, dateValue: string | null) {
+async function handleDescriptionSave(scheduleId: number, content: string, description: string, dateField: 'create_date' | 'done_date' | null, dateValue: string | null, fatherTask: number | null, markDone: boolean) {
+  // 更新标题（如果内容有变化）
+  if (editingSchedule.value && content !== editingSchedule.value.content) {
+    await updateScheduleContent(scheduleId, content);
+  }
   await updateScheduleDescription(scheduleId, description);
   if (dateField && dateValue) {
     await updateScheduleDate(scheduleId, dateField, dateValue);
+  }
+  await updateScheduleFatherTask(scheduleId, fatherTask);
+  if (markDone) {
+    await toggleScheduleStatus(scheduleId, true);
   }
   showDescriptionDialog.value = false;
   editingSchedule.value = null;
@@ -241,6 +252,17 @@ async function toggleNote() {
   localStorage.setItem('chronos_note_visible', String(isVisible));
 }
 
+function handleKeyDown(event: KeyboardEvent) {
+  if (isLocked.value) return;
+  if (event.key === 'PageUp') {
+    event.preventDefault();
+    prevMonth();
+  } else if (event.key === 'PageDown') {
+    event.preventDefault();
+    nextMonth();
+  }
+}
+
 onMounted(async () => {
   await initDatabase();
   await refreshSchedules();
@@ -249,10 +271,17 @@ onMounted(async () => {
   await loadBoardVisibility();
   await loadNoteVisibility();
   window.addEventListener('storage', handleSettingsUpdate);
+  window.addEventListener('keydown', handleKeyDown);
+
+  // 监听来自 TaskWindow 的数据变更事件
+  listen('schedule-changed', async () => {
+    await refreshSchedules();
+  });
 });
 
 onUnmounted(() => {
   window.removeEventListener('storage', handleSettingsUpdate);
+  window.removeEventListener('keydown', handleKeyDown);
 });
 </script>
 

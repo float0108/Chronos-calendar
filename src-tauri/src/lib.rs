@@ -44,7 +44,11 @@ pub fn run() {
             commands::open_note_window,
             commands::close_note_window,
             commands::toggle_note_window,
-            commands::is_note_window_visible
+            commands::is_note_window_visible,
+            commands::open_task_window,
+            commands::close_task_window,
+            commands::toggle_task_window,
+            commands::is_task_window_visible
         ])
         .setup(|app| {
             let window = app.get_webview_window("main").unwrap();

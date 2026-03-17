@@ -1,5 +1,6 @@
 // 数据库模块统一导出
 export { getDatabase, initDatabase } from './connection';
+export type { Schedule } from '../../types';
 export {
   loadSchedules,
   loadTodoSchedules,
@@ -11,6 +12,9 @@ export {
   updateScheduleDescription,
   updateScheduleContent,
   updateScheduleDate,
+  updateScheduleFatherTask,
+  loadSchedulesByFatherTask,
+  saveSubTask,
 } from './schedule';
 export {
   updateScheduleColor,
@@ -27,6 +31,7 @@ export {
   saveMainTask,
   updateMainTaskContent,
   updateMainTaskDescription,
+  updateMainTaskCreateDate,
   toggleMainTaskStatus,
   updateMainTaskPriority,
   deleteMainTask,
@@ -40,6 +45,7 @@ export {
   updateNote,
   updateNoteTitle,
   updateNoteContent,
+  updateNoteCreateDate,
   deleteNote,
   type Note,
 } from './note';

@@ -8,7 +8,7 @@ import { schedulesToCSV, exportToFile } from '../utils/export';
 import { getCalendarDays } from '../utils/date';
 
 export function useSchedules() {
-  const { loadSchedules, loadTodoSchedules, loadDoneSchedules, saveSchedule, deleteSchedule, deleteSchedulesByDate, updateScheduleColor, loadAllSchedules, importSchedules, importCellColors, clearAllData, toggleScheduleStatus, updateScheduleDescription: dbUpdateDescription, updateScheduleContent, updateScheduleDate: dbUpdateDate } = useDatabase();
+  const { loadSchedules, loadTodoSchedules, loadDoneSchedules, saveSchedule, deleteSchedule, deleteSchedulesByDate, updateScheduleColor, loadAllSchedules, importSchedules, importCellColors, clearAllData, toggleScheduleStatus, updateScheduleDescription: dbUpdateDescription, updateScheduleContent, updateScheduleDate: dbUpdateDate, updateScheduleFatherTask: dbUpdateFatherTask } = useDatabase();
 
   // 导出 saveSchedule 供撤销功能使用
   const _saveSchedule = saveSchedule;
@@ -102,7 +102,7 @@ export function useSchedules() {
     }
   }
 
-  async function updateScheduleLines(date: string, lines: { id?: number; text: string; done: boolean }[]): Promise<void> {
+  async function updateScheduleLines(date: string, lines: { id?: number; text: string; done: boolean }[], isDoneView: boolean = false): Promise<void> {
     const existingSchedules = getDateSchedules(dayjs(date));
     // 过滤掉虚拟记录（只有颜色没有内容的记录 id 为 -1）
     const validExistingSchedules = existingSchedules.filter(s => s.id !== -1);
@@ -158,11 +158,16 @@ export function useSchedules() {
           }
         } else {
           // 创建新日程
-          const now = new Date();
-          const today = now.getFullYear() + '-' +
-            String(now.getMonth() + 1).padStart(2, '0') + '-' +
-            String(now.getDate()).padStart(2, '0');
-          await saveSchedule(date, line.text.trim(), line.done, line.done ? today : undefined);
+          // 在 done 视图下，create_date 和 done_date 都设为当前单元格日期
+          if (isDoneView) {
+            await saveSchedule(date, line.text.trim(), true, date);
+          } else {
+            const now = new Date();
+            const today = now.getFullYear() + '-' +
+              String(now.getMonth() + 1).padStart(2, '0') + '-' +
+              String(now.getDate()).padStart(2, '0');
+            await saveSchedule(date, line.text.trim(), line.done, line.done ? today : undefined);
+          }
         }
       }
 
@@ -284,6 +289,11 @@ export function useSchedules() {
     await refreshSchedules();
   }
 
+  async function updateScheduleFatherTask(scheduleId: number, fatherTask: number | null): Promise<void> {
+    await dbUpdateFatherTask(scheduleId, fatherTask);
+    await refreshSchedules();
+  }
+
   async function batchAddSchedules(config: BatchTaskConfig): Promise<{ success: boolean; count: number }> {
     try {
       const start = dayjs(config.startDate);
@@ -340,7 +350,9 @@ export function useSchedules() {
     toggleScheduleStatus,
     saveSchedule: _saveSchedule,
     updateScheduleDescription,
+    updateScheduleContent,
     updateScheduleDate,
+    updateScheduleFatherTask,
     batchAddSchedules,
   };
 }

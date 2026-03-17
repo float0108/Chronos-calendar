@@ -1,4 +1,4 @@
-use tauri::{Manager, WebviewUrl, WebviewWindowBuilder};
+use tauri::{Emitter, Manager, WebviewUrl, WebviewWindowBuilder};
 use tauri_plugin_window_state::{AppHandleExt, StateFlags, WindowExt};
 use font_kit::source::SystemSource;
 use std::collections::HashSet;
@@ -290,6 +290,126 @@ pub async fn toggle_note_window(app: tauri::AppHandle) -> Result<bool, String> {
 #[tauri::command]
 pub async fn is_note_window_visible(app: tauri::AppHandle) -> Result<bool, String> {
     if let Some(window) = app.get_webview_window("note") {
+        window.is_visible().map_err(|e| e.to_string())
+    } else {
+        Ok(false)
+    }
+}
+
+// === Task 窗口 ===
+
+#[tauri::command]
+pub async fn open_task_window(app: tauri::AppHandle, task_id: i64) -> Result<(), String> {
+    if let Some(window) = app.get_webview_window("task") {
+        window.show().map_err(|e| e.to_string())?;
+        window.set_focus().map_err(|e| e.to_string())?;
+        // 发送 task_id 给窗口
+        window.emit("set_task_id", task_id).map_err(|e: tauri::Error| e.to_string())?;
+        return Ok(());
+    }
+
+    let task_window = WebviewWindowBuilder::new(
+        &app,
+        "task",
+        WebviewUrl::App("src/task.html".into())
+    )
+    .title("Chronos - Task")
+    .inner_size(360.0, 480.0)
+    .min_inner_size(300.0, 360.0)
+    .resizable(true)
+    .decorations(false)
+    .transparent(true)
+    .visible(false)
+    .center()
+    .initialization_script(format!("window.__TASK_ID__ = {};", task_id))
+    .build()
+    .map_err(|e| e.to_string())?;
+
+    let _ = task_window.set_skip_taskbar(true);
+
+    #[cfg(target_os = "windows")]
+    {
+        if let Ok(tauri_hwnd) = task_window.hwnd() {
+            unsafe {
+                apply_window_settings(std::mem::transmute(tauri_hwnd));
+            }
+        }
+    }
+
+    let _ = task_window.restore_state(StateFlags::SIZE | StateFlags::POSITION);
+
+    task_window.show().map_err(|e| e.to_string())?;
+    task_window.set_focus().map_err(|e| e.to_string())?;
+
+    Ok(())
+}
+
+#[tauri::command]
+pub async fn close_task_window(app: tauri::AppHandle) -> Result<(), String> {
+    if let Some(window) = app.get_webview_window("task") {
+        let _ = app.save_window_state(StateFlags::SIZE | StateFlags::POSITION);
+        window.hide().map_err(|e| e.to_string())?;
+    }
+    Ok(())
+}
+
+#[tauri::command]
+pub async fn toggle_task_window(app: tauri::AppHandle, task_id: Option<i64>) -> Result<bool, String> {
+    if let Some(window) = app.get_webview_window("task") {
+        let is_visible = window.is_visible().map_err(|e| e.to_string())?;
+        if is_visible {
+            let _ = app.save_window_state(StateFlags::SIZE | StateFlags::POSITION);
+            window.hide().map_err(|e| e.to_string())?;
+            Ok(false)
+        } else {
+            window.show().map_err(|e| e.to_string())?;
+            window.set_focus().map_err(|e| e.to_string())?;
+            if let Some(id) = task_id {
+                window.emit("set_task_id", id).map_err(|e: tauri::Error| e.to_string())?;
+            }
+            Ok(true)
+        }
+    } else {
+        let id = task_id.unwrap_or(0);
+        let task_window = WebviewWindowBuilder::new(
+            &app,
+            "task",
+            WebviewUrl::App("src/task.html".into())
+        )
+        .title("Chronos - Task")
+        .inner_size(360.0, 480.0)
+        .min_inner_size(300.0, 360.0)
+        .resizable(true)
+        .decorations(false)
+        .transparent(true)
+        .visible(false)
+        .center()
+        .initialization_script(format!("window.__TASK_ID__ = {};", id))
+        .build()
+        .map_err(|e| e.to_string())?;
+
+        let _ = task_window.set_skip_taskbar(true);
+
+        #[cfg(target_os = "windows")]
+        {
+            if let Ok(tauri_hwnd) = task_window.hwnd() {
+                unsafe {
+                    apply_window_settings(std::mem::transmute(tauri_hwnd));
+                }
+            }
+        }
+
+        let _ = task_window.restore_state(StateFlags::SIZE | StateFlags::POSITION);
+
+        task_window.show().map_err(|e| e.to_string())?;
+        task_window.set_focus().map_err(|e| e.to_string())?;
+        Ok(true)
+    }
+}
+
+#[tauri::command]
+pub async fn is_task_window_visible(app: tauri::AppHandle) -> Result<bool, String> {
+    if let Some(window) = app.get_webview_window("task") {
         window.is_visible().map_err(|e| e.to_string())
     } else {
         Ok(false)

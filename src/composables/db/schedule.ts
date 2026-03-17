@@ -150,15 +150,16 @@ export async function saveSchedule(
   content: string,
   isDone: boolean = false,
   doneDate?: string,
-  description?: string
+  description?: string,
+  fatherTask?: number
 ): Promise<void> {
   const db = getDatabase();
   if (!db) return;
 
   try {
     await db.execute(
-      'INSERT INTO schedules (create_date, content, is_done, priority, done_date, description) VALUES ($1, $2, $3, $4, $5, $6)',
-      [createDate, content.trim(), isDone ? 1 : 0, 0, doneDate || null, description || null]
+      'INSERT INTO schedules (create_date, content, is_done, priority, done_date, description, father_task) VALUES ($1, $2, $3, $4, $5, $6, $7)',
+      [createDate, content.trim(), isDone ? 1 : 0, 0, doneDate || null, description || null, fatherTask || null]
     );
   } catch (error) {
     console.error('Failed to save schedule:', error);
@@ -262,4 +263,60 @@ export async function updateScheduleDate(scheduleId: number, field: 'create_date
     `UPDATE schedules SET ${field} = $1 WHERE id = $2`,
     [date, scheduleId]
   );
+}
+
+/**
+ * 更新日程关联的主任务
+ */
+export async function updateScheduleFatherTask(scheduleId: number, fatherTask: number | null): Promise<void> {
+  const db = getDatabase();
+  if (!db) return;
+  await db.execute(
+    'UPDATE schedules SET father_task = $1 WHERE id = $2',
+    [fatherTask, scheduleId]
+  );
+}
+
+/**
+ * 加载关联到某个主任务的所有日程
+ * 排序：未完成在前，内部按创建时间升序（越早在上面）
+ */
+export async function loadSchedulesByFatherTask(fatherTaskId: number): Promise<Schedule[]> {
+  const db = getDatabase();
+  if (!db) return [];
+
+  try {
+    const schedules = await db.select<Schedule[]>(`
+      SELECT * FROM schedules
+      WHERE father_task = $1
+      ORDER BY is_done ASC, create_date ASC, id ASC
+    `, [fatherTaskId]);
+    return schedules;
+  } catch (error) {
+    console.error('Failed to load schedules by father task:', error);
+    return [];
+  }
+}
+
+/**
+ * 保存子任务（日程，create_date 可为空）
+ */
+export async function saveSubTask(
+  content: string,
+  fatherTaskId: number,
+  description?: string
+): Promise<number | null> {
+  const db = getDatabase();
+  if (!db) return null;
+
+  try {
+    const result = await db.execute(
+      'INSERT INTO schedules (create_date, content, is_done, priority, description, father_task) VALUES (NULL, $1, 0, 0, $2, $3)',
+      [content.trim(), description || null, fatherTaskId]
+    );
+    return result.lastInsertId ?? null;
+  } catch (error) {
+    console.error('Failed to save sub task:', error);
+    throw error;
+  }
 }

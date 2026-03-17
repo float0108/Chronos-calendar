@@ -178,3 +178,21 @@ export async function searchMainTasks(keyword: string): Promise<MainTask[]> {
     return [];
   }
 }
+
+/**
+ * 更新主任务创建日期
+ */
+export async function updateMainTaskCreateDate(taskId: number, createDate: string): Promise<void> {
+  const db = getDatabase();
+  if (!db) return;
+
+  try {
+    await db.execute(
+      'UPDATE main_tasks SET create_date = $1 WHERE id = $2',
+      [createDate, taskId]
+    );
+  } catch (error) {
+    console.error('Failed to update main task create date:', error);
+    throw error;
+  }
+}

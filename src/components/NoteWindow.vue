@@ -2,11 +2,13 @@
 import { ref, onMounted, nextTick, computed, onUnmounted, watch } from 'vue';
 import { getCurrentWindow } from '@tauri-apps/api/window';
 import { X, Trash2, FileText, StickyNote, ChevronLeft, Plus, PenLine } from 'lucide-vue-next';
+import ListItem from './ListItem.vue';
 import {
   loadNotes,
   searchNotes,
   createNote,
   updateNote,
+  updateNoteCreateDate,
   deleteNote,
   type Note
 } from '../composables/db';
@@ -133,6 +135,31 @@ async function handleDeleteNoteFromList(note: Note) {
   if (confirm('Delete?')) {
     await deleteNote(note.id);
     await loadNotesList();
+  }
+}
+
+// 更新备忘录标题
+async function handleUpdateNoteTitle(note: Note, newTitle: string) {
+  if (!note.id) return;
+  const trimmed = newTitle.trim();
+  if (!trimmed) return;
+  if (trimmed === note.title) return;
+  try {
+    await updateNote(note.id, trimmed, note.content);
+    await loadNotesList();
+  } catch (error) {
+    console.error('Failed to update note title:', error);
+  }
+}
+
+// 更新备忘录日期
+async function handleUpdateNoteDate(note: Note, newDate: string) {
+  if (!note.id) return;
+  try {
+    await updateNoteCreateDate(note.id, newDate);
+    await loadNotesList();
+  } catch (error) {
+    console.error('Failed to update note date:', error);
   }
 }
 
@@ -292,35 +319,17 @@ onUnmounted(() => {
           <div v-if="!isEditing" class="absolute inset-0 flex flex-col w-full h-full">
             <div class="flex-1 overflow-y-auto custom-scrollbar px-3 pt-2 pb-3">
               <TransitionGroup name="list" tag="div" class="space-y-2">
-                <div
+                <ListItem
                   v-for="note in notes"
                   :key="note.id"
+                  :title="note.title"
+                  :preview="note.content"
+                  :date="note.create_date"
+                  @update:title="(val) => handleUpdateNoteTitle(note, val)"
+                  @update:date="(val) => handleUpdateNoteDate(note, val)"
+                  @delete="handleDeleteNoteFromList(note)"
                   @click="handleSelectNote(note)"
-                  class="note-item w-full flex items-start gap-3 px-3 py-2.5 rounded-lg transition-all duration-300 hover:bg-black/5 dark:hover:bg-white/5 hover:shadow-sm cursor-pointer"
-                  :style="{
-                    backgroundColor: 'var(--theme-cell)',
-                    border: '1px solid var(--theme-border)',
-                  }"
-                >
-                  <div class="note-dot shrink-0 w-1.5 h-1.5 rounded-full mt-[8px] transition-all duration-200"
-                       :style="{ backgroundColor: 'var(--theme-text-muted)', opacity: 0.4 }"></div>
-                  <div class="flex-1 min-w-0 text-left">
-                    <div class="text-[13px] font-medium leading-relaxed truncate"
-                         :style="{ color: 'var(--theme-text)' }">
-                      {{ note.title || '...' }}
-                    </div>
-                    <div class="text-[12px] leading-relaxed truncate opacity-50 mt-0.5"
-                         :style="{ color: 'var(--theme-text-muted)' }">
-                      {{ note.content || '...' }}
-                    </div>
-                  </div>
-                  <button
-                    @click.stop="handleDeleteNoteFromList(note)"
-                    class="note-delete shrink-0 w-6 h-6 flex items-center justify-center rounded transition-all opacity-0 hover:bg-red-50 dark:hover:bg-red-900/30 mt-0.5"
-                    :style="{ color: 'var(--theme-text-muted)' }">
-                    <Trash2 class="w-3.5 h-3.5 hover:text-red-500 dark:hover:text-red-400 transition-colors" />
-                  </button>
-                </div>
+                />
               </TransitionGroup>
 
               <div v-if="notes.length === 0" class="flex flex-col items-center justify-center py-20 pointer-events-none transition-opacity">
@@ -434,16 +443,5 @@ input, textarea {
 .view-slide-leave-to {
   opacity: 0;
   transform: translateX(-16px) scale(0.99);
-}
-
-/* 交互反馈：悬浮变色、显示删除按钮 */
-.note-item:hover .note-dot {
-  background-color: var(--theme-primary) !important;
-  opacity: 1 !important;
-  transform: scale(1.1);
-}
-
-.note-item:hover .note-delete {
-  opacity: 1;
 }
 </style>
