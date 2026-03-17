@@ -1,5 +1,5 @@
 import { createApp } from "vue";
 import "./styles.css";
-import SettingsPanel from "./components/SettingsPanel.vue";
+import SettingsPanel from "./windows/SettingsPanel.vue";
 
 createApp(SettingsPanel).mount("#app");

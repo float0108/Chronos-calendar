@@ -2,8 +2,8 @@
 import { computed, provide } from 'vue';
 import { Sun, Moon } from 'lucide-vue-next';
 import type { AppSettings, ThemeMode } from '../types';
-import ColorPicker from './ColorPicker.vue';
-import SliderControl from './SliderControl.vue';
+import ColorPicker from '../components/ui/ColorPicker.vue';
+import SliderControl from '../components/ui/SliderControl.vue';
 import { hexToRgba } from '../utils/color';
 
 const props = defineProps<{

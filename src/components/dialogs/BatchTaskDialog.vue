@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, watch, computed, nextTick, onUnmounted } from 'vue';
 import dayjs from 'dayjs';
-import type { BatchTaskConfig } from '../types';
+import type { BatchTaskConfig } from '../../types';
 
 const props = defineProps<{
   visible: boolean;

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, watch, nextTick, onUnmounted, computed } from 'vue';
-import type { Schedule, ViewMode } from '../types';
-import ScheduleEditor from './ScheduleEditor.vue';
+import type { Schedule, ViewMode } from '../../types';
+import ScheduleEditor from '../ScheduleEditor.vue';
 
 const props = defineProps<{
   visible: boolean;

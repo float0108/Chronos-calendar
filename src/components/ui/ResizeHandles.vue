@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import type { ResizeDirection } from '../types';
-import { startWindowResize } from '../utils/window';
+import type { ResizeDirection } from '../../types';
+import { startWindowResize } from '../../utils/window';
 
 const props = defineProps<{
   isLocked: boolean;

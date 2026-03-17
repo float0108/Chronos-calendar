@@ -2,9 +2,9 @@
 import { ref, computed } from 'vue';
 import dayjs from 'dayjs';
 import CalendarCell from './CalendarCell.vue';
-import { getCalendarDays } from '../utils/date';
-import { useSettings } from '../composables/useSettings';
-import type { Schedule } from '../types';
+import { getCalendarDays } from '../../utils/date';
+import { useSettings } from '../../composables/useSettings';
+import type { Schedule } from '../../types';
 
 const props = defineProps<{
   currentDate: dayjs.Dayjs;

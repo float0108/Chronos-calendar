@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, nextTick, onMounted, onUnmounted } from 'vue';
 import { MinusCircle, Check } from 'lucide-vue-next';
-import MiniCalendar from './MiniCalendar.vue';
+import MiniCalendar from './calendar/MiniCalendar.vue';
 import dayjs from 'dayjs';
 
 const props = withDefaults(defineProps<{
@@ -134,7 +134,7 @@ function closeCalendar() {
 }
 
 // 点击外部关闭日历
-function handleClickOutside(e: MouseEvent) {
+function handleClickOutside() {
   if (showCalendar.value) {
     showCalendar.value = false;
   }

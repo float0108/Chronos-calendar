@@ -3,7 +3,7 @@ import { ref, onMounted, nextTick, computed, onUnmounted, watch } from 'vue';
 import { getCurrentWindow } from '@tauri-apps/api/window';
 import { invoke } from '@tauri-apps/api/core';
 import { X, LayoutList } from 'lucide-vue-next';
-import ListItem from './ListItem.vue';
+import ListItem from '../components/ListItem.vue';
 import {
   loadMainTasks,
   searchMainTasks,

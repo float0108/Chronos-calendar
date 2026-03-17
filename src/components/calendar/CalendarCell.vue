@@ -3,9 +3,9 @@ import { ref, computed, nextTick, onMounted, onUnmounted } from 'vue';
 import { Trash2, Palette, Pencil, Check } from 'lucide-vue-next';
 import dayjs from 'dayjs';
 import { getCurrentWindow } from '@tauri-apps/api/window';
-import type { Schedule } from '../types';
-import { useEditHistory, type EditLine } from '../composables/useEditHistory';
-import ScheduleTooltip from './ScheduleTooltip.vue';
+import type { Schedule } from '../../types';
+import { useEditHistory, type EditLine } from '../../composables/useEditHistory';
+import ScheduleTooltip from '../ui/ScheduleTooltip.vue';
 
 const props = defineProps<{
   date: dayjs.Dayjs;

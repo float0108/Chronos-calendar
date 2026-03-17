@@ -3,7 +3,7 @@ import { ref, onMounted, nextTick, computed, onUnmounted } from 'vue';
 import { getCurrentWindow } from '@tauri-apps/api/window';
 import { emit } from '@tauri-apps/api/event';
 import { X, Trash2, ListTodo, Plus, ChevronLeft } from 'lucide-vue-next';
-import ListItem from './ListItem.vue';
+import ListItem from '../components/ListItem.vue';
 import {
   loadSchedulesByFatherTask,
   saveSubTask,
@@ -18,7 +18,7 @@ import {
 } from '../composables/db';
 import { initDatabase } from '../composables/db/connection';
 import { hexToRgba, adjustBrightness } from '../utils/color';
-import ScheduleEditor from './ScheduleEditor.vue';
+import ScheduleEditor from '../components/ScheduleEditor.vue';
 import type { AppSettings } from '../types';
 import { defaultLightSettings, defaultDarkSettings } from '../types';
 

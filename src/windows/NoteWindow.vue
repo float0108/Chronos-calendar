@@ -2,7 +2,7 @@
 import { ref, onMounted, nextTick, computed, onUnmounted, watch } from 'vue';
 import { getCurrentWindow } from '@tauri-apps/api/window';
 import { X, Trash2, FileText, StickyNote, ChevronLeft, Plus, PenLine } from 'lucide-vue-next';
-import ListItem from './ListItem.vue';
+import ListItem from '../components/ListItem.vue';
 import {
   loadNotes,
   searchNotes,

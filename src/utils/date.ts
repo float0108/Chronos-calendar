@@ -63,9 +63,31 @@ export function getCalendarDays(
   }
 }
 
-export function getMiniCalendarDays(year: number, month: number): number[] {
-  const daysInMonth = dayjs(new Date(year, month, 1)).daysInMonth();
-  return Array.from({ length: daysInMonth }, (_, i) => i + 1);
+export function getMiniCalendarDays(
+  year: number,
+  month: number,
+  weekStartsOn: 0 | 1 = 1
+): (number | null)[] {
+  const firstDayOfMonth = dayjs(new Date(year, month, 1));
+  const daysInMonth = firstDayOfMonth.daysInMonth();
+  const firstDayWeekday = firstDayOfMonth.day();
+
+  // 计算第一天前面需要填充的空白格子数量
+  const leadingBlanks = (firstDayWeekday - weekStartsOn + 7) % 7;
+
+  const days: (number | null)[] = [];
+
+  // 添加前置空白
+  for (let i = 0; i < leadingBlanks; i++) {
+    days.push(null);
+  }
+
+  // 添加实际日期
+  for (let i = 1; i <= daysInMonth; i++) {
+    days.push(i);
+  }
+
+  return days;
 }
 
 export function formatMonthYear(date: dayjs.Dayjs): string {

@@ -2,10 +2,10 @@
 import { ChevronLeft, ChevronRight, MoreVertical, Lock, Unlock, Undo2, Redo2, ListTodo, CheckCircle2, CalendarPlus, Kanban, StickyNote } from 'lucide-vue-next';
 import dayjs from 'dayjs';
 import MiniCalendar from './MiniCalendar.vue';
-import DropdownMenu from './DropdownMenu.vue';
-import { formatMonthYear } from '../utils/date';
-import { startWindowDrag } from '../utils/window';
-import type { ViewMode } from '../types';
+import DropdownMenu from '../ui/DropdownMenu.vue';
+import { formatMonthYear } from '../../utils/date';
+import { startWindowDrag } from '../../utils/window';
+import type { ViewMode } from '../../types';
 
 defineProps<{
   currentDate: dayjs.Dayjs;

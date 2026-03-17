@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, watch } from 'vue';
-import type { Schedule } from '../types';
+import type { Schedule } from '../../types';
 
 const props = defineProps<{
   schedule: Schedule | null;
