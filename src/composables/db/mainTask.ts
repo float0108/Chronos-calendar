@@ -23,7 +23,10 @@ export async function loadMainTasks(): Promise<MainTask[]> {
   try {
     const tasks = await db.select<MainTask[]>(`
       SELECT * FROM main_tasks
-      ORDER BY is_done ASC, priority DESC, id ASC
+      ORDER BY
+        is_done ASC,
+        CASE WHEN is_done = 0 THEN create_date ELSE COALESCE(done_date, create_date) END DESC,
+        id DESC
     `);
     return tasks;
   } catch (error) {
@@ -170,7 +173,10 @@ export async function searchMainTasks(keyword: string): Promise<MainTask[]> {
     const tasks = await db.select<MainTask[]>(`
       SELECT * FROM main_tasks
       WHERE content LIKE $1 OR description LIKE $1
-      ORDER BY is_done ASC, priority DESC, id ASC
+      ORDER BY
+        is_done ASC,
+        CASE WHEN is_done = 0 THEN create_date ELSE COALESCE(done_date, create_date) END DESC,
+        id DESC
     `, [`%${keyword.trim()}%`]);
     return tasks;
   } catch (error) {

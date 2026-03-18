@@ -26,7 +26,9 @@ const settings = ref<AppSettings>({ ...defaultLightSettings });
 const tasks = ref<MainTask[]>([]);
 const currentTask = ref<MainTask | null>(null);
 const subTasks = ref<Schedule[]>([]);
-const newSubTaskContent = ref('');
+
+// 新增模式
+const isAdding = ref(false);
 
 // 视图控制：false 显示列表，true 显示详情
 const isEditing = ref(false);
@@ -36,6 +38,7 @@ const editingSubTask = ref<Schedule | null>(null);
 const editDescription = ref('');
 const editCreateDate = ref('');
 const editDoneDate = ref('');
+const scheduleEditorRef = ref<InstanceType<typeof ScheduleEditor> | null>(null);
 
 // 动态主题样式
 const themeStyle = computed(() => {
@@ -98,18 +101,29 @@ async function notifyMainToRefresh() {
   }
 }
 
-async function handleAddSubTask() {
-  const content = newSubTaskContent.value.trim();
-  if (!content || !currentTask.value?.id) return;
+function handleStartAdding() {
+  isAdding.value = true;
+}
+
+async function handleAddSubTask(content: string) {
+  const trimmed = content.trim();
+  if (!trimmed || !currentTask.value?.id) {
+    isAdding.value = false;
+    return;
+  }
 
   try {
-    await saveSubTask(content, currentTask.value.id);
-    newSubTaskContent.value = '';
+    await saveSubTask(trimmed, currentTask.value.id);
     await loadSubTasks();
     await notifyMainToRefresh();
   } catch (error) {
     console.error('Failed to add sub task:', error);
   }
+  isAdding.value = false;
+}
+
+function handleCancelAdd() {
+  isAdding.value = false;
 }
 
 async function handleToggleDone(subTask: Schedule) {
@@ -168,6 +182,8 @@ function handleSelectSubTask(subTask: Schedule) {
   editCreateDate.value = subTask.create_date || '';
   editDoneDate.value = subTask.done_date || '';
   isEditing.value = true;
+  // 确保任务列表已加载
+  nextTick(() => scheduleEditorRef.value?.loadTasks());
 }
 
 // 返回列表
@@ -269,7 +285,7 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <div class="task-overlay fixed inset-0 z-[9999] flex w-full h-full" :style="themeStyle">
+  <div class="task-overlay fixed inset-0 z-[9999] flex w-full h-full" :style="themeStyle" :class="{ 'dark': settings.theme_mode === 'dark' }">
     <div class="task-panel relative flex flex-col overflow-hidden w-full h-full rounded-lg transition-colors shadow-lg"
       :style="{
         backgroundColor: 'var(--theme-bg)',
@@ -297,7 +313,7 @@ onUnmounted(() => {
             </span>
           </div>
 
-          <button @click="handleAddSubTask"
+          <button @click="handleStartAdding"
             class="shrink-0 w-6 h-6 flex items-center justify-center rounded transition-all opacity-0 group-hover:opacity-100 hover:bg-black/10 dark:hover:bg-white/10 active:scale-95"
             :style="{ color: 'var(--theme-text)' }">
             <Plus class="w-4 h-4" />
@@ -341,20 +357,14 @@ onUnmounted(() => {
             <div class="flex-1 overflow-y-auto custom-scrollbar px-3 pt-2 pb-3">
               <TransitionGroup name="list" tag="div" class="space-y-2">
                 <!-- 新增子任务 -->
-                <div key="inline-add-subtask"
-                  class="note-item group flex items-start gap-2.5 px-3 py-2.5 rounded-lg transition-all duration-300"
-                  :style="{
-                    backgroundColor: 'var(--theme-cell)',
-                    border: '1px solid var(--theme-border)',
-                  }"
-                  @click.stop>
-                  <div class="note-dot shrink-0 w-1.5 h-1.5 rounded-full mt-[7px] transition-all duration-200"
-                    :style="{ backgroundColor: 'var(--theme-text-muted)', opacity: 0.4 }"></div>
-                  <input v-model="newSubTaskContent" type="text" placeholder="..."
-                    class="inline-add-input flex-1 w-full bg-transparent p-0 text-[13px] leading-relaxed outline-none transition-all placeholder:transition-opacity focus:placeholder:opacity-40 selection:bg-[var(--theme-primary-alpha)] caret-[var(--theme-text)]"
-                    :style="{ color: 'var(--theme-text)' }" @keydown.enter="handleAddSubTask"
-                    @keydown.escape="newSubTaskContent = ''" />
-                </div>
+                <ListItem
+                  v-if="isAdding"
+                  key="add-new-subtask"
+                  is-add-mode
+                  @add="handleAddSubTask"
+                  @cancel="handleCancelAdd"
+                  @click.stop
+                />
 
                 <!-- 子任务列表 -->
                 <ListItem
@@ -364,6 +374,7 @@ onUnmounted(() => {
                   :preview="subTask.description"
                   :date="subTask.create_date"
                   :is-done="subTask.is_done"
+                  center-calendar
                   @update:title="(val) => handleUpdateSubTask(subTask, val)"
                   @update:date="(val) => handleUpdateSubTaskDate(subTask, val)"
                   @delete="handleDeleteSubTask(subTask.id!)"
@@ -372,7 +383,7 @@ onUnmounted(() => {
                 />
               </TransitionGroup>
 
-              <div v-if="subTasks.length === 0" class="flex flex-col items-center justify-center py-20 pointer-events-none transition-opacity">
+              <div v-if="subTasks.length === 0 && !isAdding" class="flex flex-col items-center justify-center py-20 pointer-events-none transition-opacity">
                 <div class="p-4 rounded-full" :style="{ backgroundColor: 'var(--theme-cell)' }">
                   <ListTodo class="w-8 h-8 opacity-20" :style="{ color: 'var(--theme-text)' }" />
                 </div>
@@ -382,30 +393,25 @@ onUnmounted(() => {
 
           <!-- 编辑视图 -->
           <div v-else class="absolute inset-0 flex flex-col w-full h-full z-10">
-            <div class="flex-1 overflow-y-auto custom-scrollbar px-3 pt-2 pb-3">
-              <div class="rounded-lg p-4 flex flex-col gap-4 shadow-sm"
+            <div class="flex-1 min-h-0 overflow-y-auto custom-scrollbar p-3">
+              <div class="h-full rounded-lg p-3"
                 :style="{
                   backgroundColor: 'var(--theme-cell)',
                   border: '1px solid var(--theme-border)',
                 }">
-
                 <ScheduleEditor
+                  ref="scheduleEditorRef"
+                  class="h-full"
                   v-model:description="editDescription"
                   v-model:create-date="editCreateDate"
                   v-model:done-date="editDoneDate"
-                  :show-create-date="true"
-                  :show-done-date="true"
+                  :show-content="false"
                   :show-father-task="true"
                   :editable-father-task="false"
                   :father-task-id="currentTask?.id"
+                  @save="handleSaveDetail"
+                  @cancel="handleBackToList"
                 />
-
-                <!-- 保存按钮 -->
-                <button @click="handleSaveDetail"
-                  class="w-full py-2.5 rounded-lg text-[13px] font-medium transition-all bg-[var(--theme-primary)] text-white hover:opacity-90 active:scale-[0.98]">
-                  保存
-                </button>
-
               </div>
             </div>
           </div>
@@ -452,10 +458,6 @@ onUnmounted(() => {
 input, textarea {
   -webkit-appearance: none;
   appearance: none;
-}
-
-.inline-add-input::placeholder {
-  color: var(--theme-text-muted);
 }
 
 /* 列表动画 */

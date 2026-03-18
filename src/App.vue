@@ -135,8 +135,8 @@ function handleUpdate(date: string, lines: { id?: number; text: string; done: bo
   updateScheduleLines(date, lines, viewMode === 'done');
 }
 
-function handleSelectDate(day: number) {
-  selectDate(day);
+function handleSelectDate(date: dayjs.Dayjs) {
+  selectDate(date);
   showMiniCalendar.value = false;
 }
 
@@ -169,19 +169,19 @@ function handleEditDescription(schedule: Schedule) {
   showDescriptionDialog.value = true;
 }
 
-async function handleDescriptionSave(scheduleId: number, content: string, description: string, dateField: 'create_date' | 'done_date' | null, dateValue: string | null, fatherTask: number | null, markDone: boolean) {
+async function handleDescriptionSave(scheduleId: number, content: string, description: string, createDate: string, doneDate: string, fatherTask: number | null) {
   // 更新标题（如果内容有变化）
   if (editingSchedule.value && content !== editingSchedule.value.content) {
     await updateScheduleContent(scheduleId, content);
   }
   await updateScheduleDescription(scheduleId, description);
-  if (dateField && dateValue) {
-    await updateScheduleDate(scheduleId, dateField, dateValue);
+  if (createDate && createDate !== editingSchedule.value?.create_date) {
+    await updateScheduleDate(scheduleId, 'create_date', createDate);
+  }
+  if (doneDate && doneDate !== editingSchedule.value?.done_date) {
+    await updateScheduleDate(scheduleId, 'done_date', doneDate);
   }
   await updateScheduleFatherTask(scheduleId, fatherTask);
-  if (markDone) {
-    await toggleScheduleStatus(scheduleId, true);
-  }
   showDescriptionDialog.value = false;
   editingSchedule.value = null;
 }
@@ -383,7 +383,6 @@ onUnmounted(() => {
     <DescriptionDialog
       :visible="showDescriptionDialog"
       :schedule="editingSchedule"
-      :view-mode="viewMode"
       @save="handleDescriptionSave"
       @cancel="handleDescriptionCancel"
     />

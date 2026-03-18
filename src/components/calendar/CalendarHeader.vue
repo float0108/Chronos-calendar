@@ -25,7 +25,7 @@ const emit = defineEmits<{
   (e: 'goToday'): void;
   (e: 'toggleMiniCalendar'): void;
   (e: 'toggleMenu'): void;
-  (e: 'selectDate', day: number): void;
+  (e: 'selectDate', date: dayjs.Dayjs): void;
   (e: 'settings'): void;
   (e: 'quit'): void;
   (e: 'toggleLock'): void;
@@ -44,7 +44,8 @@ function handleNext() { emit('nextMonth'); }
 function handleToday() { emit('goToday'); }
 function handleToggleMini() { emit('toggleMiniCalendar'); }
 function handleToggleMenu() { emit('toggleMenu'); }
-function handleSelectDate(day: number) { emit('selectDate', day); }
+function handleSelectDate(date: dayjs.Dayjs) { emit('selectDate', date); }
+function handleMiniCalendarClose() { emit('toggleMiniCalendar'); }
 function handleSettings() { emit('settings'); }
 function handleQuit() { emit('quit'); }
 function handleToggleLock() { emit('toggleLock'); }
@@ -116,8 +117,12 @@ function handleStartDrag(event: MouseEvent) { startWindowDrag(event); }
             {{ formatMonthYear(currentDate) }}
           </button>
 
-          <MiniCalendar :current-date="currentDate" :visible="showMiniCalendar" @select="handleSelectDate"
-            @prevMonth="handlePrev" @nextMonth="handleNext" />
+          <MiniCalendar
+            :current-date="currentDate"
+            :visible="showMiniCalendar"
+            @select="handleSelectDate"
+            @close="handleMiniCalendarClose"
+          />
         </div>
 
         <button @mousedown.stop @click="handleNext"

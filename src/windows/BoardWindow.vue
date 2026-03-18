@@ -2,7 +2,8 @@
 import { ref, onMounted, nextTick, computed, onUnmounted, watch } from 'vue';
 import { getCurrentWindow } from '@tauri-apps/api/window';
 import { invoke } from '@tauri-apps/api/core';
-import { X, LayoutList } from 'lucide-vue-next';
+import { listen, emit } from '@tauri-apps/api/event';
+import { X, LayoutList, Plus } from 'lucide-vue-next';
 import ListItem from '../components/ListItem.vue';
 import {
   loadMainTasks,
@@ -21,11 +22,13 @@ import { defaultLightSettings, defaultDarkSettings } from '../types';
 
 const settings = ref<AppSettings>({ ...defaultLightSettings });
 const tasks = ref<MainTask[]>([]);
-const newTaskContent = ref('');
 const searchKeyword = ref('');
 
 // 搜索框焦点状态
 const isSearchFocused = ref(false);
+
+// 新增模式
+const isAdding = ref(false);
 
 // DOM Refs
 const searchInputRef = ref<HTMLInputElement | null>(null);
@@ -82,17 +85,38 @@ async function loadTasks() {
   }
 }
 
-async function handleAddTask() {
-  const content = newTaskContent.value.trim();
-  if (!content) return;
+// 通知其他窗口刷新数据
+async function notifyRefresh() {
+  try {
+    await emit('schedule-changed', {});
+  } catch (error) {
+    console.error('Failed to notify refresh:', error);
+  }
+}
+
+function handleStartAdding() {
+  isAdding.value = true;
+}
+
+async function handleAddTask(content: string) {
+  const trimmed = content.trim();
+  if (!trimmed) {
+    isAdding.value = false;
+    return;
+  }
 
   try {
-    await saveMainTask(content);
-    newTaskContent.value = '';
+    await saveMainTask(trimmed);
     await loadTasks();
+    await notifyRefresh();
   } catch (error) {
     console.error('Failed to add task:', error);
   }
+  isAdding.value = false;
+}
+
+function handleCancelAdd() {
+  isAdding.value = false;
 }
 
 async function handleToggleDone(task: MainTask) {
@@ -100,6 +124,7 @@ async function handleToggleDone(task: MainTask) {
   try {
     await toggleMainTaskStatus(task.id, !task.is_done);
     await loadTasks();
+    await notifyRefresh();
   } catch (error) {
     console.error('Failed to toggle task:', error);
   }
@@ -109,6 +134,7 @@ async function handleDeleteTask(taskId: number) {
   try {
     await deleteMainTask(taskId);
     await loadTasks();
+    await notifyRefresh();
   } catch (error) {
     console.error('Failed to delete task:', error);
   }
@@ -125,6 +151,7 @@ async function handleUpdateTask(task: MainTask, newContent: string) {
   try {
     await updateMainTaskContent(task.id, trimmed);
     await loadTasks();
+    await notifyRefresh();
   } catch (error) {
     console.error('Failed to update task:', error);
   }
@@ -135,6 +162,7 @@ async function handleUpdateTaskDate(task: MainTask, newDate: string) {
   try {
     await updateMainTaskCreateDate(task.id, newDate);
     await loadTasks();
+    await notifyRefresh();
   } catch (error) {
     console.error('Failed to update task date:', error);
   }
@@ -177,11 +205,20 @@ onMounted(async () => {
   await loadTasks();
   window.addEventListener('storage', handleSettingsUpdate);
 
+  // 监听来自其他窗口的数据变更事件
+  const unlisten = await listen('schedule-changed', async () => {
+    await loadTasks();
+  });
+
   await nextTick();
   requestAnimationFrame(async () => {
     const win = getCurrentWindow();
     await win.show();
     await win.setFocus();
+  });
+
+  onUnmounted(() => {
+    unlisten();
   });
 });
 
@@ -231,6 +268,12 @@ onUnmounted(() => {
           />
         </div>
 
+        <button @click="handleStartAdding"
+          class="shrink-0 w-6 h-6 flex items-center justify-center rounded transition-all opacity-0 group-hover:opacity-100 hover:bg-black/10 dark:hover:bg-white/10 active:scale-95"
+          :style="{ color: 'var(--theme-text)' }">
+          <Plus class="w-4 h-4" />
+        </button>
+
         <button @click="handleClose"
           class="close-btn shrink-0 w-6 h-6 flex items-center justify-center rounded transition-all opacity-0 group-hover:opacity-100 hover:bg-black/10 dark:hover:bg-white/10 active:scale-95"
           :style="{ color: 'var(--theme-text)' }">
@@ -240,20 +283,14 @@ onUnmounted(() => {
 
       <div class="flex-1 overflow-y-auto custom-scrollbar px-3 pt-2 pb-3">
         <TransitionGroup name="list" tag="div" class="space-y-2">
-          <div key="inline-add-task"
-            class="note-item group flex items-start gap-2.5 px-3 py-2.5 rounded-lg transition-all duration-300"
-            :style="{
-              backgroundColor: 'var(--theme-cell)',
-              border: '1px solid var(--theme-border)',
-            }"
-            @click.stop>
-            <div class="note-dot shrink-0 w-1.5 h-1.5 rounded-full mt-[7px] transition-all duration-200"
-              :style="{ backgroundColor: 'var(--theme-text-muted)', opacity: 0.4 }"></div>
-            <input v-model="newTaskContent" type="text" placeholder="..."
-              class="inline-add-input flex-1 w-full bg-transparent p-0 text-[13px] leading-relaxed outline-none transition-all placeholder:transition-opacity focus:placeholder:opacity-40 selection:bg-[var(--theme-primary-alpha)] caret-[var(--theme-text)]"
-              :style="{ color: 'var(--theme-text)' }" @keydown.enter="handleAddTask"
-              @keydown.escape="newTaskContent = ''" />
-          </div>
+          <ListItem
+            v-if="isAdding"
+            key="add-new-task"
+            is-add-mode
+            @add="handleAddTask"
+            @cancel="handleCancelAdd"
+            @click.stop
+          />
 
           <ListItem
             v-for="task in tasks"
@@ -261,6 +298,7 @@ onUnmounted(() => {
             :title="task.content"
             :date="task.create_date"
             :is-done="task.is_done"
+            center-calendar
             @update:title="(val) => handleUpdateTask(task, val)"
             @update:date="(val) => handleUpdateTaskDate(task, val)"
             @delete="handleDeleteTask(task.id!)"
@@ -269,7 +307,7 @@ onUnmounted(() => {
           />
         </TransitionGroup>
 
-        <div v-if="tasks.length === 0" class="flex flex-col items-center justify-center py-20 pointer-events-none transition-opacity">
+        <div v-if="tasks.length === 0 && !isAdding" class="flex flex-col items-center justify-center py-20 pointer-events-none transition-opacity">
           <div class="p-4 rounded-full" :style="{ backgroundColor: 'var(--theme-cell)' }">
             <LayoutList class="w-8 h-8 opacity-20" :style="{ color: 'var(--theme-text)' }" />
           </div>
@@ -316,10 +354,6 @@ onUnmounted(() => {
 input, textarea {
   -webkit-appearance: none;
   appearance: none;
-}
-
-.inline-add-input::placeholder {
-  color: var(--theme-text-muted);
 }
 
 /* 列表动画 */

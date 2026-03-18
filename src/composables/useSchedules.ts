@@ -209,8 +209,8 @@ export function useSchedules() {
     refreshSchedules();
   }
 
-  function selectDate(day: number): void {
-    currentDate.value = currentDate.value.date(day);
+  function selectDate(date: dayjs.Dayjs): void {
+    currentDate.value = date;
     refreshSchedules();
   }
 

@@ -2,6 +2,7 @@
 import { ref, watch, computed, nextTick, onUnmounted } from 'vue';
 import dayjs from 'dayjs';
 import type { BatchTaskConfig } from '../../types';
+import MiniCalendar from '../calendar/MiniCalendar.vue';
 
 const props = defineProps<{
   visible: boolean;
@@ -20,6 +21,12 @@ const title = ref('');
 const description = ref('');
 
 const inputRef = ref<HTMLInputElement | null>(null);
+
+// 日历相关
+const showStartCalendar = ref(false);
+const showEndCalendar = ref(false);
+const startCalendarDate = ref(dayjs());
+const endCalendarDate = ref(dayjs());
 
 // 计算预览信息
 const previewInfo = computed(() => {
@@ -82,6 +89,32 @@ const handleConfirm = () => {
 };
 
 const handleCancel = () => emit('cancel');
+
+// 日历操作
+function openStartCalendar() {
+  startCalendarDate.value = dayjs(startDate.value);
+  showStartCalendar.value = true;
+}
+
+function openEndCalendar() {
+  endCalendarDate.value = dayjs(endDate.value);
+  showEndCalendar.value = true;
+}
+
+function handleStartSelect(date: dayjs.Dayjs) {
+  startDate.value = date.format('YYYY-MM-DD');
+  showStartCalendar.value = false;
+}
+
+function handleEndSelect(date: dayjs.Dayjs) {
+  endDate.value = date.format('YYYY-MM-DD');
+  showEndCalendar.value = false;
+}
+
+function formatDateDisplay(dateStr: string): string {
+  if (!dateStr) return '';
+  return dayjs(dateStr).format('M月D日');
+}
 
 const handleKeydown = (e: KeyboardEvent) => {
   const isCmdOrCtrl = e.ctrlKey || e.metaKey;
@@ -147,23 +180,41 @@ onUnmounted(() => { document.body.style.overflow = ''; });
             <div class="grid grid-cols-2 gap-3">
               <div>
                 <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">起始日期</label>
-                <input
-                  v-model="startDate"
-                  type="date"
-                  class="w-full px-3 py-2 text-sm bg-white/60 dark:bg-black/30 border border-gray-200 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none text-gray-900 dark:text-white"
-                  @keydown="handleKeydown"
-                />
+                <button
+                  type="button"
+                  @click="openStartCalendar"
+                  class="w-full px-3 py-2 text-sm bg-white/60 dark:bg-black/30 border border-gray-200 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none text-left text-gray-900 dark:text-white"
+                >
+                  {{ formatDateDisplay(startDate) || '选择日期' }}
+                </button>
               </div>
               <div>
                 <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">结束日期</label>
-                <input
-                  v-model="endDate"
-                  type="date"
-                  class="w-full px-3 py-2 text-sm bg-white/60 dark:bg-black/30 border border-gray-200 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none text-gray-900 dark:text-white"
-                  @keydown="handleKeydown"
-                />
+                <button
+                  type="button"
+                  @click="openEndCalendar"
+                  class="w-full px-3 py-2 text-sm bg-white/60 dark:bg-black/30 border border-gray-200 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none text-left text-gray-900 dark:text-white"
+                >
+                  {{ formatDateDisplay(endDate) || '选择日期' }}
+                </button>
               </div>
             </div>
+
+            <!-- MiniCalendar 弹窗 -->
+            <MiniCalendar
+              v-if="showStartCalendar"
+              v-model:current-date="startCalendarDate"
+              :visible="showStartCalendar"
+              @select="handleStartSelect"
+              @close="showStartCalendar = false"
+            />
+            <MiniCalendar
+              v-if="showEndCalendar"
+              v-model:current-date="endCalendarDate"
+              :visible="showEndCalendar"
+              @select="handleEndSelect"
+              @close="showEndCalendar = false"
+            />
 
             <!-- 循环设置 -->
             <div>

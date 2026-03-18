@@ -3,6 +3,7 @@ import { ref, onMounted, nextTick, computed, onUnmounted, watch } from 'vue';
 import { getCurrentWindow } from '@tauri-apps/api/window';
 import { X, Trash2, FileText, StickyNote, ChevronLeft, Plus, PenLine } from 'lucide-vue-next';
 import ListItem from '../components/ListItem.vue';
+import MiniCalendar from '../components/calendar/MiniCalendar.vue';
 import {
   loadNotes,
   searchNotes,
@@ -16,6 +17,7 @@ import { initDatabase } from '../composables/db/connection';
 import { hexToRgba, adjustBrightness } from '../utils/color';
 import type { AppSettings } from '../types';
 import { defaultLightSettings, defaultDarkSettings } from '../types';
+import dayjs from 'dayjs';
 
 const settings = ref<AppSettings>({ ...defaultLightSettings });
 const notes = ref<Note[]>([]);
@@ -33,6 +35,13 @@ const isEditing = ref(false);
 
 // 搜索框焦点状态
 const isSearchFocused = ref(false);
+
+// 追踪是否是新创建的备忘录（用于自动删除空备忘录）
+const isNewNote = ref(false);
+
+// 日历相关
+const showCalendar = ref(false);
+const calendarCurrentDate = ref(dayjs());
 
 // 防抖保存
 let saveTimeout: ReturnType<typeof setTimeout> | null = null;
@@ -94,24 +103,32 @@ async function handleSelectNote(note: Note) {
   currentNote.value = note;
   title.value = note.title;
   content.value = note.content;
+  isNewNote.value = false;
   isEditing.value = true;
 }
 
 // 返回列表模式
-function handleBackToList() {
+async function handleBackToList() {
+  // 检查是否是新建且内容为空，如果是则删除
+  if (isNewNote.value && currentNote.value?.id && !title.value.trim() && !content.value.trim()) {
+    await deleteNote(currentNote.value.id);
+    isNewNote.value = false;
+  }
   isEditing.value = false;
   setTimeout(() => {
     currentNote.value = null;
   }, 300);
+  await loadNotesList();
 }
 
 // 新建备忘录并直接进入编辑
 async function handleNewNote() {
-  const id = await createNote('', ''); 
+  const id = await createNote('', '');
   if (id) {
     await loadNotesList();
     const newNote = notes.value.find(n => n.id === id);
     if (newNote) {
+      isNewNote.value = true;
       handleSelectNote(newNote);
       await nextTick();
       titleInputRef.value?.focus();
@@ -193,6 +210,40 @@ watch(isSearchFocused, (focused) => {
     });
   }
 });
+
+// 主题模式计算
+const themeMode = computed(() => settings.value.theme_mode);
+
+const overlayColor = computed(() => {
+  return themeMode.value === 'dark' ? 'rgba(0, 0, 0, 0.6)' : 'rgba(0, 0, 0, 0.4)';
+});
+
+// 格式化日期为 MM-DD
+function formatDate(dateStr?: string): string {
+  return dateStr ? dayjs(dateStr).format('MM-DD') : '';
+}
+
+// 打开日历选择器
+function handleDateClick() {
+  calendarCurrentDate.value = currentNote.value?.create_date ? dayjs(currentNote.value.create_date) : dayjs();
+  showCalendar.value = true;
+}
+
+// 选择日期
+async function handleDateSelect(date: dayjs.Dayjs) {
+  if (currentNote.value?.id) {
+    const newDate = date.format('YYYY-MM-DD');
+    await updateNoteCreateDate(currentNote.value.id, newDate);
+    currentNote.value.create_date = newDate;
+    await loadNotesList();
+  }
+  showCalendar.value = false;
+}
+
+// 关闭日历
+function closeCalendar() {
+  showCalendar.value = false;
+}
 
 async function handleClose() {
   const win = getCurrentWindow();
@@ -286,17 +337,20 @@ onUnmounted(() => {
             <ChevronLeft class="w-4 h-4" />
           </button>
 
-          <div class="flex-1 min-w-0 flex justify-center items-center h-6"
+          <!-- 使用绝对定位实现标题真正居中 -->
+          <div class="flex-1 min-w-0 relative h-6"
                @mousedown="handleIconDrag">
-            <input
-              ref="titleInputRef"
-              v-model="title"
-              type="text"
-              placeholder="Aa"
-              class="bg-transparent outline-none text-[14px] font-medium leading-relaxed text-center selection:bg-[var(--theme-primary-alpha)] max-w-[200px] caret-[var(--theme-text)]"
-              :style="{ color: 'var(--theme-text)' }"
-              @mousedown.stop
-            />
+            <div class="absolute inset-0 flex justify-center items-center pointer-events-none">
+              <input
+                ref="titleInputRef"
+                v-model="title"
+                type="text"
+                placeholder="Aa"
+                class="bg-transparent outline-none text-[14px] font-medium leading-relaxed text-center selection:bg-[var(--theme-primary-alpha)] max-w-[200px] caret-[var(--theme-text)] pointer-events-auto"
+                :style="{ color: 'var(--theme-text)' }"
+                @mousedown.stop
+              />
+            </div>
           </div>
 
           <button @click="handleDeleteNote"
@@ -325,6 +379,7 @@ onUnmounted(() => {
                   :title="note.title"
                   :preview="note.content"
                   :date="note.create_date"
+                  center-calendar
                   @update:title="(val) => handleUpdateNoteTitle(note, val)"
                   @update:date="(val) => handleUpdateNoteDate(note, val)"
                   @delete="handleDeleteNoteFromList(note)"
@@ -342,7 +397,7 @@ onUnmounted(() => {
 
           <div v-else class="absolute inset-0 flex flex-col w-full h-full z-10">
             <div class="flex-1 overflow-y-auto custom-scrollbar px-3 pt-2 pb-3">
-              <div class="rounded-lg p-4 flex flex-col min-h-full shadow-sm"
+              <div class="rounded-lg flex flex-col min-h-full shadow-sm"
                    :style="{
                      backgroundColor: 'var(--theme-cell)',
                      border: '1px solid var(--theme-border)',
@@ -350,18 +405,32 @@ onUnmounted(() => {
                 <textarea
                   v-model="content"
                   placeholder="..."
-                  class="w-full flex-1 bg-transparent resize-none outline-none text-[14px] leading-[1.8] custom-scrollbar placeholder:transition-opacity focus:placeholder:opacity-40 selection:bg-[var(--theme-primary-alpha)]"
+                  class="w-full flex-1 bg-transparent resize-none outline-none text-[14px] leading-[1.8] custom-scrollbar placeholder:transition-opacity focus:placeholder:opacity-40 selection:bg-[var(--theme-primary-alpha)] p-4"
                   :style="{ color: 'var(--theme-text-secondary)' }"
                 ></textarea>
 
-                <div class="mt-3 flex justify-end shrink-0">
-                  <div class="flex items-center gap-1.5 px-2 py-1 rounded text-[12px] opacity-40 transition-opacity" 
-                       :style="{ color: 'var(--theme-text-muted)', backgroundColor: 'var(--theme-bg)' }">
-                    <PenLine class="w-3 h-3" />
-                    <span>{{ content.length }}</span>
-                  </div>
-                </div>
+              </div>
+            </div>
 
+            <!-- 底栏：左下角日期，右下角字数 -->
+            <div class="shrink-0 px-3 pb-3">
+              <div class="rounded-lg flex items-center justify-between px-3 py-2"
+                   :style="{
+                     backgroundColor: 'var(--theme-cell)',
+                     border: '1px solid var(--theme-border)',
+                   }">
+                <button
+                  @click="handleDateClick"
+                  class="text-[12px] opacity-50 hover:opacity-100 transition-opacity"
+                  :style="{ color: 'var(--theme-text-muted)' }"
+                >
+                  {{ formatDate(currentNote?.create_date) }}
+                </button>
+                <div class="flex items-center gap-1.5 text-[12px] opacity-50"
+                     :style="{ color: 'var(--theme-text-muted)' }">
+                  <PenLine class="w-3 h-3" />
+                  <span>{{ content.length }}</span>
+                </div>
               </div>
             </div>
           </div>
@@ -369,6 +438,29 @@ onUnmounted(() => {
         </Transition>
       </div>
     </div>
+
+    <!-- 日历选择器遮罩层 -->
+    <Teleport to="body">
+      <Transition name="fade">
+        <div
+          v-if="showCalendar"
+          class="fixed inset-0 z-[10000]"
+          :style="{ backgroundColor: overlayColor }"
+          @click.stop="closeCalendar"
+          @mousedown.stop
+          @contextmenu.prevent
+        >
+        </div>
+      </Transition>
+      <MiniCalendar
+        v-if="showCalendar"
+        v-model:current-date="calendarCurrentDate"
+        :visible="showCalendar"
+        centered
+        @select="handleDateSelect"
+        @close="closeCalendar"
+      />
+    </Teleport>
   </div>
 </template>
 
@@ -443,5 +535,13 @@ input, textarea {
 .view-slide-leave-to {
   opacity: 0;
   transform: translateX(-16px) scale(0.99);
+}
+
+/* 日历遮罩动画 */
+.fade-enter-active, .fade-leave-active {
+  transition: opacity 0.2s ease;
+}
+.fade-enter-from, .fade-leave-to {
+  opacity: 0;
 }
 </style>
