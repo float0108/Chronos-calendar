@@ -23,6 +23,9 @@ import {
   importSchedules,
   importCellColors,
   clearAllData,
+  exportAllData,
+  importAndMergeData,
+  clearAllTables,
 } from './db';
 
 // 保持 db ref 的导出（向后兼容）
@@ -49,6 +52,9 @@ export function useDatabase() {
     importSchedules,
     importCellColors,
     clearAllData,
+    exportAllData,
+    importAndMergeData,
+    clearAllTables,
   };
 }
 

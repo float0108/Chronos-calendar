@@ -20,7 +20,7 @@ export async function loadNotes(): Promise<Note[]> {
   try {
     const notes = await db.select<Note[]>(`
       SELECT * FROM notes
-      ORDER BY id DESC
+      ORDER BY create_date DESC, id DESC
     `);
     return notes;
   } catch (error) {
@@ -45,7 +45,7 @@ export async function searchNotes(keyword: string): Promise<Note[]> {
     const notes = await db.select<Note[]>(`
       SELECT * FROM notes
       WHERE title LIKE $1 OR content LIKE $1
-      ORDER BY id DESC
+      ORDER BY create_date DESC, id DESC
     `, [searchTerm]);
     return notes;
   } catch (error) {

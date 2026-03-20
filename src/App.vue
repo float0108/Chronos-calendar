@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted } from 'vue';
+import { ref, onMounted, onUnmounted, computed } from 'vue';
 import dayjs from 'dayjs';
 import { invoke } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
@@ -7,20 +7,20 @@ import CalendarHeader from './components/calendar/CalendarHeader.vue';
 import CalendarGrid from './components/calendar/CalendarGrid.vue';
 import ResizeHandles from './components/ui/ResizeHandles.vue';
 import ToastContainer from './components/ui/ToastContainer.vue';
-import ImportDialog from './components/dialogs/ImportDialog.vue';
 import DescriptionDialog from './components/dialogs/DescriptionDialog.vue';
 import BatchTaskDialog from './components/dialogs/BatchTaskDialog.vue';
 import { useDatabase } from './composables/useDatabase';
 import { useSchedules } from './composables/useSchedules';
 import { useSettings } from './composables/useSettings';
-import { useImport } from './composables/useImport';
 import { useScheduleUndo } from './composables/useScheduleUndo';
 import { useFonts } from './composables/useFonts';
 import { useContextMenu } from './composables/useContextMenu';
 import { closeWindow, setWindowLocked } from './utils/window';
+import { exportDatabaseBackup, exportAsZip, importFromJson } from './utils/export';
+import { useToast } from './composables/useToast';
 import type { ViewMode, Schedule, BatchTaskConfig } from './types';
 
-const { initDatabase } = useDatabase();
+const { initDatabase, exportAllData, importAndMergeData } = useDatabase();
 const {
   schedules,
   currentDate,
@@ -34,8 +34,6 @@ const {
   nextMonth,
   goToToday,
   selectDate,
-  exportAllSchedules,
-  importSchedulesFromData,
   toggleScheduleStatus,
   saveSchedule,
   updateScheduleDescription,
@@ -44,15 +42,16 @@ const {
   updateScheduleFatherTask,
   batchAddSchedules,
 } = useSchedules();
-const { currentSettings, initSettings } = useSettings();
-const { showImportDialog, pendingImportRecordCount, handleImport: handleImportData, performImport: performImportData, cancelImport } = useImport();
+const { currentSettings, initSettings, saveSettings, getSetting } = useSettings();
+const { showSuccess, showError } = useToast();
 const { loadFonts } = useFonts();
-const { pushAction, handleToggleDone: toggleDoneWithUndo, handleUndo: undo, handleRedo: redo, canUndo, canRedo } = useScheduleUndo(
+const { pushAction, handleToggleDone: toggleDoneWithUndo, handleMoveSchedule: moveScheduleWithUndo, handleUndo: undo, handleRedo: redo, canUndo, canRedo } = useScheduleUndo(
   schedules,
   toggleScheduleStatus,
   refreshSchedules,
   updateScheduleLines,
-  saveSchedule
+  saveSchedule,
+  updateScheduleDate
 );
 const { contextMenu, contextMenuStyle, showContextMenu, hideContextMenu, getSelectedDate, getColorOptions } = useContextMenu();
 
@@ -65,6 +64,8 @@ const editingSchedule = ref<Schedule | null>(null);
 const isLocked = ref(false);
 const isBoardVisible = ref(false);
 const isNoteVisible = ref(false);
+
+const hideWeekends = computed(() => getSetting('hide_weekends') ?? false);
 
 function closeOverlays() {
   showMenu.value = false;
@@ -91,26 +92,71 @@ async function quitApp() {
   await closeWindow();
 }
 
-async function handleExport() {
+// 导出备份（JSON 格式）
+async function handleExportBackup() {
   showMenu.value = false;
-  await exportAllSchedules();
+  try {
+    const data = await exportAllData();
+    const success = await exportDatabaseBackup(data);
+    if (success) {
+      showSuccess('备份导出成功');
+    }
+  } catch (error) {
+    const message = error instanceof Error ? error.message : '导出失败，请重试';
+    showError(message);
+  }
 }
 
-async function handleImport() {
+// 导出压缩包（ZIP 格式，包含 CSV）
+async function handleExportZip() {
   showMenu.value = false;
-  await handleImportData(importSchedulesFromData);
+  try {
+    const data = await exportAllData();
+    const success = await exportAsZip(data);
+    if (success) {
+      showSuccess('压缩包导出成功');
+    }
+  } catch (error) {
+    const message = error instanceof Error ? error.message : '导出失败，请重试';
+    showError(message);
+  }
 }
 
-async function handleImportMerge() {
-  await performImportData('merge', importSchedulesFromData);
+// 导入备份（JSON 格式）
+async function handleImportBackup() {
+  showMenu.value = false;
+  try {
+    const data = await importFromJson();
+    if (!data) return; // 用户取消
+
+    const stats = await importAndMergeData(data);
+    await refreshSchedules();
+
+    const messages = [];
+    if (stats.schedules.inserted > 0 || stats.schedules.updated > 0) {
+      messages.push(`日程: 新增 ${stats.schedules.inserted}, 更新 ${stats.schedules.updated}`);
+    }
+    if (stats.mainTasks.inserted > 0 || stats.mainTasks.updated > 0) {
+      messages.push(`主任务: 新增 ${stats.mainTasks.inserted}, 更新 ${stats.mainTasks.updated}`);
+    }
+    if (stats.notes.inserted > 0 || stats.notes.updated > 0) {
+      messages.push(`备忘录: 新增 ${stats.notes.inserted}, 更新 ${stats.notes.updated}`);
+    }
+    if (stats.cellMetadata.inserted > 0 || stats.cellMetadata.updated > 0) {
+      messages.push(`颜色标记: 新增 ${stats.cellMetadata.inserted}, 更新 ${stats.cellMetadata.updated}`);
+    }
+
+    showSuccess(messages.length > 0 ? `导入成功\n${messages.join('\n')}` : '导入成功：无数据变化');
+  } catch (error) {
+    const message = error instanceof Error ? error.message : '导入失败，请重试';
+    showError(message);
+  }
 }
 
-async function handleImportOverwrite() {
-  await performImportData('overwrite', importSchedulesFromData);
-}
-
-function handleImportCancel() {
-  cancelImport();
+// 同步功能（预留）
+function handleSync() {
+  showMenu.value = false;
+  showError('同步功能开发中，敬请期待');
 }
 
 function handleReset(date: string, content: string | null) {
@@ -191,6 +237,20 @@ function handleDescriptionCancel() {
   editingSchedule.value = null;
 }
 
+async function handleScheduleDrop(targetDate: string, scheduleId: number, sourceDate: string, viewMode?: ViewMode) {
+  // 如果拖到同一个日期，不做任何操作
+  if (targetDate === sourceDate) return;
+
+  try {
+    // todo 模式：修改 create_date
+    // done 模式：修改 done_date
+    const field = viewMode === 'done' ? 'done_date' : 'create_date';
+    await moveScheduleWithUndo(scheduleId, field, sourceDate, targetDate);
+  } catch (error) {
+    console.error('Failed to move schedule:', error);
+  }
+}
+
 function handleOpenBatchTask() {
   if (isLocked.value) return;
   showBatchTaskDialog.value = true;
@@ -252,6 +312,14 @@ async function toggleNote() {
   localStorage.setItem('chronos_note_visible', String(isVisible));
 }
 
+function toggleWeekends() {
+  showMenu.value = false;
+  const currentHideWeekends = getSetting('hide_weekends') ?? false;
+  if (currentSettings.value) {
+    saveSettings({ ...currentSettings.value, hide_weekends: !currentHideWeekends });
+  }
+}
+
 function handleKeyDown(event: KeyboardEvent) {
   if (isLocked.value) return;
   if (event.key === 'PageUp') {
@@ -310,6 +378,7 @@ onUnmounted(() => {
       :view-mode="viewMode"
       :is-board-visible="isBoardVisible"
       :is-note-visible="isNoteVisible"
+      :hide-weekends="hideWeekends"
       @prev-month="prevMonth()"
       @next-month="nextMonth()"
       @go-today="goToToday()"
@@ -318,8 +387,10 @@ onUnmounted(() => {
       @select-date="handleSelectDate"
       @settings="openSettings"
       @quit="quitApp"
-      @export="handleExport"
-      @import="handleImport"
+      @export-backup="handleExportBackup"
+      @export-zip="handleExportZip"
+      @import-backup="handleImportBackup"
+      @sync="handleSync"
       @toggle-lock="toggleLock"
       @undo="handleUndo"
       @redo="handleRedo"
@@ -327,6 +398,7 @@ onUnmounted(() => {
       @open-batch-task="handleOpenBatchTask"
       @toggle-board="toggleBoard"
       @toggle-note="toggleNote"
+      @toggle-weekends="toggleWeekends"
     />
 
     <CalendarGrid
@@ -341,6 +413,7 @@ onUnmounted(() => {
       @contextmenu="handleContextMenu"
       @toggle-done="handleToggleDone"
       @edit-description="handleEditDescription"
+      @schedule-drop="handleScheduleDrop"
     />
 
     <div
@@ -371,14 +444,6 @@ onUnmounted(() => {
         </button>
       </div>
     </Teleport>
-
-    <ImportDialog
-      :visible="showImportDialog"
-      :record-count="pendingImportRecordCount"
-      @merge="handleImportMerge"
-      @overwrite="handleImportOverwrite"
-      @cancel="handleImportCancel"
-    />
 
     <DescriptionDialog
       :visible="showDescriptionDialog"

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ChevronLeft, ChevronRight, MoreVertical, Lock, Unlock, Undo2, Redo2, ListTodo, CheckCircle2, CalendarPlus, Kanban, StickyNote } from 'lucide-vue-next';
+import { ChevronLeft, ChevronRight, MoreVertical, Lock, Unlock, Undo2, Redo2, ListTodo, CheckCircle2, Kanban, StickyNote } from 'lucide-vue-next';
 import dayjs from 'dayjs';
 import MiniCalendar from './MiniCalendar.vue';
 import DropdownMenu from '../ui/DropdownMenu.vue';
@@ -17,6 +17,7 @@ defineProps<{
   viewMode: ViewMode;
   isBoardVisible?: boolean;
   isNoteVisible?: boolean;
+  hideWeekends: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -29,14 +30,17 @@ const emit = defineEmits<{
   (e: 'settings'): void;
   (e: 'quit'): void;
   (e: 'toggleLock'): void;
-  (e: 'export'): void;
-  (e: 'import'): void;
+  (e: 'exportBackup'): void;
+  (e: 'exportZip'): void;
+  (e: 'importBackup'): void;
+  (e: 'sync'): void;
   (e: 'undo'): void;
   (e: 'redo'): void;
   (e: 'switchViewMode', mode: ViewMode): void;
-  (e: 'openBatchTask'): void;
   (e: 'toggleBoard'): void;
   (e: 'toggleNote'): void;
+  (e: 'toggleWeekends'): void;
+  (e: 'openBatchTask'): void;
 }>();
 
 function handlePrev() { emit('prevMonth'); }
@@ -49,14 +53,17 @@ function handleMiniCalendarClose() { emit('toggleMiniCalendar'); }
 function handleSettings() { emit('settings'); }
 function handleQuit() { emit('quit'); }
 function handleToggleLock() { emit('toggleLock'); }
-function handleExport() { emit('export'); }
-function handleImport() { emit('import'); }
+function handleExportBackup() { emit('exportBackup'); }
+function handleExportZip() { emit('exportZip'); }
+function handleImportBackup() { emit('importBackup'); }
+function handleSync() { emit('sync'); }
 function handleUndo() { emit('undo'); }
 function handleRedo() { emit('redo'); }
 function handleSwitchViewMode(mode: ViewMode) { emit('switchViewMode', mode); }
-function handleOpenBatchTask() { emit('openBatchTask'); }
 function handleToggleBoard() { emit('toggleBoard'); }
 function handleToggleNote() { emit('toggleNote'); }
+function handleToggleWeekends() { emit('toggleWeekends'); }
+function handleOpenBatchTask() { emit('openBatchTask'); }
 function handleStartDrag(event: MouseEvent) { startWindowDrag(event); }
 </script>
 
@@ -139,14 +146,6 @@ function handleStartDrag(event: MouseEvent) { startWindowDrag(event); }
     </div>
 
     <div class="flex items-center gap-1.5 relative z-10 flex-1 justify-end">
-      <button @mousedown.stop @click="handleOpenBatchTask"
-        class="p-1.5 rounded-lg text-gray-600 hover:text-[var(--primary)] hover:bg-[var(--primary-light)] dark:text-gray-400 transition-colors"
-        :class="{ 'opacity-50 pointer-events-none': isLocked }" :disabled="isLocked" title="批量添加任务">
-        <CalendarPlus class="w-4 h-4" />
-      </button>
-
-      <div class="w-px h-4 bg-gray-300 dark:bg-gray-600 mx-0.5"></div>
-
       <div class="flex items-center gap-0.5">
         <button @mousedown.stop @click="handleUndo"
           class="p-1.5 rounded-lg text-gray-600 hover:text-gray-900 hover:bg-[var(--hover-bg)] dark:text-gray-400 dark:hover:text-gray-200 transition-colors"
@@ -176,8 +175,8 @@ function handleStartDrag(event: MouseEvent) { startWindowDrag(event); }
           <MoreVertical class="w-4 h-4" />
         </button>
 
-        <DropdownMenu :visible="showMenu" @settings="handleSettings" @quit="handleQuit" @export="handleExport"
-          @import="handleImport" />
+        <DropdownMenu :visible="showMenu" :hide-weekends="hideWeekends" :is-locked="isLocked" @settings="handleSettings" @quit="handleQuit" @exportBackup="handleExportBackup"
+          @exportZip="handleExportZip" @importBackup="handleImportBackup" @sync="handleSync" @toggleWeekends="handleToggleWeekends" @openBatchTask="handleOpenBatchTask" />
       </div>
     </div>
   </div>

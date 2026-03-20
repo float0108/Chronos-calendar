@@ -49,3 +49,10 @@ export {
   deleteNote,
   type Note,
 } from './note';
+export {
+  exportAllData,
+  importAndMergeData,
+  clearAllTables,
+  resetAutoIncrement,
+  type BackupData,
+} from './backup';

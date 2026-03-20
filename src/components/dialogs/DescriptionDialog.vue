@@ -24,7 +24,7 @@ const doneDateValue = ref('');
 const fatherTaskId = ref<number | null>(null);
 const scheduleEditorRef = ref<InstanceType<typeof ScheduleEditor> | null>(null);
 
-// 主题样式
+// 为 ScheduleEditor 提供主题变量
 const themeStyle = computed(() => {
   const s = currentSettings.value;
   if (!s) return {};
@@ -34,12 +34,9 @@ const themeStyle = computed(() => {
     '--theme-text': s.text_color,
     '--theme-text-muted': adjustBrightness(s.text_color, 50),
     '--theme-primary': s.primary_color,
-    '--theme-border': s.cell_border_color || (s.theme_mode === 'dark' ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)'),
+    '--theme-border': s.cell_border_color || (s.theme_mode === 'dark' ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.05)'),
   };
 });
-
-// 暗色模式
-const isDark = computed(() => currentSettings.value?.theme_mode === 'dark');
 
 watch(() => props.visible, (newVal) => {
   if (newVal) {
@@ -102,21 +99,13 @@ onUnmounted(() => {
       @click.self="handleCancel"
     >
       <Transition name="pop">
-        <div
-          class="w-full max-w-[320px] rounded-2xl shadow-lg flex flex-col max-h-[85vh] overflow-hidden"
-          :class="isDark ? 'bg-gray-800/90 backdrop-blur-2xl border border-gray-700/50' : 'bg-white/90 backdrop-blur-2xl border border-gray-200/50'"
-          :style="themeStyle"
-        >
+        <div class="dialog-content w-full max-w-[320px] rounded-2xl shadow-lg flex flex-col max-h-[85vh] overflow-hidden" :style="themeStyle">
 
-          <div
-            class="px-4 pt-4 pb-2 shrink-0"
-            :class="isDark ? 'border-b border-gray-700/50' : 'border-b border-gray-100'"
-          >
+          <div class="dialog-header px-4 pt-4 pb-2 shrink-0">
             <input
               v-model="content"
               type="text"
-              class="w-full text-[14px] font-semibold tracking-tight bg-transparent border-none focus:outline-none focus:ring-0"
-              :class="isDark ? 'text-white placeholder:text-gray-500' : 'text-gray-900 placeholder:text-gray-400'"
+              class="dialog-input w-full text-[14px] font-semibold tracking-tight bg-transparent border-none focus:outline-none focus:ring-0"
               placeholder="输入标题..."
             />
           </div>
@@ -132,6 +121,7 @@ onUnmounted(() => {
               :show-content="false"
               :show-father-task="true"
               :editable-father-task="true"
+              :calendar-centered="true"
               @save="handleSave"
               @cancel="handleCancel"
             />
@@ -144,6 +134,26 @@ onUnmounted(() => {
 </template>
 
 <style scoped>
+.dialog-content {
+  background: var(--glass-bg);
+  backdrop-filter: blur(var(--backdrop-blur)) saturate(var(--backdrop-saturate));
+  -webkit-backdrop-filter: blur(var(--backdrop-blur)) saturate(var(--backdrop-saturate));
+  border: 1px solid var(--border-light);
+  box-shadow: var(--shadow);
+}
+
+.dialog-header {
+  border-bottom: 1px solid var(--border-light);
+}
+
+.dialog-input {
+  color: var(--text-primary);
+}
+
+.dialog-input::placeholder {
+  color: var(--text-muted);
+}
+
 .fade-enter-active, .fade-leave-active { transition: opacity 0.2s ease; }
 .fade-enter-from, .fade-leave-to { opacity: 0; }
 

@@ -22,12 +22,14 @@ const emit = defineEmits<{
   (e: 'contextmenu', event: MouseEvent): void;
   (e: 'toggleDone', schedule: Schedule): void;
   (e: 'editDescription', schedule: Schedule): void;
+  (e: 'scheduleDrop', date: string, event: DragEvent): void;
 }>();
 
 const { saveHistory, saveHistoryDebounced, handleEditUndo, handleEditRedo, resetHistory } = useEditHistory();
 
 const isEditing = ref(false);
 const editLines = ref<EditLine[]>([]);
+const originalLines = ref<EditLine[]>([]); // 保存原始内容用于取消
 const cellRef = ref<HTMLElement | null>(null);
 const textareaRefs = ref<(HTMLTextAreaElement | null)[]>([]);
 const tooltipRef = ref<InstanceType<typeof ScheduleTooltip> | null>(null);
@@ -107,6 +109,9 @@ onUnmounted(() => {
   if (tooltipTimeout) {
     clearTimeout(tooltipTimeout);
   }
+  if (dragOverTimeout.value) {
+    clearTimeout(dragOverTimeout.value);
+  }
   if (unlistenFocus) {
     unlistenFocus();
   }
@@ -121,7 +126,9 @@ function startEditing() {
     tooltipTimeout = null;
   }
 
-  editLines.value = initEditLines();
+  const lines = initEditLines();
+  editLines.value = lines;
+  originalLines.value = JSON.parse(JSON.stringify(lines)); // 保存原始内容
   isEditing.value = true;
   activeLineIndex.value = editLines.value.length - 1;
 
@@ -141,6 +148,11 @@ function saveEdit() {
   if (!isEditing.value) return;
   const validLines = editLines.value.filter(line => line.text.trim() !== '');
   emit('update', dateStr, validLines, props.viewMode);
+  isEditing.value = false;
+  activeLineIndex.value = null;
+}
+
+function cancelEdit() {
   isEditing.value = false;
   activeLineIndex.value = null;
 }
@@ -221,8 +233,15 @@ function handleInputKeydown(event: KeyboardEvent, index: number) {
     return;
   }
 
-  if (event.key === 'Escape') {
+  // Ctrl+S 保存
+  if ((event.ctrlKey || event.metaKey) && event.key === 's') {
+    event.preventDefault();
     saveEdit();
+    return;
+  }
+
+  if (event.key === 'Escape') {
+    cancelEdit();
     return;
   }
 
@@ -326,6 +345,86 @@ function handleScheduleWheel(event: WheelEvent) {
     tooltipRef.value.scrollBy(event.deltaY);
   }
 }
+
+// 拖拽相关状态
+const isDragOver = ref(false);
+const dragOverTimeout = ref<number | null>(null);
+
+function handleDragStart(event: DragEvent, schedule: Schedule) {
+  if (!event.dataTransfer) return;
+
+  // 设置拖拽数据
+  event.dataTransfer.setData('application/json', JSON.stringify({
+    id: schedule.id,
+    content: schedule.content,
+    is_done: schedule.is_done,
+    create_date: schedule.create_date,
+    done_date: schedule.done_date,
+    sourceDate: dateStr,
+    viewMode: props.viewMode
+  }));
+
+  event.dataTransfer.effectAllowed = 'move';
+  event.dataTransfer.dropEffect = 'move';
+
+  // 添加拖拽样式
+  const target = event.target as HTMLElement;
+  target.style.opacity = '0.5';
+}
+
+function handleDragEnd(event: DragEvent) {
+  const target = event.target as HTMLElement;
+  target.style.opacity = '1';
+}
+
+function handleDragOver(event: DragEvent) {
+  event.preventDefault();
+  if (!event.dataTransfer) return;
+
+  // 只接受来自日程条目的拖拽
+  if (event.dataTransfer.types.includes('application/json')) {
+    event.dataTransfer.dropEffect = 'move';
+
+    // 添加拖拽悬停效果
+    if (!isDragOver.value) {
+      isDragOver.value = true;
+    }
+
+    // 清除之前的超时
+    if (dragOverTimeout.value) {
+      clearTimeout(dragOverTimeout.value);
+    }
+
+    // 设置超时以在拖拽离开时移除效果
+    dragOverTimeout.value = window.setTimeout(() => {
+      isDragOver.value = false;
+    }, 100);
+  }
+}
+
+function handleDragLeave(event: DragEvent) {
+  // 检查是否真的离开了单元格
+  const cell = cellRef.value;
+  if (cell && !cell.contains(event.relatedTarget as Node)) {
+    isDragOver.value = false;
+    if (dragOverTimeout.value) {
+      clearTimeout(dragOverTimeout.value);
+      dragOverTimeout.value = null;
+    }
+  }
+}
+
+function handleDrop(event: DragEvent) {
+  event.preventDefault();
+  isDragOver.value = false;
+
+  if (dragOverTimeout.value) {
+    clearTimeout(dragOverTimeout.value);
+    dragOverTimeout.value = null;
+  }
+
+  emit('scheduleDrop', dateStr, event);
+}
 </script>
 
 <template>
@@ -333,8 +432,12 @@ function handleScheduleWheel(event: WheelEvent) {
     'bg-[var(--cell-bg)]': isCurrentMonth && !cellStyle.backgroundColor,
     'bg-[var(--cell-bg-muted)]': !isCurrentMonth && !cellStyle.backgroundColor,
     'today-cell': isToday && !isEditing,
-    'editing shadow-2xl z-30 bg-white dark:bg-gray-800 scale-[1.02] !border-transparent': isEditing
-  }" :style="cellStyle">
+    'editing shadow-2xl z-30 bg-white dark:bg-gray-800 scale-[1.02] !border-transparent': isEditing,
+    'drag-over': isDragOver
+  }" :style="cellStyle"
+    @dragover="handleDragOver"
+    @dragleave="handleDragLeave"
+    @drop="handleDrop">
     <div class="px-2 py-1 shrink-0 flex items-center justify-between select-none">
       <span class="font-semibold w-5 h-5 flex items-center justify-center rounded-full text-xs transition-colors text-[var(--text-primary)]">
         {{ date.date() }}
@@ -352,13 +455,16 @@ function handleScheduleWheel(event: WheelEvent) {
     <div class="flex-1 overflow-hidden px-1 pb-1 flex flex-col relative">
       <div v-if="!isEditing" class="content-area h-full overflow-y-auto no-scrollbar px-1">
         <div v-for="(s, i) in schedules.filter(s => s.id !== -1 && s.content.trim() !== '')" :key="i"
-          class="schedule-item flex items-center gap-1 mb-0.5 text-xs leading-tight transition-all py-0.5 px-1 -mx-1 rounded"
+          class="schedule-item flex items-center gap-1 mb-0.5 text-xs leading-tight transition-all py-0.5 px-1 -mx-1 rounded active:cursor-grabbing"
           :class="(s.is_done && viewMode !== 'done') ? 'text-gray-500 dark:text-gray-400 opacity-90' : 'text-[var(--text-primary)]'"
+          draggable="true"
           @click="handleScheduleClick($event, s)"
           @contextmenu.prevent="handleScheduleContextMenu($event, s)"
           @mouseenter="handleScheduleMouseEnter($event, s)"
           @mouseleave="handleScheduleMouseLeave"
-          @wheel="handleScheduleWheel">
+          @wheel="handleScheduleWheel"
+          @dragstart="handleDragStart($event, s)"
+          @dragend="handleDragEnd">
           <div class="shrink-0 w-1 h-1 rounded-full bg-current opacity-50"></div>
           <span class="content-text flex-1">{{ s.content }}</span>
         </div>
@@ -463,5 +569,21 @@ function handleScheduleWheel(event: WheelEvent) {
 /* 编辑状态始终显示保存按钮 */
 .calendar-cell.editing .edit-btn {
   opacity: 1;
+}
+
+/* 拖拽悬停效果 */
+.calendar-cell.drag-over {
+  outline: 2px dashed var(--primary);
+  outline-offset: -2px;
+  background-color: color-mix(in srgb, var(--primary) 10%, transparent);
+}
+
+/* 拖拽中的条目样式 */
+.schedule-item:active {
+  cursor: grabbing;
+}
+
+.schedule-item.dragging {
+  opacity: 0.5;
 }
 </style>

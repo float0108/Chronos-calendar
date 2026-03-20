@@ -289,7 +289,7 @@ export async function loadSchedulesByFatherTask(fatherTaskId: number): Promise<S
     const schedules = await db.select<Schedule[]>(`
       SELECT * FROM schedules
       WHERE father_task = $1
-      ORDER BY is_done ASC, create_date ASC, id ASC
+      ORDER BY is_done ASC, create_date DESC, id DESC
     `, [fatherTaskId]);
     return schedules;
   } catch (error) {

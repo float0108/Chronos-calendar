@@ -16,9 +16,11 @@ const props = withDefaults(defineProps<{
   showDoneDate?: boolean;
   showFatherTask?: boolean;
   editableFatherTask?: boolean;
+  calendarCentered?: boolean;
 }>(), {
   showCreateDate: true,
   showDoneDate: true,
+  calendarCentered: false,
 });
 
 const emit = defineEmits<{
@@ -233,6 +235,7 @@ defineExpose({ loadTasks });
           <MiniCalendar
             v-model:current-date="createDateValue"
             :visible="showCreateDateCalendar"
+            :centered="calendarCentered"
             @select="handleCreateDateSelect"
             @close="showCreateDateCalendar = false"
           />
@@ -261,6 +264,7 @@ defineExpose({ loadTasks });
           <MiniCalendar
             v-model:current-date="doneDateValue"
             :visible="showDoneDateCalendar"
+            :centered="calendarCentered"
             @select="handleDoneDateSelect"
             @close="showDoneDateCalendar = false"
           />

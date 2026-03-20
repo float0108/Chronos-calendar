@@ -191,7 +191,7 @@ function handleBackToList() {
   isEditing.value = false;
   setTimeout(() => {
     editingSubTask.value = null;
-  }, 300);
+  }, 150);
 }
 
 // 保存详情
@@ -240,30 +240,29 @@ onMounted(async () => {
   loadSettings();
   await initDatabase();
 
-  // 监听来自主窗口的 task_id
-  const unlisten = await getCurrentWindow().listen<number>('set_task_id', async (event) => {
-    const taskId = event.payload;
-    // 重新加载任务列表以确保获取最新数据
-    tasks.value = await loadMainTasks();
-    const task = tasks.value.find(t => t.id === taskId);
-    if (task) {
-      currentTask.value = task;
-      await loadSubTasks();
-    }
-  });
-
-  // 加载所有主任务
+  // 加载所有主任务（只加载一次）
   tasks.value = await loadMainTasks();
 
   // 检查是否有初始化的 task_id
-  const taskId = (window as any).__TASK_ID__;
-  if (taskId) {
-    const task = tasks.value.find(t => t.id === taskId);
+  const initialTaskId = (window as any).__TASK_ID__;
+  if (initialTaskId) {
+    const task = tasks.value.find(t => t.id === initialTaskId);
     if (task) {
       currentTask.value = task;
       await loadSubTasks();
     }
   }
+
+  // 监听来自主窗口的 task_id
+  const unlisten = await getCurrentWindow().listen<number>('set_task_id', async (event) => {
+    const taskId = event.payload;
+    // 直接从已加载的列表中查找，避免重复查询
+    const task = tasks.value.find(t => t.id === taskId);
+    if (task && task.id !== currentTask.value?.id) {
+      currentTask.value = task;
+      await loadSubTasks();
+    }
+  });
 
   window.addEventListener('storage', handleSettingsUpdate);
 
@@ -352,10 +351,10 @@ onUnmounted(() => {
 
       <div class="flex-1 relative overflow-hidden">
         <!-- 列表视图 -->
-        <Transition name="view-slide">
+        <Transition name="view-fade">
           <div v-if="!isEditing" class="absolute inset-0 flex flex-col w-full h-full">
             <div class="flex-1 overflow-y-auto custom-scrollbar px-3 pt-2 pb-3">
-              <TransitionGroup name="list" tag="div" class="space-y-2">
+              <div class="space-y-2">
                 <!-- 新增子任务 -->
                 <ListItem
                   v-if="isAdding"
@@ -381,7 +380,7 @@ onUnmounted(() => {
                   @toggle-done="handleToggleDone(subTask)"
                   @click="handleSelectSubTask(subTask)"
                 />
-              </TransitionGroup>
+              </div>
 
               <div v-if="subTasks.length === 0 && !isAdding" class="flex flex-col items-center justify-center py-20 pointer-events-none transition-opacity">
                 <div class="p-4 rounded-full" :style="{ backgroundColor: 'var(--theme-cell)' }">
@@ -458,40 +457,6 @@ onUnmounted(() => {
 input, textarea {
   -webkit-appearance: none;
   appearance: none;
-}
-
-/* 列表动画 */
-.list-move,
-.list-enter-active,
-.list-leave-active {
-  transition: all 0.35s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-.list-enter-from,
-.list-leave-to {
-  opacity: 0;
-  transform: translateY(4px) scale(0.99);
-}
-
-.list-leave-active {
-  position: absolute;
-  width: calc(100% - 24px);
-}
-
-/* 视图切换动画 */
-.view-slide-enter-active,
-.view-slide-leave-active {
-  transition: all 0.35s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-.view-slide-enter-from {
-  opacity: 0;
-  transform: translateX(16px) scale(0.99);
-}
-
-.view-slide-leave-to {
-  opacity: 0;
-  transform: translateX(-16px) scale(0.99);
 }
 
 /* 日期输入框样式 */

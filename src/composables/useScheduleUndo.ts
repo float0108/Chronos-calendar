@@ -3,7 +3,7 @@ import type { Schedule } from '../types';
 import { useToast } from './useToast';
 
 export interface UndoAction {
-  type: 'toggleDone' | 'deleteSchedule' | 'editSchedule' | 'addSchedule' | 'updateLines';
+  type: 'toggleDone' | 'deleteSchedule' | 'editSchedule' | 'addSchedule' | 'updateLines' | 'moveSchedule';
   data: any;
   timestamp: number;
 }
@@ -13,7 +13,8 @@ export function useScheduleUndo(
   toggleScheduleStatus: (id: number, isDone: boolean) => Promise<void>,
   refreshSchedules: () => Promise<void>,
   updateScheduleLines: (date: string, lines: { id?: number; text: string; done: boolean }[]) => Promise<void>,
-  saveSchedule: (date: string, content: string, isDone?: boolean, doneDate?: string, description?: string) => Promise<void>
+  saveSchedule: (date: string, content: string, isDone?: boolean, doneDate?: string, description?: string) => Promise<void>,
+  updateScheduleDate: (id: number, field: 'create_date' | 'done_date', date: string) => Promise<void>
 ) {
   const { showSuccess, showError } = useToast();
   const history = ref<UndoAction[]>([]);
@@ -81,6 +82,29 @@ export function useScheduleUndo(
     await refreshSchedules();
   }
 
+  async function handleMoveSchedule(
+    scheduleId: number,
+    field: 'create_date' | 'done_date',
+    previousDate: string,
+    newDate: string
+  ): Promise<void> {
+    // 保存撤销状态
+    pushAction({
+      type: 'moveSchedule',
+      data: {
+        scheduleId,
+        field,
+        previousDate,
+        newDate,
+      },
+      timestamp: Date.now(),
+    });
+
+    // 移动日程
+    await updateScheduleDate(scheduleId, field, newDate);
+    await refreshSchedules();
+  }
+
   async function handleUndo(): Promise<void> {
     const action = popAction();
     if (!action) return;
@@ -123,6 +147,14 @@ export function useScheduleUndo(
           showSuccess('已撤销：删除操作');
           break;
         }
+        case 'moveSchedule': {
+          const { scheduleId, field, previousDate } = action.data;
+          // 撤销：移回原日期
+          await updateScheduleDate(scheduleId, field, previousDate);
+          await refreshSchedules();
+          showSuccess('已撤销：移动日程');
+          break;
+        }
       }
     } catch (error) {
       console.error('Undo failed:', error);
@@ -151,6 +183,14 @@ export function useScheduleUndo(
           showSuccess('已重做：编辑操作');
           break;
         }
+        case 'moveSchedule': {
+          const { scheduleId, field, newDate } = action.data;
+          // 重做：移到新日期
+          await updateScheduleDate(scheduleId, field, newDate);
+          await refreshSchedules();
+          showSuccess('已重做：移动日程');
+          break;
+        }
         default:
           console.warn('Unsupported redo action type:', action.type);
       }
@@ -169,6 +209,7 @@ export function useScheduleUndo(
     canUndo,
     canRedo,
     handleToggleDone,
+    handleMoveSchedule,
     handleUndo,
     handleRedo,
   };

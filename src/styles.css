@@ -193,3 +193,40 @@ html, body {
 .text-muted { color: var(--text-muted); }
 .bg-primary { background-color: var(--primary); }
 .border-light { border-color: var(--border-light); }
+
+/* ============================================
+   动画规范 - 淡入淡出
+   ============================================ */
+
+/* 基础淡入淡出 - 用于 Transition 组件 */
+.fade-enter-active,
+.fade-leave-active {
+  transition: opacity 0.15s ease;
+}
+
+.fade-enter-from,
+.fade-leave-to {
+  opacity: 0;
+}
+
+/* 视图切换淡入淡出 - 用于视图间切换 */
+.view-fade-enter-active,
+.view-fade-leave-active {
+  transition: opacity 0.15s ease;
+}
+
+.view-fade-enter-from,
+.view-fade-leave-to {
+  opacity: 0;
+}
+
+/* 遮罩层淡入淡出 */
+.overlay-fade-enter-active,
+.overlay-fade-leave-active {
+  transition: opacity 0.15s ease;
+}
+
+.overlay-fade-enter-from,
+.overlay-fade-leave-to {
+  opacity: 0;
+}

@@ -1,9 +1,8 @@
 <script setup lang="ts">
-import { ref, nextTick, onMounted, onUnmounted, computed, watch } from 'vue';
+import { ref, nextTick, onUnmounted, watch } from 'vue';
 import { MinusCircle, Check, PlusCircle } from 'lucide-vue-next';
 import MiniCalendar from './calendar/MiniCalendar.vue';
 import dayjs from 'dayjs';
-import { useSettings } from '../composables/useSettings';
 
 const props = withDefaults(defineProps<{
   title?: string;
@@ -30,8 +29,6 @@ const emit = defineEmits<{
   (e: 'cancel'): void;
 }>();
 
-const { currentMode } = useSettings();
-
 const isEditing = ref(false);
 const editTitle = ref('');
 const inputRef = ref<HTMLInputElement | null>(null);
@@ -42,12 +39,6 @@ let clickTimer: ReturnType<typeof setTimeout> | null = null;
 const showCalendar = ref(false);
 const calendarPosition = ref<{ top: number; left: number } | undefined>(undefined);
 const currentDate = ref(dayjs());
-
-const themeMode = computed(() => currentMode.value);
-
-const overlayColor = computed(() => {
-  return themeMode.value === 'dark' ? 'rgba(0, 0, 0, 0.6)' : 'rgba(0, 0, 0, 0.4)';
-});
 
 function formatDate(dateStr?: string): string {
   return dateStr ? dayjs(dateStr).format('MM-DD') : '';
@@ -175,23 +166,14 @@ function closeCalendar() {
   showCalendar.value = false;
 }
 
-function handleClickOutside() {
-  if (showCalendar.value) showCalendar.value = false;
-}
-
-onMounted(() => {
-  document.addEventListener('click', handleClickOutside);
-});
-
 onUnmounted(() => {
-  document.removeEventListener('click', handleClickOutside);
   clearClickTimer();
 });
 </script>
 
 <template>
   <div
-    class="list-item group flex items-start gap-2 px-3 rounded-lg transition-colors duration-200"
+    class="list-item group flex items-start gap-2 px-3 rounded-lg"
     :class="[
       preview ? 'py-2' : 'py-1.5',
       isAddMode ? ' hover:bg-black/5 dark:hover:bg-white/5 opacity-80 hover:opacity-100 border-dashed' : ''
@@ -207,7 +189,7 @@ onUnmounted(() => {
           v-if="isAddMode"
           class="relative shrink-0 w-4 h-4 flex items-center justify-center text-blue-500 dark:text-blue-400"
         >
-          <PlusCircle class="w-4 h-4 opacity-70 group-hover:opacity-100 transition-opacity" />
+          <PlusCircle class="w-4 h-4 opacity-70 group-hover:opacity-100" />
         </button>
         <button
           v-else
@@ -215,22 +197,22 @@ onUnmounted(() => {
           class="relative shrink-0 w-4 h-4 flex items-center justify-center"
           :style="{ color: 'var(--theme-text-muted)' }"
         >
-          <span class="w-1.5 h-1.5 rounded-full opacity-40 group-hover:opacity-0 transition-opacity"
+          <span class="w-1.5 h-1.5 rounded-full opacity-40 group-hover:opacity-0"
             :style="{ backgroundColor: 'var(--theme-text-muted)' }"></span>
-          <MinusCircle class="absolute inset-0 w-4 h-4 opacity-0 group-hover:opacity-100 hover:text-red-500 dark:hover:text-red-400 transition-opacity" />
+          <MinusCircle class="absolute inset-0 w-4 h-4 opacity-0 group-hover:opacity-100 hover:text-red-500 dark:hover:text-red-400" />
         </button>
 
         <template v-if="!isEditing">
           <span
             v-if="isAddMode"
-            class="text-[13px] font-medium leading-relaxed transition-colors flex-1 truncate"
+            class="text-[13px] font-medium leading-relaxed flex-1 truncate"
             :style="{ color: 'var(--theme-text-muted)' }"
           >
             添加新项...
           </span>
           <span
             v-else
-            class="text-[13px] font-medium leading-relaxed transition-colors flex-1 truncate "
+            class="text-[13px] font-medium leading-relaxed flex-1 truncate"
             :style="{ color: isDone ? 'var(--theme-text-muted)' : 'var(--theme-text)' }"
             @click.stop="handleTitleClick"
             @dblclick.stop="handleTitleDblclick"
@@ -256,8 +238,8 @@ onUnmounted(() => {
               @click.stop
             />
             <button
-              @mousedown.prevent="handleSave" 
-              class="absolute right-1.5 top-1/2 -translate-y-1/2 w-6 h-6 flex items-center justify-center rounded-md text-emerald-500 hover:bg-emerald-50 dark:hover:bg-emerald-500/10 transition-colors"
+              @mousedown.prevent="handleSave"
+              class="absolute right-1.5 top-1/2 -translate-y-1/2 w-6 h-6 flex items-center justify-center rounded-md text-emerald-500 hover:bg-emerald-50 dark:hover:bg-emerald-500/10"
               title="保存"
             >
               <Check class="w-4 h-4" stroke-width="2.5" />
@@ -267,7 +249,7 @@ onUnmounted(() => {
 
         <span
           v-if="date && !isAddMode"
-          class="shrink-0 text-[11px] opacity-50 hover:opacity-80 transition-opacity cursor-pointer"
+          class="shrink-0 text-[11px] opacity-50 hover:opacity-80 cursor-pointer"
           :style="{ color: 'var(--theme-text-muted)' }"
           @click.stop="handleDateClick"
         >
@@ -285,17 +267,6 @@ onUnmounted(() => {
     </div>
 
     <Teleport to="body">
-      <Transition name="fade">
-        <div
-          v-if="showCalendar && centerCalendar"
-          class="fixed inset-0 z-[10000]"
-          :style="{ backgroundColor: overlayColor }"
-          @click.stop="closeCalendar"
-          @mousedown.stop
-          @contextmenu.prevent
-        >
-        </div>
-      </Transition>
       <MiniCalendar
         v-if="showCalendar && centerCalendar"
         v-model:current-date="currentDate"
@@ -318,10 +289,4 @@ onUnmounted(() => {
 </template>
 
 <style scoped>
-.fade-enter-active, .fade-leave-active {
-  transition: opacity 0.2s ease;
-}
-.fade-enter-from, .fade-leave-to {
-  opacity: 0;
-}
 </style>

@@ -205,6 +205,7 @@ onUnmounted(() => { document.body.style.overflow = ''; });
               v-if="showStartCalendar"
               v-model:current-date="startCalendarDate"
               :visible="showStartCalendar"
+              centered
               @select="handleStartSelect"
               @close="showStartCalendar = false"
             />
@@ -212,6 +213,7 @@ onUnmounted(() => { document.body.style.overflow = ''; });
               v-if="showEndCalendar"
               v-model:current-date="endCalendarDate"
               :visible="showEndCalendar"
+              centered
               @select="handleEndSelect"
               @close="showEndCalendar = false"
             />

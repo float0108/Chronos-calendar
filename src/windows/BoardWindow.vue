@@ -282,7 +282,7 @@ onUnmounted(() => {
       </div>
 
       <div class="flex-1 overflow-y-auto custom-scrollbar px-3 pt-2 pb-3">
-        <TransitionGroup name="list" tag="div" class="space-y-2">
+        <div class="space-y-2">
           <ListItem
             v-if="isAdding"
             key="add-new-task"
@@ -305,7 +305,7 @@ onUnmounted(() => {
             @toggle-done="handleToggleDone(task)"
             @click="handleOpenTaskWindow(task)"
           />
-        </TransitionGroup>
+        </div>
 
         <div v-if="tasks.length === 0 && !isAdding" class="flex flex-col items-center justify-center py-20 pointer-events-none transition-opacity">
           <div class="p-4 rounded-full" :style="{ backgroundColor: 'var(--theme-cell)' }">
@@ -354,23 +354,5 @@ onUnmounted(() => {
 input, textarea {
   -webkit-appearance: none;
   appearance: none;
-}
-
-/* 列表动画 */
-.list-move,
-.list-enter-active,
-.list-leave-active {
-  transition: all 0.35s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-.list-enter-from,
-.list-leave-to {
-  opacity: 0;
-  transform: translateY(4px) scale(0.99);
-}
-
-.list-leave-active {
-  position: absolute;
-  width: calc(100% - 24px);
 }
 </style>

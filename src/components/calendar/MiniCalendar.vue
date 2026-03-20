@@ -2,7 +2,6 @@
 import { computed, ref, watch } from 'vue';
 import { ChevronLeft, ChevronRight } from 'lucide-vue-next';
 import dayjs from 'dayjs';
-import { useSettings } from '../../composables/useSettings';
 
 const props = defineProps<{
   currentDate: dayjs.Dayjs;
@@ -17,11 +16,27 @@ const emit = defineEmits<{
   (e: 'close'): void;
 }>();
 
-const { getSetting, currentMode } = useSettings();
+// 直接从 localStorage 读取设置，避免依赖 useSettings 的初始化状态
+function getSettings() {
+  const saved = localStorage.getItem('chronos_settings');
+  if (saved) {
+    return JSON.parse(saved);
+  }
+  return null;
+}
 
-const weekStartsOn = computed(() => (getSetting('week_starts_on') ?? 1) as 0 | 1);
-const primaryColor = computed(() => getSetting('primary_color') ?? '#3b82f6');
-const themeMode = computed(() => currentMode.value);
+const settings = computed(() => getSettings());
+
+const weekStartsOn = computed(() => settings.value?.week_starts_on ?? 1);
+const primaryColor = computed(() => settings.value?.primary_color ?? '#3b82f6');
+const themeMode = computed(() => settings.value?.theme_mode ?? 'light');
+const fontFamily = computed(() => settings.value?.font_family ?? 'system-ui');
+const fontSize = computed(() => settings.value?.font_size ?? 14);
+
+const calendarStyle = computed(() => ({
+  fontFamily: fontFamily.value,
+  fontSize: `${fontSize.value}px`,
+}));
 
 const currentView = ref<'date' | 'month' | 'year'>('date');
 const yearPageStart = ref(0);
@@ -171,6 +186,14 @@ function toggleMonthView() {
 
 <template>
   <Teleport to="body">
+    <!-- 遮罩层 -->
+    <div
+      v-if="visible"
+      class="fixed inset-0 z-[9999]"
+      :class="themeMode === 'dark' ? 'bg-black/20' : 'bg-white/30'"
+      @click="emit('close')"
+    ></div>
+    <!-- 日历主体 -->
     <div
       v-if="visible"
       class="mini-calendar fixed rounded-lg shadow-[0_4px_16px_rgb(0,0,0,0.12)] p-2 z-[10000] border backdrop-blur-xl w-[212px]"
@@ -184,6 +207,7 @@ function toggleMonthView() {
         left: position ? `${position.left}px` : '50%',
         transform: position ? 'none' : (centered ? 'translate(-50%, -50%)' : 'translateX(-50%)'),
         '--theme-primary': primaryColor,
+        ...calendarStyle,
       }"
       @mousedown.stop
       @click.stop

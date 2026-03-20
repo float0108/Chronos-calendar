@@ -37,6 +37,7 @@ export interface CommonSettings {
   floating_weeks_count: number; // 浮动周数量（默认3）
   autostart: boolean; // 开机自启动
   header_cell_style: boolean; // 标题栏应用单元格风格
+  hide_weekends: boolean; // 隐藏周末
 }
 
 export interface ModeSettings {
@@ -67,6 +68,7 @@ export const defaultCommonSettings: CommonSettings = {
   floating_weeks_count: 3,
   autostart: false,
   header_cell_style: false,
+  hide_weekends: false,
 };
 
 // 默认浅色/深色模式配置
@@ -109,6 +111,7 @@ export function extractCommonParts(settings: AppSettings): CommonSettings {
     floating_weeks_count: settings.floating_weeks_count,
     autostart: settings.autostart,
     header_cell_style: settings.header_cell_style,
+    hide_weekends: settings.hide_weekends,
   };
 }
 

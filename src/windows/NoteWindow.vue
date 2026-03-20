@@ -117,7 +117,7 @@ async function handleBackToList() {
   isEditing.value = false;
   setTimeout(() => {
     currentNote.value = null;
-  }, 300);
+  }, 150);
   await loadNotesList();
 }
 
@@ -209,13 +209,6 @@ watch(isSearchFocused, (focused) => {
       searchInputRef.value?.focus();
     });
   }
-});
-
-// 主题模式计算
-const themeMode = computed(() => settings.value.theme_mode);
-
-const overlayColor = computed(() => {
-  return themeMode.value === 'dark' ? 'rgba(0, 0, 0, 0.6)' : 'rgba(0, 0, 0, 0.4)';
 });
 
 // 格式化日期为 MM-DD
@@ -368,11 +361,10 @@ onUnmounted(() => {
       </div>
 
       <div class="flex-1 relative overflow-hidden">
-        <Transition name="view-slide">
-
+        <Transition name="view-fade">
           <div v-if="!isEditing" class="absolute inset-0 flex flex-col w-full h-full">
             <div class="flex-1 overflow-y-auto custom-scrollbar px-3 pt-2 pb-3">
-              <TransitionGroup name="list" tag="div" class="space-y-2">
+              <div class="space-y-2">
                 <ListItem
                   v-for="note in notes"
                   :key="note.id"
@@ -385,7 +377,7 @@ onUnmounted(() => {
                   @delete="handleDeleteNoteFromList(note)"
                   @click="handleSelectNote(note)"
                 />
-              </TransitionGroup>
+              </div>
 
               <div v-if="notes.length === 0" class="flex flex-col items-center justify-center py-20 pointer-events-none transition-opacity">
                 <div class="p-4 rounded-full" :style="{ backgroundColor: 'var(--theme-cell)' }">
@@ -434,24 +426,12 @@ onUnmounted(() => {
               </div>
             </div>
           </div>
-
         </Transition>
       </div>
     </div>
 
-    <!-- 日历选择器遮罩层 -->
+    <!-- 日历选择器 -->
     <Teleport to="body">
-      <Transition name="fade">
-        <div
-          v-if="showCalendar"
-          class="fixed inset-0 z-[10000]"
-          :style="{ backgroundColor: overlayColor }"
-          @click.stop="closeCalendar"
-          @mousedown.stop
-          @contextmenu.prevent
-        >
-        </div>
-      </Transition>
       <MiniCalendar
         v-if="showCalendar"
         v-model:current-date="calendarCurrentDate"
@@ -501,47 +481,5 @@ onUnmounted(() => {
 input, textarea {
   -webkit-appearance: none;
   appearance: none;
-}
-
-/* 列表动画 */
-.list-move,
-.list-enter-active,
-.list-leave-active {
-  transition: all 0.35s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-.list-enter-from,
-.list-leave-to {
-  opacity: 0;
-  transform: translateY(4px) scale(0.99);
-}
-
-.list-leave-active {
-  position: absolute;
-  width: calc(100% - 24px);
-}
-
-/* 视图切换动画 */
-.view-slide-enter-active,
-.view-slide-leave-active {
-  transition: all 0.35s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-.view-slide-enter-from {
-  opacity: 0;
-  transform: translateX(16px) scale(0.99);
-}
-
-.view-slide-leave-to {
-  opacity: 0;
-  transform: translateX(-16px) scale(0.99);
-}
-
-/* 日历遮罩动画 */
-.fade-enter-active, .fade-leave-active {
-  transition: opacity 0.2s ease;
-}
-.fade-enter-from, .fade-leave-to {
-  opacity: 0;
 }
 </style>
