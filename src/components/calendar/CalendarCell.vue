@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, nextTick, onMounted, onUnmounted } from 'vue';
-import { Trash2, Palette, Pencil, Check } from 'lucide-vue-next';
+import { Palette, Pencil, Check, MinusCircle } from 'lucide-vue-next';
 import dayjs from 'dayjs';
 import { getCurrentWindow } from '@tauri-apps/api/window';
 import type { Schedule } from '../../types';
@@ -50,6 +50,12 @@ const cellStyle = computed(() => {
     };
   }
   return {};
+});
+
+const borderStyleClass = computed(() => {
+  const style = getComputedStyle(document.documentElement).getPropertyValue('--cell-border-style').trim() || 'solid';
+  if (style === 'solid') return '';
+  return `border-style-${style}`;
 });
 
 // activeLine 用于将来的功能扩展（如行内完成状态切换）
@@ -167,24 +173,6 @@ function focusInput(index: number) {
       autoResize(textarea);
     }
   });
-}
-
-function deleteActiveLine() {
-  if (activeLineIndex.value === null) return;
-
-  if (editLines.value.length === 1) {
-    if (editLines.value[0].text !== '') {
-      saveHistory(editLines.value, activeLineIndex.value, textareaRefs.value);
-      editLines.value[0].text = '';
-    }
-    return;
-  }
-
-  saveHistory(editLines.value, activeLineIndex.value, textareaRefs.value);
-  const newIndex = Math.max(0, activeLineIndex.value - 1);
-  editLines.value.splice(activeLineIndex.value, 1);
-  activeLineIndex.value = newIndex;
-  focusInput(newIndex);
 }
 
 function handleInputKeydown(event: KeyboardEvent, index: number) {
@@ -433,7 +421,8 @@ function handleDrop(event: DragEvent) {
     'bg-[var(--cell-bg-muted)]': !isCurrentMonth && !cellStyle.backgroundColor,
     'today-cell': isToday && !isEditing,
     'editing shadow-2xl z-30 bg-white dark:bg-gray-800 scale-[1.02] !border-transparent': isEditing,
-    'drag-over': isDragOver
+    'drag-over': isDragOver,
+    [borderStyleClass]: !!borderStyleClass
   }" :style="cellStyle"
     @dragover="handleDragOver"
     @dragleave="handleDragLeave"
@@ -465,7 +454,15 @@ function handleDrop(event: DragEvent) {
           @wheel="handleScheduleWheel"
           @dragstart="handleDragStart($event, s)"
           @dragend="handleDragEnd">
-          <div class="shrink-0 w-1 h-1 rounded-full bg-current opacity-50"></div>
+          <button
+            @click.stop="emit('toggleDone', s)"
+            class="relative shrink-0 w-3 h-3 flex items-center justify-center marker-btn"
+            :style="{ color: 'var(--text-muted)' }"
+          >
+            <span class="w-1 h-1 rounded-full opacity-50 marker-dot"
+              :style="{ backgroundColor: 'currentColor' }"></span>
+            <MinusCircle class="absolute inset-0 w-3 h-3 opacity-0 marker-delete hover:text-red-500 dark:hover:text-red-400" />
+          </button>
           <span class="content-text flex-1">{{ s.content }}</span>
         </div>
       </div>
@@ -486,15 +483,7 @@ function handleDrop(event: DragEvent) {
         </div>
       </div>
 
-      <!-- 左下角垃圾桶：删除当前条目 -->
-      <div v-if="isEditing && activeLineIndex !== null" class="absolute bottom-2 left-2 z-30">
-        <button @mousedown.prevent="deleteActiveLine"
-          class="w-6 h-6 flex items-center justify-center rounded-md bg-red-50 hover:bg-red-100 text-red-500 transition-all hover:scale-110 active:scale-95 shadow-sm dark:bg-red-900/20 dark:hover:bg-red-900/30">
-          <Trash2 class="w-3 h-3" />
-        </button>
-      </div>
-
-      <!-- 右下角调色盘：单元格颜色 -->
+<!-- 右下角调色盘：单元格颜色 -->
       <div v-if="isEditing" class="absolute bottom-2 right-2 z-30">
         <button @mousedown.prevent="handleColorButtonClick"
           class="w-6 h-6 flex items-center justify-center rounded-md bg-white hover:bg-gray-50 text-gray-600 transition-all hover:scale-110 active:scale-95 shadow-sm border border-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 dark:text-gray-300 dark:border-gray-600">
@@ -525,8 +514,58 @@ function handleDrop(event: DragEvent) {
 .calendar-cell {
   height: 100%;
   border-width: var(--cell-border-width, 1px);
-  border-style: solid;
   border-color: var(--cell-border-color, var(--border-light, #e5e7eb));
+}
+
+/* 默认实线 */
+.calendar-cell:not(.border-style-dashed):not(.border-style-dotted):not(.border-style-dash-dot):not(.border-style-dash-dot-dot) {
+  border-style: solid;
+}
+
+/* 虚线 */
+.calendar-cell.border-style-dashed {
+  border-style: dashed;
+}
+
+/* 点线 */
+.calendar-cell.border-style-dotted {
+  border-style: dotted;
+}
+
+/* 点划线 - 使用 border-image 模拟，注意不支持圆角 */
+.calendar-cell.border-style-dash-dot {
+  border-style: solid;
+  border-image: repeating-linear-gradient(
+    90deg,
+    var(--cell-border-color) 0px,
+    var(--cell-border-color) calc(var(--cell-border-dash-interval, 4px) * 2),
+    transparent calc(var(--cell-border-dash-interval, 4px) * 2),
+    transparent calc(var(--cell-border-dash-interval, 4px) * 2.5),
+    var(--cell-border-color) calc(var(--cell-border-dash-interval, 4px) * 2.5),
+    var(--cell-border-color) calc(var(--cell-border-dash-interval, 4px) * 2.5 + 1px),
+    transparent calc(var(--cell-border-dash-interval, 4px) * 2.5 + 1px),
+    transparent calc(var(--cell-border-dash-interval, 4px) * 3)
+  ) 1;
+}
+
+/* 双点划线 - 使用 border-image 模拟，注意不支持圆角 */
+.calendar-cell.border-style-dash-dot-dot {
+  border-style: solid;
+  border-image: repeating-linear-gradient(
+    90deg,
+    var(--cell-border-color) 0px,
+    var(--cell-border-color) calc(var(--cell-border-dash-interval, 4px) * 2),
+    transparent calc(var(--cell-border-dash-interval, 4px) * 2),
+    transparent calc(var(--cell-border-dash-interval, 4px) * 2.5),
+    var(--cell-border-color) calc(var(--cell-border-dash-interval, 4px) * 2.5),
+    var(--cell-border-color) calc(var(--cell-border-dash-interval, 4px) * 2.5 + 1px),
+    transparent calc(var(--cell-border-dash-interval, 4px) * 2.5 + 1px),
+    transparent calc(var(--cell-border-dash-interval, 4px) * 3),
+    var(--cell-border-color) calc(var(--cell-border-dash-interval, 4px) * 3),
+    var(--cell-border-color) calc(var(--cell-border-dash-interval, 4px) * 3 + 1px),
+    transparent calc(var(--cell-border-dash-interval, 4px) * 3 + 1px),
+    transparent calc(var(--cell-border-dash-interval, 4px) * 3.5)
+  ) 1;
 }
 
 .today-cell {
@@ -585,5 +624,14 @@ function handleDrop(event: DragEvent) {
 
 .schedule-item.dragging {
   opacity: 0.5;
+}
+
+/* 列表标记悬停效果 */
+.marker-btn:hover .marker-dot {
+  opacity: 0;
+}
+
+.marker-btn:hover .marker-delete {
+  opacity: 1;
 }
 </style>

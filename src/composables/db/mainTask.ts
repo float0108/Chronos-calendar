@@ -202,3 +202,21 @@ export async function updateMainTaskCreateDate(taskId: number, createDate: strin
     throw error;
   }
 }
+
+/**
+ * 更新主任务完成日期
+ */
+export async function updateMainTaskDoneDate(taskId: number, doneDate: string | null): Promise<void> {
+  const db = getDatabase();
+  if (!db) return;
+
+  try {
+    await db.execute(
+      'UPDATE main_tasks SET done_date = $1 WHERE id = $2',
+      [doneDate || null, taskId]
+    );
+  } catch (error) {
+    console.error('Failed to update main task done date:', error);
+    throw error;
+  }
+}

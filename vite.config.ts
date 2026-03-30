@@ -20,6 +20,7 @@ export default defineConfig(async () => ({
         settings: resolve(__dirname, 'src/settings.html'),
         board: resolve(__dirname, 'src/board.html'),
         note: resolve(__dirname, 'src/note.html'),
+        task: resolve(__dirname, 'src/task.html'),
       },
     },
   },

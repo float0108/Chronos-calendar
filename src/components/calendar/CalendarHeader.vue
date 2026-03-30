@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { computed } from 'vue';
 import { ChevronLeft, ChevronRight, MoreVertical, Lock, Unlock, Undo2, Redo2, ListTodo, CheckCircle2, Kanban, StickyNote } from 'lucide-vue-next';
 import dayjs from 'dayjs';
 import MiniCalendar from './MiniCalendar.vue';
@@ -28,6 +29,7 @@ const emit = defineEmits<{
   (e: 'toggleMenu'): void;
   (e: 'selectDate', date: dayjs.Dayjs): void;
   (e: 'settings'): void;
+  (e: 'hide'): void;
   (e: 'quit'): void;
   (e: 'toggleLock'): void;
   (e: 'exportBackup'): void;
@@ -51,6 +53,7 @@ function handleToggleMenu() { emit('toggleMenu'); }
 function handleSelectDate(date: dayjs.Dayjs) { emit('selectDate', date); }
 function handleMiniCalendarClose() { emit('toggleMiniCalendar'); }
 function handleSettings() { emit('settings'); }
+function handleHide() { emit('hide'); }
 function handleQuit() { emit('quit'); }
 function handleToggleLock() { emit('toggleLock'); }
 function handleExportBackup() { emit('exportBackup'); }
@@ -65,15 +68,31 @@ function handleToggleNote() { emit('toggleNote'); }
 function handleToggleWeekends() { emit('toggleWeekends'); }
 function handleOpenBatchTask() { emit('openBatchTask'); }
 function handleStartDrag(event: MouseEvent) { startWindowDrag(event); }
+
+// 计算边框样式
+const headerBorderStyle = computed(() => {
+  const style = getComputedStyle(document.documentElement);
+  const borderStyle = style.getPropertyValue('--cell-border-style').trim() || 'solid';
+
+  // dashed 和 dotted 使用原生支持，dash-dot/dash-dot-dot 回退到 dashed
+  let validBorderStyle: 'solid' | 'dashed' | 'dotted' = 'solid';
+  if (borderStyle === 'dashed' || borderStyle === 'dotted') {
+    validBorderStyle = borderStyle;
+  } else if (borderStyle === 'dash-dot' || borderStyle === 'dash-dot-dot') {
+    validBorderStyle = 'dashed';
+  }
+
+  return {
+    backgroundColor: 'var(--header-bg)',
+    borderBottomWidth: 'var(--cell-border-width)',
+    borderBottomStyle: validBorderStyle,
+    borderBottomColor: 'var(--header-border-color)',
+  };
+});
 </script>
 
 <template>
-  <div class="calendar-header flex items-center justify-between px-4 py-3 select-none relative" :style="{
-    backgroundColor: 'var(--header-bg)',
-    borderBottomWidth: 'var(--cell-border-width)',
-    borderBottomStyle: 'solid',
-    borderBottomColor: 'var(--header-border-color)'
-  }" @mousedown="handleStartDrag">
+  <div class="calendar-header flex items-center justify-between px-4 py-3 select-none relative" :style="headerBorderStyle" @mousedown="handleStartDrag">
     <div class="absolute inset-0 z-0"></div>
 
     <div class="flex items-center gap-2 relative z-10 flex-1 justify-start">
@@ -175,7 +194,7 @@ function handleStartDrag(event: MouseEvent) { startWindowDrag(event); }
           <MoreVertical class="w-4 h-4" />
         </button>
 
-        <DropdownMenu :visible="showMenu" :hide-weekends="hideWeekends" :is-locked="isLocked" @settings="handleSettings" @quit="handleQuit" @exportBackup="handleExportBackup"
+        <DropdownMenu :visible="showMenu" :hide-weekends="hideWeekends" :is-locked="isLocked" @settings="handleSettings" @hide="handleHide" @quit="handleQuit" @exportBackup="handleExportBackup"
           @exportZip="handleExportZip" @importBackup="handleImportBackup" @sync="handleSync" @toggleWeekends="handleToggleWeekends" @openBatchTask="handleOpenBatchTask" />
       </div>
     </div>

@@ -32,6 +32,7 @@ export {
   updateMainTaskContent,
   updateMainTaskDescription,
   updateMainTaskCreateDate,
+  updateMainTaskDoneDate,
   toggleMainTaskStatus,
   updateMainTaskPriority,
   deleteMainTask,

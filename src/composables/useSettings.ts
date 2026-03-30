@@ -143,6 +143,8 @@ export function useSettings() {
     root.style.setProperty('--font-weight-base', `${settings.font_weight}`);
     root.style.setProperty('--cell-gap', `${settings.cell_gap}px`);
     root.style.setProperty('--cell-border-width', `${settings.cell_border_width}px`);
+    root.style.setProperty('--cell-border-style', settings.cell_border_style || 'solid');
+    root.style.setProperty('--cell-border-dash-interval', `${settings.cell_border_dash_interval || 4}px`);
 
     root.setAttribute('data-theme', settings.theme_mode);
     currentMode.value = settings.theme_mode;

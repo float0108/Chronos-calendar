@@ -10,15 +10,25 @@ pub fn setup_tray(app: &AppHandle) -> Result<(), Box<dyn std::error::Error>> {
     let exit = MenuItem::with_id(app, "exit", "Exit", true, None::<&str>)?;
     let menu = Menu::with_items(app, &[&show_calendar, &exit])?;
 
-    // 尝试加载图标，失败则使用默认图标
-    let icon = app.path().resource_dir()
-        .ok()
-        .and_then(|dir| {
-            let icon_path = dir.join("icons").join("icon.ico");
-            Image::from_path(&icon_path).ok()
+    // 尝试多种方式加载图标
+    // 1. 首先尝试从编译时包含的资源加载
+    let icon = Image::from_bytes(include_bytes!("../icons/icon.ico"))
+        // 2. 如果失败，尝试从资源目录加载
+        .or_else(|_| {
+            app.path().resource_dir()
+                .ok()
+                .and_then(|dir| {
+                    let icon_path = dir.join("icons").join("icon.ico");
+                    Image::from_path(&icon_path).ok()
+                })
+                .ok_or(tauri::Error::AssetNotFound("icon.ico".to_string()))
         })
-        .or_else(|| app.default_window_icon().cloned())
-        .ok_or("Failed to load tray icon")?;
+        // 3. 最后使用默认窗口图标
+        .or_else(|_| {
+            app.default_window_icon()
+                .cloned()
+                .ok_or(tauri::Error::AssetNotFound("default icon".to_string()))
+        })?;
 
     // 创建托盘图标
     let _tray = TrayIconBuilder::new()

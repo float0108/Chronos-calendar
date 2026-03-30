@@ -15,9 +15,10 @@ import { useSettings } from './composables/useSettings';
 import { useScheduleUndo } from './composables/useScheduleUndo';
 import { useFonts } from './composables/useFonts';
 import { useContextMenu } from './composables/useContextMenu';
-import { closeWindow, setWindowLocked } from './utils/window';
+import { setWindowLocked, hideWindow, exitApp } from './utils/window';
 import { exportDatabaseBackup, exportAsZip, importFromJson } from './utils/export';
 import { useToast } from './composables/useToast';
+import { hexToRgba, adjustBrightness } from './utils/color';
 import type { ViewMode, Schedule, BatchTaskConfig } from './types';
 
 const { initDatabase, exportAllData, importAndMergeData } = useDatabase();
@@ -67,6 +68,29 @@ const isNoteVisible = ref(false);
 
 const hideWeekends = computed(() => getSetting('hide_weekends') ?? false);
 
+// 动态主题样式 - 与 NoteWindow/TaskWindow 保持一致
+const themeStyle = computed(() => {
+  const s = currentSettings.value;
+  if (!s) return {};
+  const bgOpacity = s.bg_opacity / 100;
+  const cellOpacity = s.cell_opacity / 100;
+  return {
+    '--theme-bg': hexToRgba(s.bg_color, bgOpacity),
+    '--theme-cell': hexToRgba(s.cell_color, cellOpacity),
+    '--theme-text': s.text_color,
+    '--theme-text-secondary': adjustBrightness(s.text_color, 30),
+    '--theme-text-muted': adjustBrightness(s.text_color, 50),
+    '--theme-primary': s.primary_color,
+    '--theme-primary-alpha': hexToRgba(s.primary_color, 0.15),
+    '--theme-border': s.cell_border_color || (s.theme_mode === 'dark' ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.05)'),
+    'font-family': s.font_family,
+    'font-size': `${s.font_size}px`,
+    'backgroundColor': hexToRgba(s.bg_color, bgOpacity),
+    'backdropFilter': s.enable_blur ? 'blur(16px) saturate(180%)' : 'none',
+    'WebkitBackdropFilter': s.enable_blur ? 'blur(16px) saturate(180%)' : 'none',
+  };
+});
+
 function closeOverlays() {
   showMenu.value = false;
   showMiniCalendar.value = false;
@@ -88,8 +112,14 @@ async function openSettings() {
   await invoke('open_settings_window');
 }
 
+async function hideMainWindow() {
+  showMenu.value = false;
+  await hideWindow();
+}
+
 async function quitApp() {
-  await closeWindow();
+  showMenu.value = false;
+  await exitApp();
 }
 
 // 导出备份（JSON 格式）
@@ -253,6 +283,7 @@ async function handleScheduleDrop(targetDate: string, scheduleId: number, source
 
 function handleOpenBatchTask() {
   if (isLocked.value) return;
+  showMenu.value = false;
   showBatchTaskDialog.value = true;
 }
 
@@ -360,9 +391,7 @@ onUnmounted(() => {
       borderWidth: 'var(--cell-border-width)',
       borderStyle: 'solid',
       borderColor: 'var(--cell-border-color)',
-      background: currentSettings?.enable_blur ? 'var(--glass-bg)' : 'var(--cell-bg)',
-      backdropFilter: currentSettings?.enable_blur ? 'blur(var(--backdrop-blur)) saturate(var(--backdrop-saturate))' : 'none',
-      WebkitBackdropFilter: currentSettings?.enable_blur ? 'blur(var(--backdrop-blur)) saturate(var(--backdrop-saturate))' : 'none',
+      ...themeStyle,
     }"
     @contextmenu.prevent
   >
@@ -386,6 +415,7 @@ onUnmounted(() => {
       @toggle-menu="toggleMenu"
       @select-date="handleSelectDate"
       @settings="openSettings"
+      @hide="hideMainWindow"
       @quit="quitApp"
       @export-backup="handleExportBackup"
       @export-zip="handleExportZip"
@@ -419,6 +449,7 @@ onUnmounted(() => {
     <div
       v-if="showMenu || showMiniCalendar || contextMenu.show"
       class="fixed inset-0 z-40"
+      @mousedown.stop
       @click="closeOverlays"
     ></div>
 

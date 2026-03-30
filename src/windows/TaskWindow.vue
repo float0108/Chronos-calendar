@@ -13,6 +13,10 @@ import {
   updateScheduleDescription,
   updateScheduleDate,
   loadMainTasks,
+  updateMainTaskContent,
+  updateMainTaskDescription,
+  updateMainTaskCreateDate,
+  updateMainTaskDoneDate,
   type Schedule,
   type MainTask
 } from '../composables/db';
@@ -27,18 +31,30 @@ const tasks = ref<MainTask[]>([]);
 const currentTask = ref<MainTask | null>(null);
 const subTasks = ref<Schedule[]>([]);
 
+// 视图模式: 'task' = 主任务详情, 'list' = 子任务列表, 'detail' = 子任务编辑
+const viewMode = ref<'task' | 'list' | 'detail'>('list');
+
 // 新增模式
 const isAdding = ref(false);
 
-// 视图控制：false 显示列表，true 显示详情
-const isEditing = ref(false);
+// 子任务编辑状态
 const editingSubTask = ref<Schedule | null>(null);
+
+// 标题编辑状态
+const isEditingTitle = ref(false);
+const editingTitle = ref('');
+const titleInputRef = ref<HTMLInputElement | null>(null);
 
 // 编辑器数据
 const editDescription = ref('');
 const editCreateDate = ref('');
 const editDoneDate = ref('');
 const scheduleEditorRef = ref<InstanceType<typeof ScheduleEditor> | null>(null);
+
+// 主任务编辑数据
+const taskEditDescription = ref('');
+const taskEditCreateDate = ref('');
+const taskEditDoneDate = ref('');
 
 // 动态主题样式
 const themeStyle = computed(() => {
@@ -175,26 +191,72 @@ async function handleUpdateSubTaskDate(subTask: Schedule, newDate: string) {
   }
 }
 
-// 点击条目进入详情
+// 点击进入主任务详情
+function handleViewTaskDetail() {
+  isEditingTitle.value = false;
+  viewMode.value = 'task';
+}
+
+// 开始编辑标题
+function startEditingTitle(defaultTitle: string) {
+  editingTitle.value = defaultTitle;
+  isEditingTitle.value = true;
+  nextTick(() => {
+    titleInputRef.value?.focus();
+    titleInputRef.value?.select();
+  });
+}
+
+// 保存主任务标题
+async function saveTaskTitle() {
+  if (!currentTask.value?.id) return;
+  const trimmed = editingTitle.value.trim();
+  if (trimmed && trimmed !== currentTask.value.content) {
+    try {
+      await updateMainTaskContent(currentTask.value.id, trimmed);
+      currentTask.value.content = trimmed;
+      await notifyMainToRefresh();
+    } catch (error) {
+      console.error('Failed to update task title:', error);
+    }
+  }
+  isEditingTitle.value = false;
+}
+
+// 取消编辑标题
+function cancelEditingTitle() {
+  isEditingTitle.value = false;
+  editingTitle.value = '';
+}
+
+// 返回主任务详情
+function handleBackToTask() {
+  isEditingTitle.value = false;
+  viewMode.value = 'task';
+}
+
+// 点击条目进入子任务详情
 function handleSelectSubTask(subTask: Schedule) {
+  isEditingTitle.value = false;
   editingSubTask.value = subTask;
   editDescription.value = subTask.description || '';
   editCreateDate.value = subTask.create_date || '';
   editDoneDate.value = subTask.done_date || '';
-  isEditing.value = true;
+  viewMode.value = 'detail';
   // 确保任务列表已加载
   nextTick(() => scheduleEditorRef.value?.loadTasks());
 }
 
-// 返回列表
+// 返回子任务列表
 function handleBackToList() {
-  isEditing.value = false;
+  isEditingTitle.value = false;
+  viewMode.value = 'list';
   setTimeout(() => {
     editingSubTask.value = null;
   }, 150);
 }
 
-// 保存详情
+// 保存子任务详情
 async function handleSaveDetail() {
   if (!editingSubTask.value?.id) return;
 
@@ -220,6 +282,53 @@ async function handleSaveDetail() {
   } catch (error) {
     console.error('Failed to save detail:', error);
   }
+}
+
+// 初始化主任务编辑数据
+function initTaskEditData() {
+  if (!currentTask.value) return;
+  taskEditDescription.value = currentTask.value.description || '';
+  taskEditCreateDate.value = currentTask.value.create_date || '';
+  taskEditDoneDate.value = currentTask.value.done_date || '';
+}
+
+// 保存主任务详情
+async function handleSaveTaskDetail() {
+  if (!currentTask.value?.id) return;
+
+  try {
+    // 更新描述
+    if (taskEditDescription.value !== (currentTask.value.description || '')) {
+      await updateMainTaskDescription(currentTask.value.id, taskEditDescription.value);
+    }
+
+    // 更新创建日期
+    if (taskEditCreateDate.value !== (currentTask.value.create_date || '')) {
+      await updateMainTaskCreateDate(currentTask.value.id, taskEditCreateDate.value);
+    }
+
+    // 更新完成日期
+    const currentDoneDate = currentTask.value.done_date || '';
+    if (taskEditDoneDate.value !== currentDoneDate) {
+      await updateMainTaskDoneDate(currentTask.value.id, taskEditDoneDate.value || null);
+    }
+
+    // 重新加载任务数据
+    tasks.value = await loadMainTasks();
+    const updatedTask = tasks.value.find(t => t.id === currentTask.value?.id);
+    if (updatedTask) {
+      currentTask.value = updatedTask;
+    }
+    await notifyMainToRefresh();
+  } catch (error) {
+    console.error('Failed to save task detail:', error);
+  }
+}
+
+// 保存主任务详情并返回列表
+async function handleSaveTaskDetailAndBack() {
+  await handleSaveTaskDetail();
+  handleBackToList();
 }
 
 async function handleClose() {
@@ -249,6 +358,7 @@ onMounted(async () => {
     const task = tasks.value.find(t => t.id === initialTaskId);
     if (task) {
       currentTask.value = task;
+      initTaskEditData();
       await loadSubTasks();
     }
   }
@@ -256,10 +366,14 @@ onMounted(async () => {
   // 监听来自主窗口的 task_id
   const unlisten = await getCurrentWindow().listen<number>('set_task_id', async (event) => {
     const taskId = event.payload;
-    // 直接从已加载的列表中查找，避免重复查询
+    // 重新加载任务列表以获取最新数据
+    tasks.value = await loadMainTasks();
     const task = tasks.value.find(t => t.id === taskId);
-    if (task && task.id !== currentTask.value?.id) {
+    if (task) {
       currentTask.value = task;
+      initTaskEditData();
+      // 默认显示子任务列表视图
+      viewMode.value = 'list';
       await loadSubTasks();
     }
   });
@@ -293,68 +407,183 @@ onUnmounted(() => {
         WebkitBackdropFilter: settings.enable_blur ? 'blur(20px) saturate(180%)' : 'none',
       }">
 
-      <div class="title-bar flex items-center gap-2 px-3 py-2.5 shrink-0 select-none group"
+      <div class="title-bar flex items-center justify-between px-3 py-2.5 shrink-0 select-none group"
         data-tauri-drag-region>
-        <!-- 列表视图 -->
-        <template v-if="!isEditing">
-          <button @mousedown="handleIconDrag"
-            class="shrink-0 w-6 h-6 flex items-center justify-center cursor-grab active:cursor-grabbing hover:opacity-80 transition-opacity"
-            :style="{ color: 'var(--theme-text)' }"
-            title="Drag">
-            <ListTodo class="w-4 h-4" />
-          </button>
-
-          <div class="flex-1 min-w-0 flex justify-center items-center relative h-6"
-            @mousedown="(e) => e.target === e.currentTarget && handleIconDrag()">
-            <span class="text-[14px] font-medium leading-relaxed transition-opacity truncate max-w-[180px]"
+        <!-- 主任务详情视图 -->
+        <template v-if="viewMode === 'task'">
+          <!-- 左侧返回按钮 -->
+          <div class="w-[60px] flex items-center justify-start">
+            <button @click="handleBackToList"
+              class="shrink-0 w-6 h-6 flex items-center justify-center rounded transition-all hover:bg-black/10 dark:hover:bg-white/10 active:scale-95"
               :style="{ color: 'var(--theme-text)' }">
-              {{ currentTask?.content || 'Task' }}
-            </span>
+              <ChevronLeft class="w-4 h-4" />
+            </button>
           </div>
 
-          <button @click="handleStartAdding"
-            class="shrink-0 w-6 h-6 flex items-center justify-center rounded transition-all opacity-0 group-hover:opacity-100 hover:bg-black/10 dark:hover:bg-white/10 active:scale-95"
-            :style="{ color: 'var(--theme-text)' }">
-            <Plus class="w-4 h-4" />
-          </button>
+          <!-- 中间标题，严格居中 -->
+          <div class="flex-1 flex justify-center items-center h-6 px-2"
+            @mousedown="(e) => e.target === e.currentTarget && handleIconDrag()">
+            <template v-if="!isEditingTitle">
+              <span
+                class="text-[14px] font-medium leading-relaxed transition-opacity truncate max-w-[200px] cursor-pointer hover:opacity-80"
+                :style="{ color: 'var(--theme-text)' }"
+                @click="startEditingTitle(currentTask?.content || '')">
+                {{ currentTask?.content || 'Task' }}
+              </span>
+            </template>
+            <template v-else>
+              <input
+                ref="titleInputRef"
+                v-model="editingTitle"
+                type="text"
+                class="w-full max-w-[200px] outline-none px-2 py-0.5 rounded text-[14px] font-medium leading-relaxed text-center bg-white dark:bg-neutral-800 border border-transparent focus:border-[var(--theme-border)] shadow-sm"
+                :style="{ color: 'var(--theme-text)' }"
+                @blur="saveTaskTitle"
+                @keydown.enter="saveTaskTitle"
+                @keydown.escape="cancelEditingTitle"
+              />
+            </template>
+          </div>
+
+          <!-- 右侧按钮 -->
+          <div class="w-[60px] flex items-center justify-end">
+            <button @click="handleClose"
+              class="close-btn shrink-0 w-6 h-6 flex items-center justify-center rounded transition-all opacity-0 group-hover:opacity-100 hover:bg-black/10 dark:hover:bg-white/10 active:scale-95"
+              :style="{ color: 'var(--theme-text)' }">
+              <X class="w-4 h-4" />
+            </button>
+          </div>
         </template>
 
-        <!-- 编辑视图 -->
-        <template v-else>
-          <button @click="handleBackToList"
-            class="shrink-0 w-6 h-6 flex items-center justify-center rounded transition-all hover:bg-black/10 dark:hover:bg-white/10 active:scale-95"
-            :style="{ color: 'var(--theme-text)' }">
-            <ChevronLeft class="w-4 h-4" />
-          </button>
+        <!-- 子任务列表视图 -->
+        <template v-else-if="viewMode === 'list'">
+          <!-- 左侧按钮 -->
+          <div class="w-[60px] flex items-center justify-start">
+            <button @click="handleBackToTask"
+              class="shrink-0 w-6 h-6 flex items-center justify-center rounded transition-all hover:bg-black/10 dark:hover:bg-white/10 active:scale-95"
+              :style="{ color: 'var(--theme-text)' }">
+              <ChevronLeft class="w-4 h-4" />
+            </button>
+          </div>
 
-          <div class="flex-1 min-w-0 flex justify-center items-center h-6"
+          <!-- 中间标题，严格居中，可编辑 -->
+          <div class="flex-1 flex justify-center items-center h-6 px-2"
+            @mousedown="(e) => e.target === e.currentTarget && handleIconDrag()">
+            <template v-if="!isEditingTitle">
+              <span
+                class="text-[14px] font-medium leading-relaxed transition-opacity truncate max-w-[200px] cursor-pointer hover:opacity-80"
+                :style="{ color: 'var(--theme-text)' }"
+                @click="startEditingTitle(currentTask?.content || '')">
+                {{ currentTask?.content || 'Task' }}
+              </span>
+            </template>
+            <template v-else>
+              <input
+                ref="titleInputRef"
+                v-model="editingTitle"
+                type="text"
+                class="w-full max-w-[200px] outline-none px-2 py-0.5 rounded text-[14px] font-medium leading-relaxed text-center bg-white dark:bg-neutral-800 border border-transparent focus:border-[var(--theme-border)] shadow-sm"
+                :style="{ color: 'var(--theme-text)' }"
+                @blur="saveTaskTitle"
+                @keydown.enter="saveTaskTitle"
+                @keydown.escape="cancelEditingTitle"
+              />
+            </template>
+          </div>
+
+          <!-- 右侧按钮 -->
+          <div class="w-[60px] flex items-center justify-end gap-1">
+            <button @click="handleStartAdding"
+              class="shrink-0 w-6 h-6 flex items-center justify-center rounded transition-all opacity-0 group-hover:opacity-100 hover:bg-black/10 dark:hover:bg-white/10 active:scale-95"
+              :style="{ color: 'var(--theme-text)' }">
+              <Plus class="w-4 h-4" />
+            </button>
+            <button @click="handleClose"
+              class="close-btn shrink-0 w-6 h-6 flex items-center justify-center rounded transition-all opacity-0 group-hover:opacity-100 hover:bg-black/10 dark:hover:bg-white/10 active:scale-95"
+              :style="{ color: 'var(--theme-text)' }">
+              <X class="w-4 h-4" />
+            </button>
+          </div>
+        </template>
+
+        <!-- 子任务编辑视图 -->
+        <template v-else-if="viewMode === 'detail'">
+          <!-- 左侧按钮 -->
+          <div class="w-[60px] flex items-center justify-start">
+            <button @click="handleBackToList"
+              class="shrink-0 w-6 h-6 flex items-center justify-center rounded transition-all hover:bg-black/10 dark:hover:bg-white/10 active:scale-95"
+              :style="{ color: 'var(--theme-text)' }">
+              <ChevronLeft class="w-4 h-4" />
+            </button>
+          </div>
+
+          <!-- 中间标题，不可编辑 -->
+          <div class="flex-1 flex justify-center items-center h-6 px-2"
             @mousedown="handleIconDrag">
-            <span class="text-[14px] font-medium leading-relaxed truncate max-w-[180px]"
+            <span
+              class="text-[14px] font-medium leading-relaxed truncate max-w-[200px]"
               :style="{ color: 'var(--theme-text)' }">
               {{ editingSubTask?.content || '...' }}
             </span>
           </div>
 
-          <button @click="handleDeleteSubTask(editingSubTask!.id!)"
-            class="shrink-0 w-6 h-6 flex items-center justify-center rounded transition-all opacity-0 group-hover:opacity-100 hover:bg-red-50 dark:hover:bg-red-900/30"
-            :style="{ color: 'var(--theme-text-muted)' }">
-            <Trash2 class="w-4 h-4 hover:text-red-500 dark:hover:text-red-400 transition-colors" />
-          </button>
+          <!-- 右侧按钮 -->
+          <div class="w-[60px] flex items-center justify-end gap-1">
+            <button @click="handleDeleteSubTask(editingSubTask!.id!)"
+              class="shrink-0 w-6 h-6 flex items-center justify-center rounded transition-all opacity-0 group-hover:opacity-100 hover:bg-red-50 dark:hover:bg-red-900/30"
+              :style="{ color: 'var(--theme-text-muted)' }">
+              <Trash2 class="w-4 h-4 hover:text-red-500 dark:hover:text-red-400 transition-colors" />
+            </button>
+            <button @click="handleClose"
+              class="close-btn shrink-0 w-6 h-6 flex items-center justify-center rounded transition-all opacity-0 group-hover:opacity-100 hover:bg-black/10 dark:hover:bg-white/10 active:scale-95"
+              :style="{ color: 'var(--theme-text)' }">
+              <X class="w-4 h-4" />
+            </button>
+          </div>
         </template>
-
-        <button @click="handleClose"
-          class="close-btn shrink-0 w-6 h-6 flex items-center justify-center rounded transition-all opacity-0 group-hover:opacity-100 hover:bg-black/10 dark:hover:bg-white/10 active:scale-95"
-          :style="{ color: 'var(--theme-text)' }">
-          <X class="w-4 h-4" />
-        </button>
       </div>
 
       <div class="flex-1 relative overflow-hidden">
-        <!-- 列表视图 -->
-        <Transition name="view-fade">
-          <div v-if="!isEditing" class="absolute inset-0 flex flex-col w-full h-full">
+        <Transition name="view-fade" mode="out-in">
+          <!-- 主任务详情视图 -->
+          <div v-if="viewMode === 'task'" key="task" class="absolute inset-0 flex flex-col w-full h-full">
+            <div class="flex-1 min-h-0 overflow-y-auto custom-scrollbar p-3">
+              <div class="h-full rounded-lg p-3"
+                :style="{
+                  backgroundColor: 'var(--theme-cell)',
+                  border: '1px solid var(--theme-border)',
+                }">
+                <ScheduleEditor
+                  ref="scheduleEditorRef"
+                  class="h-full"
+                  v-model:description="taskEditDescription"
+                  v-model:create-date="taskEditCreateDate"
+                  v-model:done-date="taskEditDoneDate"
+                  :show-content="false"
+                  :show-father-task="false"
+                  @save="handleSaveTaskDetailAndBack"
+                  @cancel="handleBackToList"
+                />
+              </div>
+            </div>
+          </div>
+
+          <!-- 子任务列表视图 -->
+          <div v-else-if="viewMode === 'list'" key="list" class="absolute inset-0 flex flex-col w-full h-full">
             <div class="flex-1 overflow-y-auto custom-scrollbar px-3 pt-2 pb-3">
               <div class="space-y-2">
+                <!-- 主任务详情入口按钮 -->
+                <div
+                  class="group flex items-center justify-center px-3 py-2 rounded-lg transition-all"
+                  :style="{
+                    backgroundColor: 'var(--theme-cell)',
+                    border: '1px solid var(--theme-border)',
+                  }"
+                  @click="handleViewTaskDetail"
+                >
+                  <ListTodo class="w-4 h-4 opacity-60 group-hover:opacity-100 transition-opacity" :style="{ color: 'var(--theme-text-muted)' }" />
+                </div>
+
                 <!-- 新增子任务 -->
                 <ListItem
                   v-if="isAdding"
@@ -390,8 +619,8 @@ onUnmounted(() => {
             </div>
           </div>
 
-          <!-- 编辑视图 -->
-          <div v-else class="absolute inset-0 flex flex-col w-full h-full z-10">
+          <!-- 子任务编辑视图 -->
+          <div v-else-if="viewMode === 'detail'" key="detail" class="absolute inset-0 flex flex-col w-full h-full">
             <div class="flex-1 min-h-0 overflow-y-auto custom-scrollbar p-3">
               <div class="h-full rounded-lg p-3"
                 :style="{

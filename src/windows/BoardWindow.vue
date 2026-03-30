@@ -106,9 +106,18 @@ async function handleAddTask(content: string) {
   }
 
   try {
-    await saveMainTask(trimmed);
+    // 保存新任务并获取返回的ID
+    const newTaskId = await saveMainTask(trimmed);
+    // 确保数据已写入数据库后再刷新列表
     await loadTasks();
     await notifyRefresh();
+    // 如果有返回ID，自动打开新创建的任务窗口
+    if (newTaskId) {
+      const newTask = tasks.value.find(t => t.id === newTaskId);
+      if (newTask) {
+        await handleOpenTaskWindow(newTask);
+      }
+    }
   } catch (error) {
     console.error('Failed to add task:', error);
   }

@@ -1,4 +1,5 @@
 import { getCurrentWindow } from '@tauri-apps/api/window';
+import { exit } from '@tauri-apps/plugin-process';
 import type { ResizeDirection } from '../types';
 
 let isWindowLocked = false;
@@ -36,5 +37,22 @@ export async function closeWindow(): Promise<void> {
     await window.close();
   } catch (error) {
     console.error('Close failed:', error);
+  }
+}
+
+export async function hideWindow(): Promise<void> {
+  try {
+    const window = getCurrentWindow();
+    await window.hide();
+  } catch (error) {
+    console.error('Hide failed:', error);
+  }
+}
+
+export async function exitApp(): Promise<void> {
+  try {
+    await exit(0);
+  } catch (error) {
+    console.error('Exit failed:', error);
   }
 }

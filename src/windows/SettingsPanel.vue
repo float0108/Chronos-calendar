@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, watch, onMounted, nextTick, computed } from 'vue';
+import { ref, watch, onMounted, onUnmounted, nextTick, computed } from 'vue';
 import { getCurrentWindow } from '@tauri-apps/api/window';
 import { ask } from '@tauri-apps/plugin-dialog';
 import type { AppSettings, ThemeMode } from '../types';
@@ -8,10 +8,11 @@ import { hexToRgba, adjustBrightness } from '../utils/color';
 import { useFonts } from '../composables/useFonts';
 import CommonSettings from './CommonSettings.vue';
 import ModeSettings from './ModeSettings.vue';
+import PageSettings from './PageSettings.vue';
 
 const { loadFonts, isFontsLoaded } = useFonts();
 
-const activeMainTab = ref<'common' | 'mode'>('common');
+const activeMainTab = ref<'common' | 'mode' | 'page'>('common');
 const activeTab = ref<ThemeMode>('light');
 const localSettings = ref<AppSettings>({ ...defaultLightSettings });
 const originalSettings = ref<AppSettings | null>(null);
@@ -100,6 +101,8 @@ function applySettings() {
   root.style.setProperty('--cell-border-color', s.cell_border_color || '#d1d5db');
   root.style.setProperty('--backdrop-blur', s.enable_blur ? '16px' : '0px');
   root.style.setProperty('--cell-border-width', `${s.cell_border_width}px`);
+  root.style.setProperty('--cell-border-style', s.cell_border_style || 'solid');
+  root.style.setProperty('--cell-border-dash-interval', `${s.cell_border_dash_interval || 4}px`);
 
   root.style.setProperty('--font-family-base', s.font_family);
   root.style.setProperty('--font-size-base', `${s.font_size}px`);
@@ -120,7 +123,28 @@ onMounted(async () => {
   loadFonts().finally(() => {
     fontsLoading.value = false;
   });
+  // 添加键盘快捷键
+  window.addEventListener('keydown', handleKeydown);
 });
+
+onUnmounted(() => {
+  window.removeEventListener('keydown', handleKeydown);
+});
+
+async function handleKeydown(e: KeyboardEvent) {
+  // ESC 关闭窗口
+  if (e.key === 'Escape') {
+    e.preventDefault();
+    await handleClose();
+    return;
+  }
+  // Ctrl+S 保存并关闭
+  if ((e.ctrlKey || e.metaKey) && (e.key === 's' || e.key === 'S')) {
+    e.preventDefault();
+    await handleSave();
+    return;
+  }
+}
 
 async function handleClose() {
   if (hasChanges.value) {
@@ -188,104 +212,117 @@ function handleReset() {
 
 <template>
   <div class="settings-overlay fixed inset-0 z-[9999] flex w-full h-full bg-transparent" :style="themeStyle">
-    <div class="settings-panel relative backdrop-blur-2xl flex flex-col overflow-hidden w-full h-full rounded-none shadow-[0_32px_64px_-12px_rgba(0,0,0,0.15)]"
-         :style="{
-           backgroundColor: 'var(--theme-bg)',
-           border: '1px solid var(--theme-border)'
-         }">
-      <!-- Header - 使用单元格颜色 -->
-      <div class="flex items-center px-5 py-4 shrink-0 rounded-t-xl"
-           :style="{ backgroundColor: 'var(--theme-cell)', borderBottom: '1px solid var(--theme-border)' }"
-           data-tauri-drag-region>
-        <div class="flex items-center gap-2">
-          <span class="w-1.5 h-1.5 rounded-full animate-pulse" :style="{ backgroundColor: 'var(--theme-primary)' }"></span>
-          <h1 class="text-[15px] font-bold tracking-tight" :style="{ color: 'var(--theme-text)' }">设置</h1>
+    <div class="settings-panel relative flex flex-col overflow-hidden"
+         :class="{ 'dark-mode': localSettings.theme_mode === 'dark', 'light-mode': localSettings.theme_mode === 'light' }">
+      <div class="flex flex-1 overflow-hidden">
+        <!-- 左侧导航栏 -->
+        <div class="w-48 shrink-0 flex flex-col settings-sidebar">
+          <!-- 标题区 -->
+          <div class="flex items-center gap-2 px-4 py-4 shrink-0" data-tauri-drag-region>
+            <span class="w-1.5 h-1.5 rounded-full animate-pulse" :style="{ backgroundColor: 'var(--theme-primary)' }"></span>
+            <h1 class="text-[15px] font-bold tracking-tight settings-text">设置</h1>
+          </div>
+
+          <!-- 导航菜单 -->
+          <nav class="flex-1 px-3 py-2 space-y-1">
+            <button @click="activeMainTab = 'common'"
+              class="w-full flex items-center gap-3 px-3 py-2.5 text-[13px] font-medium rounded-lg transition-all text-left"
+              :class="activeMainTab === 'common' ? 'settings-nav-active' : 'settings-nav-inactive'">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+              </svg>
+              公用配置
+            </button>
+            <button @click="activeMainTab = 'mode'"
+              class="w-full flex items-center gap-3 px-3 py-2.5 text-[13px] font-medium rounded-lg transition-all text-left"
+              :class="activeMainTab === 'mode' ? 'settings-nav-active' : 'settings-nav-inactive'">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
+              </svg>
+              模式配置
+            </button>
+            <button @click="activeMainTab = 'page'"
+              class="w-full flex items-center gap-3 px-3 py-2.5 text-[13px] font-medium rounded-lg transition-all text-left"
+              :class="activeMainTab === 'page' ? 'settings-nav-active' : 'settings-nav-inactive'">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2M9 7a2 2 0 012-2h2a2 2 0 012 2m0 10V7m0 10a2 2 0 002 2h2a2 2 0 002-2V7a2 2 0 00-2-2h-2a2 2 0 00-2 2" />
+              </svg>
+              页面设置
+            </button>
+          </nav>
+
+          <!-- 底部操作区 -->
+          <div class="px-3 py-3 space-y-2 settings-sidebar-footer">
+            <button @click="handleReset"
+              class="w-full flex items-center gap-2 px-3 py-2 text-[12px] font-medium rounded-lg transition-all hover:bg-black/5 settings-nav-inactive">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+              </svg>
+              恢复默认
+            </button>
+            <div class="flex gap-2">
+              <button @click="handleClose"
+                class="flex-1 h-9 flex items-center justify-center rounded-lg transition-all hover:bg-black/5 settings-nav-inactive"
+                title="取消">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.2" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+              <button @click="handleSave"
+                class="flex-1 h-9 flex items-center justify-center rounded-lg transition-all active:scale-90"
+                :style="{
+                  backgroundColor: 'var(--theme-primary)',
+                  color: '#ffffff'
+                }"
+                title="保存">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7" />
+                </svg>
+              </button>
+            </div>
+          </div>
         </div>
-        <div class="flex-1" data-tauri-drag-region></div>
-        <button @click="handleClose"
-          class="w-9 h-9 flex items-center justify-center rounded-xl transition-all hover:bg-black/5"
-          :style="{ color: 'var(--theme-text-muted)' }"
-          title="关闭">
-          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-          </svg>
-        </button>
-      </div>
 
-      <!-- Tab Navigation - 使用单元格颜色 -->
-      <div class="flex items-center px-5 py-2 gap-1 shrink-0"
-           :style="{ backgroundColor: 'var(--theme-cell-muted)' }">
-        <button @click="activeMainTab = 'common'"
-          class="px-4 py-2 text-[13px] font-medium rounded-lg transition-all"
-          :style="activeMainTab === 'common' ? {
-            backgroundColor: 'var(--theme-cell)',
-            color: 'var(--theme-text)',
-            boxShadow: '0 1px 3px rgba(0,0,0,0.08)'
-          } : { color: 'var(--theme-text-muted)' }">
-          公用配置
-        </button>
-        <button @click="activeMainTab = 'mode'"
-          class="px-4 py-2 text-[13px] font-medium rounded-lg transition-all"
-          :style="activeMainTab === 'mode' ? {
-            backgroundColor: 'var(--theme-cell)',
-            color: 'var(--theme-text)',
-            boxShadow: '0 1px 3px rgba(0,0,0,0.08)'
-          } : { color: 'var(--theme-text-muted)' }">
-          模式配置
-        </button>
-      </div>
+        <!-- 右侧内容区 -->
+        <div class="flex-1 overflow-hidden flex flex-col settings-content">
+          <!-- 顶部标题栏 -->
+          <div class="flex items-center justify-between px-5 py-4 shrink-0 settings-content-header" data-tauri-drag-region>
+            <h2 class="text-[14px] font-semibold settings-text">{{ activeMainTab === 'common' ? '公用配置' : activeMainTab === 'mode' ? '模式配置' : '页面设置' }}</h2>
+            <button @click="handleClose"
+              class="w-8 h-8 flex items-center justify-center rounded-lg transition-all hover:bg-black/5 dark:hover:bg-white/10"
+              title="关闭">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
 
-      <!-- Content -->
-      <div class="flex-1 overflow-y-auto">
-        <CommonSettings
-          v-show="activeMainTab === 'common'"
-          :settings="localSettings"
-          :fonts-loading="fontsLoading"
-          v-model:is-refreshing-fonts="isRefreshingFonts"
-          @update:settings="localSettings = $event"
-          @refresh-fonts="refreshFonts"
-        />
+          <!-- 内容 -->
+          <div class="flex-1 overflow-y-auto px-5 pb-5">
+            <CommonSettings
+              v-show="activeMainTab === 'common'"
+              :settings="localSettings"
+              :fonts-loading="fontsLoading"
+              v-model:is-refreshing-fonts="isRefreshingFonts"
+              @update:settings="localSettings = $event"
+              @refresh-fonts="refreshFonts"
+            />
 
-        <ModeSettings
-          v-show="activeMainTab === 'mode'"
-          :settings="localSettings"
-          :active-tab="activeTab"
-          @update:settings="localSettings = $event"
-          @switch-mode="handleSwitchMode"
-        />
-      </div>
+            <ModeSettings
+              v-show="activeMainTab === 'mode'"
+              :settings="localSettings"
+              :active-tab="activeTab"
+              @update:settings="localSettings = $event"
+              @switch-mode="handleSwitchMode"
+            />
 
-      <!-- Footer - 使用单元格颜色 -->
-      <div class="flex items-center justify-between px-5 py-4 shrink-0 rounded-b-xl"
-           :style="{ backgroundColor: 'var(--theme-cell)', borderTop: '1px solid var(--theme-border)' }">
-        <button @click="handleReset"
-          class="flex items-center gap-1.5 px-3 py-2 text-[13px] font-medium rounded-lg transition-all hover:bg-black/5"
-          :style="{ color: 'var(--theme-text-muted)' }">
-          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-          </svg>
-          恢复默认
-        </button>
-        <div class="flex gap-2">
-          <button @click="handleClose"
-            class="w-10 h-10 flex items-center justify-center rounded-xl transition-all hover:bg-black/5"
-            :style="{ color: 'var(--theme-text-muted)' }"
-            title="取消">
-            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.2" d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          </button>
-          <button @click="handleSave"
-            class="w-10 h-10 flex items-center justify-center rounded-xl transition-all active:scale-90"
-            :style="{
-              backgroundColor: 'var(--theme-primary)',
-              color: '#ffffff'
-            }"
-            title="保存">
-            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7" />
-            </svg>
-          </button>
+            <PageSettings
+              v-show="activeMainTab === 'page'"
+              :settings="localSettings"
+              @update:settings="localSettings = $event"
+            />
+          </div>
         </div>
       </div>
     </div>
@@ -293,6 +330,33 @@ function handleReset() {
 </template>
 
 <style scoped>
+.settings-panel {
+  width: 100%;
+  height: 100%;
+  backdrop-filter: blur(16px);
+}
+
+/* 亮色模式：白色背景，黑色文字 */
+.settings-panel.light-mode {
+  background-color: #ffffff;
+  color: #000000;
+}
+
+/* 暗色模式：黑色背景，白色文字 */
+.settings-panel.dark-mode {
+  background-color: #000000;
+  color: #ffffff;
+}
+
+/* 文字样式 */
+.settings-panel.light-mode .settings-text {
+  color: #000000;
+}
+
+.settings-panel.dark-mode .settings-text {
+  color: #ffffff;
+}
+
 .settings-panel::-webkit-scrollbar {
   width: 6px;
 }
@@ -305,5 +369,77 @@ function handleReset() {
 }
 .settings-panel::-webkit-scrollbar-thumb:hover {
   background: rgba(128, 128, 128, 0.3);
+}
+
+/* 侧边栏样式 - 亮色模式 */
+.settings-panel.light-mode .settings-sidebar {
+  background-color: #f3f4f6;
+  border-right: 1px solid #e5e7eb;
+}
+
+/* 侧边栏样式 - 暗色模式 */
+.settings-panel.dark-mode .settings-sidebar {
+  background-color: #111827;
+  border-right: 1px solid #374151;
+}
+
+/* 导航项样式 - 亮色模式 */
+.settings-panel.light-mode .settings-nav-active {
+  background-color: #ffffff;
+  color: #000000;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+}
+
+.settings-panel.light-mode .settings-nav-inactive {
+  color: #6b7280;
+}
+
+.settings-panel.light-mode .settings-nav-inactive:hover {
+  background-color: rgba(0,0,0,0.05);
+  color: #000000;
+}
+
+/* 导航项样式 - 暗色模式 */
+.settings-panel.dark-mode .settings-nav-active {
+  background-color: #374151;
+  color: #ffffff;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+}
+
+.settings-panel.dark-mode .settings-nav-inactive {
+  color: #9ca3af;
+}
+
+.settings-panel.dark-mode .settings-nav-inactive:hover {
+  background-color: rgba(255,255,255,0.1);
+  color: #ffffff;
+}
+
+/* 内容区域样式 - 亮色模式 */
+.settings-panel.light-mode .settings-content {
+  background-color: #ffffff;
+}
+
+.settings-panel.light-mode .settings-content-header {
+  border-bottom: 1px solid #e5e7eb;
+}
+
+/* 内容区域样式 - 暗色模式 */
+.settings-panel.dark-mode .settings-content {
+  background-color: #000000;
+}
+
+.settings-panel.dark-mode .settings-content-header {
+  border-bottom: 1px solid #374151;
+}
+
+/* 侧边栏底部区域 - 亮色模式 */
+.settings-panel.light-mode .settings-sidebar-footer {
+  border-top: 1px solid #e5e7eb;
+}
+
+/* 侧边栏底部区域 - 暗色模式 */
+.settings-panel.dark-mode .settings-sidebar-footer {
+  border-top: 1px solid #374151;
 }
 </style>

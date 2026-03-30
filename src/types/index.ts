@@ -25,6 +25,8 @@ export type ViewMode = 'todo' | 'done';
 export type ThemeMode = 'light' | 'dark';
 export type WeekStartsOn = 0 | 1;
 
+export type BorderStyle = 'solid' | 'dashed' | 'dotted' | 'dash-dot' | 'dash-dot-dot';
+
 // 将配置拆分为公用和模式专有，并在 AppSettings 中合并
 export interface CommonSettings {
   font_family: string;
@@ -32,12 +34,16 @@ export interface CommonSettings {
   font_weight: number;
   cell_gap: number;
   cell_border_width: number;
+  cell_border_style: BorderStyle;
+  cell_border_dash_interval: number; // 虚线/点线的间隔（0-20px）
   week_starts_on: WeekStartsOn;
   display_mode: 'month' | 'floating_weeks'; // 显示模式：整月或浮动周
   floating_weeks_count: number; // 浮动周数量（默认3）
   autostart: boolean; // 开机自启动
   header_cell_style: boolean; // 标题栏应用单元格风格
   hide_weekends: boolean; // 隐藏周末
+  desc_dialog_width: number; // 描述窗口宽度占比 (0-100)
+  desc_dialog_height: number; // 描述窗口高度占比 (0-100)
 }
 
 export interface ModeSettings {
@@ -63,12 +69,16 @@ export const defaultCommonSettings: CommonSettings = {
   font_weight: 400,
   cell_gap: 4,
   cell_border_width: 1,
+  cell_border_style: 'solid',
+  cell_border_dash_interval: 4,
   week_starts_on: 1,
   display_mode: 'month',
   floating_weeks_count: 3,
   autostart: false,
   header_cell_style: false,
   hide_weekends: false,
+  desc_dialog_width: 40, // 默认宽度占比 40%
+  desc_dialog_height: 70, // 默认高度占比 70%
 };
 
 // 默认浅色/深色模式配置
@@ -106,12 +116,16 @@ export function extractCommonParts(settings: AppSettings): CommonSettings {
     font_weight: settings.font_weight,
     cell_gap: settings.cell_gap,
     cell_border_width: settings.cell_border_width,
+    cell_border_style: settings.cell_border_style,
+    cell_border_dash_interval: settings.cell_border_dash_interval,
     week_starts_on: settings.week_starts_on,
     display_mode: settings.display_mode,
     floating_weeks_count: settings.floating_weeks_count,
     autostart: settings.autostart,
     header_cell_style: settings.header_cell_style,
     hide_weekends: settings.hide_weekends,
+    desc_dialog_width: settings.desc_dialog_width,
+    desc_dialog_height: settings.desc_dialog_height,
   };
 }
 

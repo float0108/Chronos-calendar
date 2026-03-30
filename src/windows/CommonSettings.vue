@@ -113,56 +113,6 @@ const cellStyle = computed(() => {
       </div>
     </div>
 
-    <!-- 网格与外观 -->
-    <div class="space-y-3">
-      <h3 class="text-[13px] font-semibold flex items-center gap-2" :style="{ color: themeColors.text }">
-        <span class="w-1 h-1 rounded-full" :style="{ backgroundColor: themeColors.primary }"></span> 网格与外观
-      </h3>
-
-      <div class="space-y-3 rounded-xl p-4" :style="cellStyle">
-        <div class="flex items-center justify-between">
-          <div>
-            <label class="text-[13px] font-medium cursor-pointer" :style="{ color: themeColors.textMuted }">标题栏应用单元格风格</label>
-            <p class="text-[11px] mt-0.5" :style="{ color: themeColors.textMuted, opacity: 0.7 }">应用单元格背景、边框和透明度到标题栏</p>
-          </div>
-          <label class="relative inline-flex items-center cursor-pointer">
-            <input type="checkbox" :checked="settings.header_cell_style" @change="updateSetting('header_cell_style', !settings.header_cell_style)" class="sr-only peer" />
-            <div class="w-11 h-6 rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all"
-                 :style="{
-                   backgroundColor: settings.header_cell_style ? themeColors.primary : (settings.theme_mode === 'dark' ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.15)')
-                 }"></div>
-          </label>
-        </div>
-        <hr :style="{ borderColor: themeColors.border }">
-        <div class="flex items-center justify-between py-1">
-          <label class="text-[13px] font-medium" :style="{ color: themeColors.textMuted }">单元格间距</label>
-          <div class="flex items-center gap-2">
-            <input type="number" :value="settings.cell_gap" @input="updateSetting('cell_gap', Number(($event.target as HTMLInputElement).value))" min="0" max="24" step="0.1"
-              class="w-16 px-2.5 py-1.5 text-[13px] text-center rounded-lg focus:outline-none focus:ring-2 transition-all"
-              :style="{
-                backgroundColor: settings.theme_mode === 'dark' ? 'rgba(255,255,255,0.08)' : 'rgba(255,255,255,0.8)',
-                border: '1px solid ' + themeColors.border,
-                color: themeColors.text
-              }" />
-            <span class="text-[12px] w-4" :style="{ color: themeColors.textMuted }">px</span>
-          </div>
-        </div>
-        <div class="flex items-center justify-between py-1">
-          <label class="text-[13px] font-medium" :style="{ color: themeColors.textMuted }">边框粗细</label>
-          <div class="flex items-center gap-2">
-            <input type="number" :value="settings.cell_border_width" @input="updateSetting('cell_border_width', Number(($event.target as HTMLInputElement).value))" min="0" max="10" step="0.1"
-              class="w-16 px-2.5 py-1.5 text-[13px] text-center rounded-lg focus:outline-none focus:ring-2 transition-all"
-              :style="{
-                backgroundColor: settings.theme_mode === 'dark' ? 'rgba(255,255,255,0.08)' : 'rgba(255,255,255,0.8)',
-                border: '1px solid ' + themeColors.border,
-                color: themeColors.text
-              }" />
-            <span class="text-[12px] w-4" :style="{ color: themeColors.textMuted }">px</span>
-          </div>
-        </div>
-      </div>
-    </div>
-
     <!-- 系统与日历 -->
     <div class="space-y-3">
       <h3 class="text-[13px] font-semibold flex items-center gap-2" :style="{ color: themeColors.text }">

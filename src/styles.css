@@ -9,6 +9,8 @@
   --cell-gap: 4px;
   --cell-border-width: 1px;
   --cell-border-color: #d1d5db;
+  --cell-border-style: solid;
+  --cell-border-dash-interval: 4px;
 
   /* Primary colors */
   --primary: #3b82f6;

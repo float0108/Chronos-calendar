@@ -29,12 +29,18 @@ const themeStyle = computed(() => {
   const s = currentSettings.value;
   if (!s) return {};
   const cellOpacity = s.cell_opacity / 100;
+  const widthPercent = s.desc_dialog_width ?? 40;
+  const heightPercent = s.desc_dialog_height ?? 70;
   return {
     '--theme-cell': hexToRgba(s.cell_color, cellOpacity),
     '--theme-text': s.text_color,
     '--theme-text-muted': adjustBrightness(s.text_color, 50),
     '--theme-primary': s.primary_color,
     '--theme-border': s.cell_border_color || (s.theme_mode === 'dark' ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.05)'),
+    '--dialog-border-width': `${s.cell_border_width || 1}px`,
+    '--dialog-border-color': s.cell_border_color || (s.theme_mode === 'dark' ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)'),
+    '--dialog-width': `${widthPercent}vw`,
+    '--dialog-height': `${heightPercent}vh`,
   };
 });
 
@@ -99,7 +105,9 @@ onUnmounted(() => {
       @click.self="handleCancel"
     >
       <Transition name="pop">
-        <div class="dialog-content w-full max-w-[320px] rounded-2xl shadow-lg flex flex-col max-h-[85vh] overflow-hidden" :style="themeStyle">
+        <div class="dialog-content w-full rounded-2xl shadow-lg flex flex-col overflow-hidden"
+             :class="{ 'dark-mode': currentSettings?.theme_mode === 'dark', 'light-mode': currentSettings?.theme_mode !== 'dark' }"
+             :style="themeStyle">
 
           <div class="dialog-header px-4 pt-4 pb-2 shrink-0">
             <input
@@ -135,11 +143,41 @@ onUnmounted(() => {
 
 <style scoped>
 .dialog-content {
-  background: var(--glass-bg);
   backdrop-filter: blur(var(--backdrop-blur)) saturate(var(--backdrop-saturate));
   -webkit-backdrop-filter: blur(var(--backdrop-blur)) saturate(var(--backdrop-saturate));
-  border: 1px solid var(--border-light);
+  border: var(--dialog-border-width, 1px) solid var(--dialog-border-color);
   box-shadow: var(--shadow);
+  max-width: var(--dialog-width, 40vw);
+  height: var(--dialog-height, 70vh);
+  max-height: 90vh;
+}
+
+/* 亮色模式：白色背景，黑色文字 */
+.dialog-content.light-mode {
+  background-color: #ffffff;
+  color: #000000;
+}
+
+/* 暗色模式：黑色背景，白色文字 */
+.dialog-content.dark-mode {
+  background-color: #000000;
+  color: #ffffff;
+}
+
+.dialog-content.light-mode .dialog-input {
+  color: #000000;
+}
+
+.dialog-content.dark-mode .dialog-input {
+  color: #ffffff;
+}
+
+.dialog-content.light-mode .dialog-input::placeholder {
+  color: rgba(0, 0, 0, 0.5);
+}
+
+.dialog-content.dark-mode .dialog-input::placeholder {
+  color: rgba(255, 255, 255, 0.5);
 }
 
 .dialog-header {
