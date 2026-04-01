@@ -49,7 +49,11 @@ pub fn run() {
             commands::open_task_window,
             commands::close_task_window,
             commands::toggle_task_window,
-            commands::is_task_window_visible
+            commands::is_task_window_visible,
+            commands::open_search_window,
+            commands::close_search_window,
+            commands::toggle_search_window,
+            commands::is_search_window_visible
         ])
         .setup(|app| {
             let window = app.get_webview_window("main").unwrap();

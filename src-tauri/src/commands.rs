@@ -415,3 +415,115 @@ pub async fn is_task_window_visible(app: tauri::AppHandle) -> Result<bool, Strin
         Ok(false)
     }
 }
+
+// === Search 窗口 ===
+
+#[tauri::command]
+pub async fn open_search_window(app: tauri::AppHandle) -> Result<(), String> {
+    if let Some(window) = app.get_webview_window("search") {
+        window.show().map_err(|e| e.to_string())?;
+        window.set_focus().map_err(|e| e.to_string())?;
+        return Ok(());
+    }
+
+    let search_window = WebviewWindowBuilder::new(
+        &app,
+        "search",
+        WebviewUrl::App("src/search.html".into())
+    )
+    .title("Chronos - 搜索")
+    .inner_size(360.0, 480.0)
+    .min_inner_size(300.0, 360.0)
+    .resizable(true)
+    .decorations(false)
+    .transparent(true)
+    .visible(false)
+    .center()
+    .build()
+    .map_err(|e| e.to_string())?;
+
+    let _ = search_window.set_skip_taskbar(true);
+
+    #[cfg(target_os = "windows")]
+    {
+        if let Ok(tauri_hwnd) = search_window.hwnd() {
+            unsafe {
+                apply_window_settings(std::mem::transmute(tauri_hwnd));
+            }
+        }
+    }
+
+    let _ = search_window.restore_state(StateFlags::SIZE | StateFlags::POSITION);
+
+    search_window.show().map_err(|e| e.to_string())?;
+    search_window.set_focus().map_err(|e| e.to_string())?;
+
+    Ok(())
+}
+
+#[tauri::command]
+pub async fn close_search_window(app: tauri::AppHandle) -> Result<(), String> {
+    if let Some(window) = app.get_webview_window("search") {
+        let _ = app.save_window_state(StateFlags::SIZE | StateFlags::POSITION);
+        window.hide().map_err(|e| e.to_string())?;
+    }
+    Ok(())
+}
+
+#[tauri::command]
+pub async fn toggle_search_window(app: tauri::AppHandle) -> Result<bool, String> {
+    if let Some(window) = app.get_webview_window("search") {
+        let is_visible = window.is_visible().map_err(|e| e.to_string())?;
+        if is_visible {
+            let _ = app.save_window_state(StateFlags::SIZE | StateFlags::POSITION);
+            window.hide().map_err(|e| e.to_string())?;
+            Ok(false)
+        } else {
+            window.show().map_err(|e| e.to_string())?;
+            window.set_focus().map_err(|e| e.to_string())?;
+            Ok(true)
+        }
+    } else {
+        let search_window = WebviewWindowBuilder::new(
+            &app,
+            "search",
+            WebviewUrl::App("src/search.html".into())
+        )
+        .title("Chronos - 搜索")
+        .inner_size(360.0, 480.0)
+        .min_inner_size(300.0, 360.0)
+        .resizable(true)
+        .decorations(false)
+        .transparent(true)
+        .visible(false)
+        .center()
+        .build()
+        .map_err(|e| e.to_string())?;
+
+        let _ = search_window.set_skip_taskbar(true);
+
+        #[cfg(target_os = "windows")]
+        {
+            if let Ok(tauri_hwnd) = search_window.hwnd() {
+                unsafe {
+                    apply_window_settings(std::mem::transmute(tauri_hwnd));
+                }
+            }
+        }
+
+        let _ = search_window.restore_state(StateFlags::SIZE | StateFlags::POSITION);
+
+        search_window.show().map_err(|e| e.to_string())?;
+        search_window.set_focus().map_err(|e| e.to_string())?;
+        Ok(true)
+    }
+}
+
+#[tauri::command]
+pub async fn is_search_window_visible(app: tauri::AppHandle) -> Result<bool, String> {
+    if let Some(window) = app.get_webview_window("search") {
+        window.is_visible().map_err(|e| e.to_string())
+    } else {
+        Ok(false)
+    }
+}

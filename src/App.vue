@@ -65,6 +65,7 @@ const editingSchedule = ref<Schedule | null>(null);
 const isLocked = ref(false);
 const isBoardVisible = ref(false);
 const isNoteVisible = ref(false);
+const isSearchVisible = ref(false);
 
 const hideWeekends = computed(() => getSetting('hide_weekends') ?? false);
 
@@ -343,6 +344,31 @@ async function toggleNote() {
   localStorage.setItem('chronos_note_visible', String(isVisible));
 }
 
+async function loadSearchVisibility() {
+  const saved = localStorage.getItem('chronos_search_visible');
+  if (saved === 'true') {
+    isSearchVisible.value = true;
+    await invoke('open_search_window');
+  }
+}
+
+async function toggleSearch() {
+  const isVisible = await invoke<boolean>('toggle_search_window');
+  isSearchVisible.value = isVisible;
+  localStorage.setItem('chronos_search_visible', String(isVisible));
+}
+
+// 处理从搜索窗口导航到指定日期
+function handleNavigateToDate(data: { date: string; viewMode: ViewMode }) {
+  if (data.date) {
+    currentDate.value = dayjs(data.date);
+    if (data.viewMode) {
+      switchViewMode(data.viewMode);
+    }
+    refreshSchedules();
+  }
+}
+
 function toggleWeekends() {
   showMenu.value = false;
   const currentHideWeekends = getSetting('hide_weekends') ?? false;
@@ -369,12 +395,18 @@ onMounted(async () => {
   await loadFonts();
   await loadBoardVisibility();
   await loadNoteVisibility();
+  await loadSearchVisibility();
   window.addEventListener('storage', handleSettingsUpdate);
   window.addEventListener('keydown', handleKeyDown);
 
   // 监听来自 TaskWindow 的数据变更事件
   listen('schedule-changed', async () => {
     await refreshSchedules();
+  });
+
+  // 监听来自 SearchWindow 的导航事件
+  listen<{ date: string; viewMode: ViewMode }>('navigate-to-date', (event) => {
+    handleNavigateToDate(event.payload);
   });
 });
 
@@ -407,6 +439,7 @@ onUnmounted(() => {
       :view-mode="viewMode"
       :is-board-visible="isBoardVisible"
       :is-note-visible="isNoteVisible"
+      :is-search-visible="isSearchVisible"
       :hide-weekends="hideWeekends"
       @prev-month="prevMonth()"
       @next-month="nextMonth()"
@@ -428,6 +461,7 @@ onUnmounted(() => {
       @open-batch-task="handleOpenBatchTask"
       @toggle-board="toggleBoard"
       @toggle-note="toggleNote"
+      @toggle-search="toggleSearch"
       @toggle-weekends="toggleWeekends"
     />
 

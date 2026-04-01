@@ -15,6 +15,7 @@ export {
   updateScheduleFatherTask,
   loadSchedulesByFatherTask,
   saveSubTask,
+  searchSchedules,
 } from './schedule';
 export {
   updateScheduleColor,

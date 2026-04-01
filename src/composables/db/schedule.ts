@@ -320,3 +320,30 @@ export async function saveSubTask(
     throw error;
   }
 }
+
+/**
+ * 搜索日程（按标题和描述）
+ * 返回包含 create_date 和 done_date 的日程列表
+ */
+export async function searchSchedules(keyword: string): Promise<Schedule[]> {
+  const db = getDatabase();
+  if (!db) return [];
+
+  try {
+    const searchTerm = `%${keyword.trim()}%`;
+    const schedules = await db.select<Schedule[]>(`
+      SELECT * FROM schedules
+      WHERE (content LIKE $1 OR description LIKE $1)
+      AND content IS NOT NULL AND content != ''
+      ORDER BY create_date DESC, id DESC
+    `, [searchTerm]);
+    // 转换 is_done 字段为布尔值
+    return schedules.map(s => ({
+      ...s,
+      is_done: !!s.is_done
+    }));
+  } catch (error) {
+    console.error('Failed to search schedules:', error);
+    return [];
+  }
+}
