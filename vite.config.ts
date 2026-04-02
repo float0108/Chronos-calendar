@@ -21,6 +21,7 @@ export default defineConfig(async () => ({
         board: resolve(__dirname, 'src/board.html'),
         note: resolve(__dirname, 'src/note.html'),
         task: resolve(__dirname, 'src/task.html'),
+        search: resolve(__dirname, 'src/search.html'),
       },
     },
   },

@@ -1,6 +1,5 @@
 /**
  * 数据库操作 composable
- * 向后兼容的统一入口
  */
 import { ref } from 'vue';
 import type { Schedule } from '../types';
@@ -28,7 +27,6 @@ import {
   clearAllTables,
 } from './db';
 
-// 保持 db ref 的导出（向后兼容）
 const db = ref<unknown>(null);
 
 export function useDatabase() {

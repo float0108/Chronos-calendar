@@ -357,10 +357,8 @@ function getDateString(): string {
   return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
 }
 
-// ========== 保留旧的 CSV 导出功能（向后兼容） ==========
-
 /**
- * Export data to CSV file using Tauri dialog (legacy)
+ * Export data to CSV file using Tauri dialog
  */
 export async function exportToFile(data: string, filename: string): Promise<boolean> {
   try {
@@ -380,7 +378,7 @@ export async function exportToFile(data: string, filename: string): Promise<bool
 }
 
 /**
- * Import data from CSV file using Tauri dialog (legacy)
+ * Import data from CSV file using Tauri dialog
  */
 export async function importFromFile(): Promise<string | null> {
   try {
@@ -401,6 +399,5 @@ export async function importFromFile(): Promise<string | null> {
   }
 }
 
-// 重新导出 CSV 相关函数（向后兼容）
 export { schedulesToCSV, csvToSchedules };
 
