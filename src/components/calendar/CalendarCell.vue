@@ -310,10 +310,38 @@ function handleScheduleMouseEnter(event: MouseEvent, schedule: Schedule) {
   }
 
   const rect = (event.target as HTMLElement).getBoundingClientRect();
-  tooltipPosition.value = {
-    x: rect.right + 10,
-    y: rect.top
-  };
+  // 预览窗口宽度为窗口宽度的 1/5（约 1.5 个 cell 宽度，假设 7 列时 cell 宽度约为窗口宽度/7）
+  const tooltipWidth = window.innerWidth / 5;
+  const tooltipHeight = 192;
+  const gap = 10;
+
+  // 计算左右两侧可用空间
+  const rightSpace = window.innerWidth - rect.right - gap;
+  const leftSpace = rect.left - gap;
+
+  // 计算水平位置
+  let x: number;
+  if (rightSpace >= tooltipWidth) {
+    x = rect.right + gap;
+  } else if (leftSpace >= tooltipWidth) {
+    x = rect.left - gap - tooltipWidth;
+  } else {
+    // 两侧都不够，选择空间更大的一侧
+    if (rightSpace >= leftSpace) {
+      x = Math.min(rect.right + gap, window.innerWidth - tooltipWidth - gap);
+    } else {
+      x = Math.max(rect.left - gap - tooltipWidth, gap);
+    }
+  }
+
+  // 计算垂直位置，防止底部溢出
+  let y = rect.top;
+  if (y + tooltipHeight > window.innerHeight) {
+    y = window.innerHeight - tooltipHeight - gap;
+    if (y < 0) y = gap;
+  }
+
+  tooltipPosition.value = { x, y, width: tooltipWidth };
 
   tooltipTimeout = window.setTimeout(() => {
     hoveredSchedule.value = schedule;

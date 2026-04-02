@@ -4,7 +4,7 @@ import type { Schedule } from '../../types';
 
 const props = defineProps<{
   schedule: Schedule | null;
-  position: { x: number; y: number };
+  position: { x: number; y: number; width?: number };
 }>();
 
 const tooltipRef = ref<HTMLElement | null>(null);
@@ -33,10 +33,11 @@ defineExpose({ scrollBy });
     <div
       v-if="props.schedule && props.schedule.description"
       ref="tooltipRef"
-      class="fixed z-[9999] max-w-xs max-h-48 px-3 py-2 text-xs bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg overflow-y-auto tooltip-scroll pointer-events-none"
+      class="fixed z-[9999] max-h-48 px-3 py-2 text-xs bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg overflow-y-auto tooltip-scroll pointer-events-none"
       :style="{
         left: props.position.x + 'px',
-        top: props.position.y + 'px'
+        top: props.position.y + 'px',
+        width: (props.position.width || 240) + 'px'
       }"
     >
       <div class="font-medium text-gray-900 dark:text-gray-100 mb-1">{{ props.schedule.content }}</div>
