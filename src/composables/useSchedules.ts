@@ -349,6 +349,7 @@ export function useSchedules() {
     importSchedulesFromData,
     toggleScheduleStatus,
     saveSchedule: _saveSchedule,
+    deleteSchedule,
     updateScheduleDescription,
     updateScheduleContent,
     updateScheduleDate,

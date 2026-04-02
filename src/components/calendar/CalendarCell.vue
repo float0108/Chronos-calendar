@@ -21,6 +21,7 @@ const emit = defineEmits<{
   (e: 'navigate', direction: string): void;
   (e: 'contextmenu', event: MouseEvent): void;
   (e: 'toggleDone', schedule: Schedule): void;
+  (e: 'deleteSchedule', schedule: Schedule): void;
   (e: 'editDescription', schedule: Schedule): void;
   (e: 'scheduleDrop', date: string, event: DragEvent): void;
 }>();
@@ -37,7 +38,7 @@ const dateStr = props.date.format('YYYY-MM-DD');
 
 // 悬停描述浮窗状态
 const hoveredSchedule = ref<Schedule | null>(null);
-const tooltipPosition = ref({ x: 0, y: 0 });
+const tooltipPosition = ref({ x: 0, y: 0, width: 240 });
 let tooltipTimeout: number | null = null;
 let unlistenFocus: (() => void) | null = null;
 
@@ -280,6 +281,16 @@ function handleScheduleContextMenu(event: MouseEvent, schedule: Schedule) {
   emit('toggleDone', schedule);
 }
 
+function handleDeleteClick(schedule: Schedule) {
+  // 关闭预览
+  hoveredSchedule.value = null;
+  if (tooltipTimeout) {
+    clearTimeout(tooltipTimeout);
+    tooltipTimeout = null;
+  }
+  emit('deleteSchedule', schedule);
+}
+
 function handleColorButtonClick(event: MouseEvent) {
   event.preventDefault();
   event.stopPropagation();
@@ -332,7 +343,7 @@ function handleScheduleMouseEnter(event: MouseEvent, schedule: Schedule) {
     if (y < 0) y = gap;
   }
 
-  tooltipPosition.value = { x, y };
+  tooltipPosition.value = { x, y, width: tooltipWidth };
 
   tooltipTimeout = window.setTimeout(() => {
     hoveredSchedule.value = schedule;
@@ -483,7 +494,7 @@ function handleDrop(event: DragEvent) {
           @dragstart="handleDragStart($event, s)"
           @dragend="handleDragEnd">
           <button
-            @click.stop="emit('toggleDone', s)"
+            @click.stop="handleDeleteClick(s)"
             class="relative shrink-0 w-3 h-3 flex items-center justify-center marker-btn"
             :style="{ color: 'var(--text-muted)' }"
           >

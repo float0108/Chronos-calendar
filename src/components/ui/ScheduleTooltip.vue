@@ -59,6 +59,8 @@ defineExpose({ scrollBy });
 
 .tooltip-desc {
   color: var(--text-muted);
+  word-break: normal;
+  overflow-wrap: break-word;
 }
 
 .tooltip-scroll {

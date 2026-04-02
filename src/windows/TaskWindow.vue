@@ -9,6 +9,7 @@ import {
   saveSubTask,
   deleteSchedule,
   toggleScheduleStatus,
+  toggleMainTaskStatus,
   updateScheduleContent,
   updateScheduleDescription,
   updateScheduleDate,
@@ -289,6 +290,11 @@ async function handleSaveDetail() {
       await updateScheduleDate(editingSubTask.value.id, 'done_date', editDoneDate.value);
     }
 
+    // 如果完成日期非空，自动设置为 done 状态
+    if (editDoneDate.value && !editingSubTask.value.is_done) {
+      await toggleScheduleStatus(editingSubTask.value.id, true);
+    }
+
     await loadSubTasks();
     await notifyMainToRefresh();
     handleBackToList();
@@ -324,6 +330,11 @@ async function handleSaveTaskDetail() {
     const currentDoneDate = currentTask.value.done_date || '';
     if (taskEditDoneDate.value !== currentDoneDate) {
       await updateMainTaskDoneDate(currentTask.value.id, taskEditDoneDate.value || null);
+    }
+
+    // 如果完成日期非空，自动设置为 done 状态
+    if (taskEditDoneDate.value && !currentTask.value.is_done) {
+      await toggleMainTaskStatus(currentTask.value.id, true);
     }
 
     // 重新加载任务数据

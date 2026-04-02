@@ -37,6 +37,7 @@ const {
   selectDate,
   toggleScheduleStatus,
   saveSchedule,
+  deleteSchedule,
   updateScheduleDescription,
   updateScheduleContent,
   updateScheduleDate,
@@ -46,13 +47,14 @@ const {
 const { currentSettings, effectiveTheme, initSettings, saveSettings, getSetting } = useSettings();
 const { showSuccess, showError } = useToast();
 const { loadFonts } = useFonts();
-const { pushAction, handleToggleDone: toggleDoneWithUndo, handleMoveSchedule: moveScheduleWithUndo, handleUndo: undo, handleRedo: redo, canUndo, canRedo } = useScheduleUndo(
+const { pushAction, handleToggleDone: toggleDoneWithUndo, handleDeleteSchedule: deleteScheduleWithUndo, handleMoveSchedule: moveScheduleWithUndo, handleUndo: undo, handleRedo: redo, canUndo, canRedo } = useScheduleUndo(
   schedules,
   toggleScheduleStatus,
   refreshSchedules,
   updateScheduleLines,
   saveSchedule,
-  updateScheduleDate
+  updateScheduleDate,
+  deleteSchedule
 );
 const { contextMenu, contextMenuStyle, showContextMenu, hideContextMenu, getSelectedDate, getColorOptions } = useContextMenu();
 
@@ -241,6 +243,10 @@ async function handleToggleDone(schedule: Schedule) {
   await toggleDoneWithUndo(schedule);
 }
 
+async function handleDeleteSchedule(schedule: Schedule) {
+  await deleteScheduleWithUndo(schedule);
+}
+
 function handleEditDescription(schedule: Schedule) {
   if (isLocked.value) return;
   editingSchedule.value = schedule;
@@ -258,6 +264,10 @@ async function handleDescriptionSave(scheduleId: number, content: string, descri
   }
   if (doneDate && doneDate !== editingSchedule.value?.done_date) {
     await updateScheduleDate(scheduleId, 'done_date', doneDate);
+  }
+  // 如果完成日期非空，自动设置为 done 状态
+  if (doneDate && editingSchedule.value && !editingSchedule.value.is_done) {
+    await toggleScheduleStatus(scheduleId, true);
   }
   await updateScheduleFatherTask(scheduleId, fatherTask);
   showDescriptionDialog.value = false;
@@ -477,6 +487,7 @@ onUnmounted(() => {
       @navigate="handleNavigate"
       @contextmenu="handleContextMenu"
       @toggle-done="handleToggleDone"
+      @delete-schedule="handleDeleteSchedule"
       @edit-description="handleEditDescription"
       @schedule-drop="handleScheduleDrop"
     />

@@ -19,6 +19,7 @@ const emit = defineEmits<{
   (e: 'navigate', direction: string): void;
   (e: 'contextmenu', event: MouseEvent, date: string): void;
   (e: 'toggleDone', schedule: Schedule): void;
+  (e: 'deleteSchedule', schedule: Schedule): void;
   (e: 'editDescription', schedule: Schedule): void;
   (e: 'scheduleDrop', targetDate: string, scheduleId: number, sourceDate: string, viewMode?: 'todo' | 'done'): void;
 }>();
@@ -109,6 +110,10 @@ function handleToggleDone(schedule: Schedule) {
   emit('toggleDone', schedule);
 }
 
+function handleDeleteSchedule(schedule: Schedule) {
+  emit('deleteSchedule', schedule);
+}
+
 function handleEditDescription(schedule: Schedule) {
   emit('editDescription', schedule);
 }
@@ -185,6 +190,7 @@ function handleScheduleDrop(targetDate: string, event: DragEvent) {
         @navigate="handleNavigate"
         @contextmenu="handleCellContextMenu($event, date.format('YYYY-MM-DD'))"
         @toggle-done="handleToggleDone"
+        @delete-schedule="handleDeleteSchedule"
         @edit-description="handleEditDescription"
         @schedule-drop="handleScheduleDrop"
       />
