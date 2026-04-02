@@ -2,13 +2,13 @@
 import { ref, onMounted, onUnmounted, computed, watch, nextTick } from 'vue';
 import { getCurrentWindow } from '@tauri-apps/api/window';
 import { emit } from '@tauri-apps/api/event';
-import { X, Search, Calendar, CheckCircle2 } from 'lucide-vue-next';
+import { X, Search, XCircle } from 'lucide-vue-next';
+import ListItem from '../components/ListItem.vue';
 import { searchSchedules } from '../composables/db';
 import { initDatabase } from '../composables/db/connection';
 import { hexToRgba, adjustBrightness } from '../utils/color';
 import type { AppSettings, Schedule } from '../types';
 import { defaultLightSettings, defaultDarkSettings } from '../types';
-import dayjs from 'dayjs';
 
 const settings = ref<AppSettings>({ ...defaultLightSettings });
 const searchKeyword = ref('');
@@ -28,7 +28,7 @@ const themeStyle = computed(() => {
     '--theme-cell': hexToRgba(s.cell_color, cellOpacity),
     '--theme-text': s.text_color,
     '--theme-text-secondary': adjustBrightness(s.text_color, 30),
-    '--theme-text-muted': adjustBrightness(s.text_color, 50),
+    '--theme-text-muted': s.muted_text_color,
     '--theme-primary': s.primary_color,
     '--theme-primary-alpha': hexToRgba(s.primary_color, 0.2),
     '--theme-border': s.cell_border_color || (s.theme_mode === 'dark' ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.05)'),
@@ -54,7 +54,7 @@ function applyTheme() {
   const root = document.documentElement;
   root.style.setProperty('--primary', s.primary_color);
   root.style.setProperty('--text-primary', s.text_color);
-  root.style.setProperty('--text-muted', adjustBrightness(s.text_color, 60));
+  root.style.setProperty('--text-muted', s.muted_text_color);
   root.setAttribute('data-theme', s.theme_mode);
 }
 
@@ -106,15 +106,7 @@ async function handleResultClick(schedule: Schedule) {
     viewMode: viewMode,
   });
 
-  // 隐藏搜索窗口
-  const win = getCurrentWindow();
-  await win.hide();
-}
-
-// 格式化日期显示
-function formatDate(dateStr: string | undefined): string {
-  if (!dateStr) return '';
-  return dayjs(dateStr).format('M/D');
+  // 不关闭搜索窗口，允许用户继续搜索
 }
 
 async function handleClose() {
@@ -164,7 +156,7 @@ onUnmounted(() => {
         WebkitBackdropFilter: settings.enable_blur ? 'blur(20px) saturate(180%)' : 'none',
       }">
 
-      <div class="title-bar flex items-center gap-2 px-3 py-2.5 shrink-0 select-none"
+      <div class="title-bar flex items-center gap-2 px-3 py-2.5 shrink-0 select-none group"
         data-tauri-drag-region>
         <button @mousedown="handleIconDrag"
           class="shrink-0 w-6 h-6 flex items-center justify-center cursor-grab active:cursor-grabbing hover:opacity-80 transition-opacity"
@@ -173,19 +165,27 @@ onUnmounted(() => {
           <Search class="w-4 h-4" />
         </button>
 
-        <div class="flex-1 min-w-0">
+        <div class="flex-1 min-w-0 relative">
           <input
             ref="searchInputRef"
             v-model="searchKeyword"
             type="text"
             placeholder="搜索日程..."
-            class="w-full h-7 bg-black/5 dark:bg-white/5 rounded-md px-3 outline-none text-[13px] leading-relaxed selection:bg-[var(--theme-primary-alpha)] caret-[var(--theme-text)]"
+            class="w-full h-7 bg-black/5 dark:bg-white/5 rounded-md pl-3 pr-8 outline-none text-[13px] leading-relaxed selection:bg-[var(--theme-primary-alpha)] caret-[var(--theme-text)]"
             :style="{ color: 'var(--theme-text)' }"
           />
+          <button
+            v-if="searchKeyword"
+            @click="searchKeyword = ''"
+            class="absolute right-1.5 top-1/2 -translate-y-1/2 w-5 h-5 flex items-center justify-center rounded transition-colors hover:bg-black/10 dark:hover:bg-white/10"
+            :style="{ color: 'var(--theme-text-muted)' }"
+          >
+            <XCircle class="w-3.5 h-3.5" />
+          </button>
         </div>
 
         <button @click="handleClose"
-          class="close-btn shrink-0 w-6 h-6 flex items-center justify-center rounded transition-all hover:bg-black/10 dark:hover:bg-white/10 active:scale-95"
+          class="close-btn shrink-0 w-6 h-6 flex items-center justify-center rounded transition-all opacity-0 group-hover:opacity-100 hover:bg-black/10 dark:hover:bg-white/10 active:scale-95"
           :style="{ color: 'var(--theme-text)' }">
           <X class="w-4 h-4" />
         </button>
@@ -198,50 +198,17 @@ onUnmounted(() => {
         </div>
 
         <!-- 搜索结果列表 -->
-        <div v-else-if="searchResults.length > 0" class="space-y-1">
-          <div
+        <div v-else-if="searchResults.length > 0" class="space-y-2">
+          <ListItem
             v-for="schedule in searchResults"
             :key="schedule.id"
+            :title="schedule.content"
+            :preview="schedule.description"
+            :date="schedule.create_date"
+            :is-done="schedule.is_done"
+            :editable="false"
             @click="handleResultClick(schedule)"
-            class="result-item group flex items-start gap-2 p-2 rounded-md cursor-pointer transition-colors hover:bg-black/5 dark:hover:bg-white/5"
-          >
-            <!-- 状态图标 -->
-            <div class="shrink-0 mt-0.5">
-              <CheckCircle2
-                v-if="schedule.is_done"
-                class="w-4 h-4 text-green-500"
-              />
-              <Calendar
-                v-else
-                class="w-4 h-4 opacity-50"
-                :style="{ color: 'var(--theme-text-muted)' }"
-              />
-            </div>
-
-            <!-- 内容 -->
-            <div class="flex-1 min-w-0">
-              <div class="text-[13px] font-medium leading-snug truncate"
-                :style="{ color: 'var(--theme-text)' }">
-                {{ schedule.content }}
-              </div>
-              <div v-if="schedule.description" class="text-[11px] mt-0.5 leading-snug truncate opacity-60"
-                :style="{ color: 'var(--theme-text-muted)' }">
-                {{ schedule.description }}
-              </div>
-            </div>
-
-            <!-- 日期标签 -->
-            <div class="shrink-0 flex flex-col items-end gap-1">
-              <span class="text-[10px] px-1.5 py-0.5 rounded"
-                :style="{ backgroundColor: 'var(--theme-cell)', color: 'var(--theme-text-muted)' }">
-                {{ formatDate(schedule.create_date) }}
-              </span>
-              <span v-if="schedule.done_date && schedule.is_done"
-                class="text-[10px] px-1.5 py-0.5 rounded bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400">
-                完成 {{ formatDate(schedule.done_date) }}
-              </span>
-            </div>
-          </div>
+          />
         </div>
 
         <!-- 空状态 -->
@@ -304,9 +271,5 @@ onUnmounted(() => {
 input {
   -webkit-appearance: none;
   appearance: none;
-}
-
-.result-item:active {
-  transform: scale(0.99);
 }
 </style>

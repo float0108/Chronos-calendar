@@ -339,6 +339,11 @@ const isDragOver = ref(false);
 const dragOverTimeout = ref<number | null>(null);
 
 function handleDragStart(event: DragEvent, schedule: Schedule) {
+  if (props.isLocked) {
+    event.preventDefault();
+    return;
+  }
+
   if (!event.dataTransfer) return;
 
   // 设置拖拽数据
@@ -444,9 +449,13 @@ function handleDrop(event: DragEvent) {
     <div class="flex-1 overflow-hidden px-1 pb-1 flex flex-col relative">
       <div v-if="!isEditing" class="content-area h-full overflow-y-auto no-scrollbar px-1">
         <div v-for="(s, i) in schedules.filter(s => s.id !== -1 && s.content.trim() !== '')" :key="i"
-          class="schedule-item flex items-center gap-1 mb-0.5 text-xs leading-tight transition-all py-0.5 px-1 -mx-1 rounded active:cursor-grabbing"
-          :class="(s.is_done && viewMode !== 'done') ? 'text-gray-500 dark:text-gray-400 opacity-90' : 'text-[var(--text-primary)]'"
-          draggable="true"
+          class="schedule-item flex items-center gap-1 mb-0.5 text-xs leading-tight transition-all py-0.5 px-1 -mx-1 rounded"
+          :class="[
+            (s.is_done && viewMode !== 'done') ? 'opacity-90' : '',
+            { 'active:cursor-grabbing': !isLocked }
+          ]"
+          :style="{ color: (s.is_done && viewMode !== 'done') ? 'var(--text-muted)' : 'var(--text-primary)' }""
+          :draggable="!isLocked"
           @click="handleScheduleClick($event, s)"
           @contextmenu.prevent="handleScheduleContextMenu($event, s)"
           @mouseenter="handleScheduleMouseEnter($event, s)"
@@ -476,7 +485,8 @@ function handleDrop(event: DragEvent) {
           <textarea :ref="el => { textareaRefs[index] = el as HTMLTextAreaElement }" v-model="line.text"
             rows="1"
             class="flex-1 bg-transparent border-none outline-none text-xs min-w-0 resize-none overflow-hidden leading-tight textarea-wrap"
-            :class="line.done ? 'line-through text-gray-400 opacity-70' : 'text-[var(--text-primary)]'"
+            :class="line.done ? 'line-through opacity-70' : ''"
+            :style="{ color: line.done ? 'var(--text-muted)' : 'var(--text-primary)' }"
             @focus="activeLineIndex = index"
             @keydown="handleInputKeydown($event, index)"
             @input="handleInput($event, index)"></textarea>
@@ -486,7 +496,12 @@ function handleDrop(event: DragEvent) {
 <!-- 右下角调色盘：单元格颜色 -->
       <div v-if="isEditing" class="absolute bottom-2 right-2 z-30">
         <button @mousedown.prevent="handleColorButtonClick"
-          class="w-6 h-6 flex items-center justify-center rounded-md bg-white hover:bg-gray-50 text-gray-600 transition-all hover:scale-110 active:scale-95 shadow-sm border border-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 dark:text-gray-300 dark:border-gray-600">
+          class="w-6 h-6 flex items-center justify-center rounded-md transition-all hover:scale-110 active:scale-95 shadow-sm"
+          :style="{
+            backgroundColor: 'var(--theme-cell)',
+            color: 'var(--text-muted)',
+            border: '1px solid var(--theme-border)'
+          }">
           <Palette class="w-3 h-3" />
         </button>
       </div>

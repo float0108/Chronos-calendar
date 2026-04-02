@@ -24,7 +24,7 @@ function updateSetting<K extends keyof AppSettings>(key: K, value: AppSettings[K
 const themeColors = computed(() => ({
   primary: props.settings.primary_color,
   text: props.settings.text_color,
-  textMuted: props.settings.theme_mode === 'dark' ? 'rgba(255,255,255,0.5)' : 'rgba(0,0,0,0.5)',
+  textMuted: props.settings.muted_text_color,
   bg: props.settings.theme_mode === 'dark' ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.02)',
   border: props.settings.theme_mode === 'dark' ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.04)',
 }));
@@ -78,6 +78,7 @@ provide('themeColors', themeColors);
         <div class="space-y-3 rounded-xl p-4" :style="cellStyle">
           <ColorPicker :model-value="settings.primary_color" @update:model-value="updateSetting('primary_color', $event)" label="主题色" />
           <ColorPicker :model-value="settings.text_color" @update:model-value="updateSetting('text_color', $event)" label="文字颜色" />
+          <ColorPicker :model-value="settings.muted_text_color" @update:model-value="updateSetting('muted_text_color', $event)" label="副文字颜色" />
           <ColorPicker :model-value="settings.bg_color" @update:model-value="updateSetting('bg_color', $event)" label="窗口背景" :allow-transparent="true" />
           <hr :style="{ borderColor: themeColors.border }">
           <ColorPicker :model-value="settings.cell_color" @update:model-value="updateSetting('cell_color', $event)" label="单元格背景" :allow-transparent="true" />

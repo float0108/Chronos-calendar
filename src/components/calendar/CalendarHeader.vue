@@ -102,19 +102,22 @@ const headerBorderStyle = computed(() => {
       <div class="flex items-center p-0.5 rounded-lg bg-[var(--hover-bg)] dark:bg-gray-800/50">
         <button @mousedown.stop @click="handleToggleBoard"
           class="p-1.5 rounded-md transition-colors flex items-center justify-center"
-          :class="isBoardVisible ? 'bg-[var(--primary-light)] text-[var(--primary)] shadow-sm' : 'text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-200'"
+          :class="isBoardVisible ? 'bg-[var(--primary-light)] text-[var(--primary)] shadow-sm' : 'hover:bg-[var(--hover-bg)]'"
+          :style="isBoardVisible ? {} : { color: 'var(--text-muted)' }"
           :title="isBoardVisible ? '隐藏看板' : '显示看板'">
           <Kanban class="w-4 h-4" />
         </button>
         <button @mousedown.stop @click="handleToggleNote"
           class="p-1.5 rounded-md transition-colors flex items-center justify-center"
-          :class="isNoteVisible ? 'bg-[var(--primary-light)] text-[var(--primary)] shadow-sm' : 'text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-200'"
+          :class="isNoteVisible ? 'bg-[var(--primary-light)] text-[var(--primary)] shadow-sm' : 'hover:bg-[var(--hover-bg)]'"
+          :style="isNoteVisible ? {} : { color: 'var(--text-muted)' }"
           :title="isNoteVisible ? '隐藏备忘录' : '显示备忘录'">
           <StickyNote class="w-4 h-4" />
         </button>
         <button @mousedown.stop @click="handleToggleSearch"
           class="p-1.5 rounded-md transition-colors flex items-center justify-center"
-          :class="isSearchVisible ? 'bg-[var(--primary-light)] text-[var(--primary)] shadow-sm' : 'text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-200'"
+          :class="isSearchVisible ? 'bg-[var(--primary-light)] text-[var(--primary)] shadow-sm' : 'hover:bg-[var(--hover-bg)]'"
+          :style="isSearchVisible ? {} : { color: 'var(--text-muted)' }"
           :title="isSearchVisible ? '隐藏搜索' : '显示搜索'">
           <Search class="w-4 h-4" />
         </button>
@@ -125,13 +128,15 @@ const headerBorderStyle = computed(() => {
       <div class="flex items-center p-0.5 rounded-lg bg-[var(--hover-bg)] dark:bg-gray-800/50">
         <button @mousedown.stop @click="handleSwitchViewMode('todo')"
           class="p-1.5 rounded-md transition-colors flex items-center justify-center"
-          :class="viewMode === 'todo' ? 'bg-[var(--primary-light)] text-[var(--primary)] shadow-sm' : 'text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-200'"
+          :class="viewMode === 'todo' ? 'bg-[var(--primary-light)] text-[var(--primary)] shadow-sm' : 'hover:bg-[var(--hover-bg)]'"
+          :style="viewMode === 'todo' ? {} : { color: 'var(--text-muted)' }"
           title="待办视图">
           <ListTodo class="w-4 h-4" />
         </button>
         <button @mousedown.stop @click="handleSwitchViewMode('done')"
           class="p-1.5 rounded-md transition-colors flex items-center justify-center"
-          :class="viewMode === 'done' ? 'bg-[var(--primary-light)] text-[var(--primary)] shadow-sm' : 'text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-200'"
+          :class="viewMode === 'done' ? 'bg-[var(--primary-light)] text-[var(--primary)] shadow-sm' : 'hover:bg-[var(--hover-bg)]'"
+          :style="viewMode === 'done' ? {} : { color: 'var(--text-muted)' }"
           title="完成视图">
           <CheckCircle2 class="w-4 h-4" />
         </button>
@@ -141,14 +146,16 @@ const headerBorderStyle = computed(() => {
     <div class="flex items-center gap-1.5 relative z-10 flex-1 justify-center">
       <div class="flex items-center gap-1.5 relative z-10 flex-1 justify-center shrink-0">
         <button @mousedown.stop @click="handlePrev"
-          class="p-1.5 rounded-lg text-gray-600 hover:text-gray-900 hover:bg-[var(--hover-bg)] dark:text-gray-400 dark:hover:text-gray-200 transition-colors shrink-0"
+          class="p-1.5 rounded-lg hover:bg-[var(--hover-bg)] transition-colors shrink-0"
+          :style="{ color: 'var(--text-muted)' }"
           title="上个月">
           <ChevronLeft class="w-4 h-4" />
         </button>
 
         <div class="relative shrink-0">
           <button @mousedown.stop @click="handleToggleMini"
-            class="text-sm font-semibold min-w-[110px] text-center text-gray-800 dark:text-gray-200 px-3 py-1 rounded-lg hover:bg-[var(--hover-bg)] transition-colors whitespace-nowrap">
+            class="text-sm font-semibold min-w-[110px] text-center px-3 py-1 rounded-lg hover:bg-[var(--hover-bg)] transition-colors whitespace-nowrap"
+            :style="{ color: 'var(--text-primary)' }">
             {{ formatMonthYear(currentDate) }}
           </button>
 
@@ -161,7 +168,8 @@ const headerBorderStyle = computed(() => {
         </div>
 
         <button @mousedown.stop @click="handleNext"
-          class="p-1.5 rounded-lg text-gray-600 hover:text-gray-900 hover:bg-[var(--hover-bg)] dark:text-gray-400 dark:hover:text-gray-200 transition-colors shrink-0"
+          class="p-1.5 rounded-lg hover:bg-[var(--hover-bg)] transition-colors shrink-0"
+          :style="{ color: 'var(--text-muted)' }"
           title="下个月">
           <ChevronRight class="w-4 h-4" />
         </button>
@@ -176,21 +184,26 @@ const headerBorderStyle = computed(() => {
     <div class="flex items-center gap-1.5 relative z-10 flex-1 justify-end">
       <div class="flex items-center gap-0.5">
         <button @mousedown.stop @click="handleUndo"
-          class="p-1.5 rounded-lg text-gray-600 hover:text-gray-900 hover:bg-[var(--hover-bg)] dark:text-gray-400 dark:hover:text-gray-200 transition-colors"
-          :class="{ 'opacity-30 pointer-events-none': !canUndo }" :disabled="!canUndo" title="撤销 (Ctrl+Z)">
+          class="p-1.5 rounded-lg hover:bg-[var(--hover-bg)] transition-colors"
+          :class="{ 'opacity-30 pointer-events-none': !canUndo }"
+          :style="{ color: 'var(--text-muted)' }"
+          :disabled="!canUndo" title="撤销 (Ctrl+Z)">
           <Undo2 class="w-4 h-4" />
         </button>
         <button @mousedown.stop @click="handleRedo"
-          class="p-1.5 rounded-lg text-gray-600 hover:text-gray-900 hover:bg-[var(--hover-bg)] dark:text-gray-400 dark:hover:text-gray-200 transition-colors"
-          :class="{ 'opacity-30 pointer-events-none': !canRedo }" :disabled="!canRedo" title="重做 (Ctrl+Y)">
-          <Redo2 class="w-4 h-4" />
+          class="p-1.5 rounded-lg hover:bg-[var(--hover-bg)] transition-colors"
+          :class="{ 'opacity-30 pointer-events-none': !canRedo }"
+          :style="{ color: 'var(--text-muted)' }"
+          :disabled="!canRedo" title="重做 (Ctrl+Y)">
+          <Redo class="w-4 h-4" />
         </button>
       </div>
 
       <div class="w-px h-4 bg-gray-300 dark:bg-gray-600 mx-0.5"></div>
 
       <button @mousedown.stop @click="handleToggleLock" class="p-1.5 rounded-lg transition-colors"
-        :class="isLocked ? 'text-red-500 bg-red-50 dark:bg-red-900/20' : 'text-gray-600 hover:text-gray-900 hover:bg-[var(--hover-bg)] dark:text-gray-400 dark:hover:text-gray-200'"
+        :class="isLocked ? 'text-red-500 bg-red-50 dark:bg-red-900/20' : 'hover:bg-[var(--hover-bg)]'"
+        :style="isLocked ? {} : { color: 'var(--text-muted)' }"
         :title="isLocked ? '已锁定 (点击解锁)' : '未锁定 (点击锁定)'">
         <Lock v-if="isLocked" class="w-4 h-4" />
         <Unlock v-else class="w-4 h-4" />
@@ -198,8 +211,9 @@ const headerBorderStyle = computed(() => {
 
       <div class="relative">
         <button @mousedown.stop @click="handleToggleMenu"
-          class="p-1.5 rounded-lg text-gray-600 hover:text-gray-900 hover:bg-[var(--hover-bg)] dark:text-gray-400 dark:hover:text-gray-200 transition-colors"
-          :class="{ 'opacity-50 pointer-events-none': isLocked }">
+          class="p-1.5 rounded-lg hover:bg-[var(--hover-bg)] transition-colors"
+          :class="{ 'opacity-50 pointer-events-none': isLocked }"
+          :style="{ color: 'var(--text-muted)' }">
           <MoreVertical class="w-4 h-4" />
         </button>
 

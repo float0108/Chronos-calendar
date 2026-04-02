@@ -66,7 +66,7 @@ const themeStyle = computed(() => {
     '--theme-cell': hexToRgba(s.cell_color, cellOpacity),
     '--theme-text': s.text_color,
     '--theme-text-secondary': adjustBrightness(s.text_color, 30),
-    '--theme-text-muted': adjustBrightness(s.text_color, 50),
+    '--theme-text-muted': s.muted_text_color,
     '--theme-primary': s.primary_color,
     '--theme-primary-alpha': hexToRgba(s.primary_color, 0.2),
     '--theme-border': s.cell_border_color || (s.theme_mode === 'dark' ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.05)'),
@@ -92,7 +92,7 @@ function applyTheme() {
   const root = document.documentElement;
   root.style.setProperty('--primary', s.primary_color);
   root.style.setProperty('--text-primary', s.text_color);
-  root.style.setProperty('--text-muted', adjustBrightness(s.text_color, 60));
+  root.style.setProperty('--text-muted', s.muted_text_color);
   root.setAttribute('data-theme', s.theme_mode);
 }
 

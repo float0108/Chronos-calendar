@@ -63,6 +63,7 @@ pub async fn open_settings_window(app: tauri::AppHandle) -> Result<(), String> {
     .resizable(true)
     .decorations(false)
     .transparent(true)
+    .shadow(false)
     .visible(false)
     .center()
     .build()
@@ -93,6 +94,7 @@ pub async fn open_board_window(app: tauri::AppHandle) -> Result<(), String> {
     .resizable(true)
     .decorations(false)
     .transparent(true)
+    .shadow(false)
     .visible(false)
     .center()
     .build()
@@ -151,6 +153,7 @@ pub async fn toggle_board_window(app: tauri::AppHandle) -> Result<bool, String> 
         .resizable(true)
         .decorations(false)
         .transparent(true)
+        .shadow(false)
         .visible(false)
         .center()
         .build()
@@ -205,6 +208,7 @@ pub async fn open_note_window(app: tauri::AppHandle) -> Result<(), String> {
     .resizable(true)
     .decorations(false)
     .transparent(true)
+    .shadow(false)
     .visible(false)
     .center()
     .build()
@@ -263,6 +267,7 @@ pub async fn toggle_note_window(app: tauri::AppHandle) -> Result<bool, String> {
         .resizable(true)
         .decorations(false)
         .transparent(true)
+        .shadow(false)
         .visible(false)
         .center()
         .build()
@@ -319,6 +324,7 @@ pub async fn open_task_window(app: tauri::AppHandle, task_id: i64) -> Result<(),
     .resizable(true)
     .decorations(false)
     .transparent(true)
+    .shadow(false)
     .visible(false)
     .center()
     .initialization_script(format!("window.__TASK_ID__ = {};", task_id))
@@ -382,6 +388,7 @@ pub async fn toggle_task_window(app: tauri::AppHandle, task_id: Option<i64>) -> 
         .resizable(true)
         .decorations(false)
         .transparent(true)
+        .shadow(false)
         .visible(false)
         .center()
         .initialization_script(format!("window.__TASK_ID__ = {};", id))
@@ -421,6 +428,7 @@ pub async fn is_task_window_visible(app: tauri::AppHandle) -> Result<bool, Strin
 #[tauri::command]
 pub async fn open_search_window(app: tauri::AppHandle) -> Result<(), String> {
     if let Some(window) = app.get_webview_window("search") {
+        let _ = window.restore_state(StateFlags::SIZE | StateFlags::POSITION);
         window.show().map_err(|e| e.to_string())?;
         window.set_focus().map_err(|e| e.to_string())?;
         return Ok(());
@@ -437,6 +445,7 @@ pub async fn open_search_window(app: tauri::AppHandle) -> Result<(), String> {
     .resizable(true)
     .decorations(false)
     .transparent(true)
+    .shadow(false)
     .visible(false)
     .center()
     .build()
@@ -495,6 +504,7 @@ pub async fn toggle_search_window(app: tauri::AppHandle) -> Result<bool, String>
         .resizable(true)
         .decorations(false)
         .transparent(true)
+        .shadow(false)
         .visible(false)
         .center()
         .build()

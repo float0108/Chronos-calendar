@@ -19,7 +19,7 @@ function updateSetting<K extends keyof AppSettings>(key: K, value: AppSettings[K
 const themeColors = computed(() => ({
   primary: props.settings.primary_color,
   text: props.settings.text_color,
-  textMuted: props.settings.theme_mode === 'dark' ? 'rgba(255,255,255,0.5)' : 'rgba(0,0,0,0.5)',
+  textMuted: props.settings.muted_text_color,
   bg: props.settings.theme_mode === 'dark' ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.02)',
   border: props.settings.theme_mode === 'dark' ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.04)',
 }));

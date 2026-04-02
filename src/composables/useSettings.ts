@@ -104,10 +104,10 @@ export function useSettings() {
     root.style.setProperty('--primary', primary);
     root.style.setProperty('--primary-light', hexToRgba(primary, 0.1));
     root.style.setProperty('--primary-light-hover', hexToRgba(primary, 0.2));
-    
+
     root.style.setProperty('--text-primary', textPrimary);
     root.style.setProperty('--text-secondary', adjustBrightness(textPrimary, 20));
-    root.style.setProperty('--text-muted', adjustBrightness(textPrimary, 60));
+    root.style.setProperty('--text-muted', settings.muted_text_color);
     
     root.style.setProperty('--glass-bg', hexToRgba(bgColor, bgOpacity));
     root.style.setProperty('--cell-bg', hexToRgba(settings.cell_color, cellOpacity));

@@ -31,7 +31,7 @@ const themeStyle = computed(() => {
     '--theme-cell-muted': hexToRgba(s.cell_color, cellOpacity * 0.6),
     '--theme-text': s.text_color,
     '--theme-text-secondary': adjustBrightness(s.text_color, 30),
-    '--theme-text-muted': adjustBrightness(s.text_color, 50),
+    '--theme-text-muted': s.muted_text_color,
     '--theme-primary': s.primary_color,
     '--theme-primary-light': hexToRgba(s.primary_color, 0.1),
     '--theme-primary-hover': hexToRgba(s.primary_color, 0.2),
@@ -86,7 +86,7 @@ function applySettings() {
 
   root.style.setProperty('--text-primary', textPrimary);
   root.style.setProperty('--text-secondary', adjustBrightness(textPrimary, 20));
-  root.style.setProperty('--text-muted', adjustBrightness(textPrimary, 60));
+  root.style.setProperty('--text-muted', s.muted_text_color);
 
   root.style.setProperty('--glass-bg', hexToRgba(bgColor, bgOpacity));
   root.style.setProperty('--cell-bg', hexToRgba(s.cell_color, cellOpacity));

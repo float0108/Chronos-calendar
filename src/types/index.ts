@@ -50,6 +50,7 @@ export interface ModeSettings {
   theme_mode: ThemeMode;
   primary_color: string;
   text_color: string;
+  muted_text_color: string; // 副文字颜色
   bg_color: string;
   bg_opacity: number;
   cell_color: string; // 单元格背景颜色
@@ -87,6 +88,7 @@ export const defaultLightSettings: Omit<AppSettings, 'id'> = {
   theme_mode: 'light',
   primary_color: '#3b82f6',
   text_color: '#1f2937',
+  muted_text_color: '#6b7280', // 副文字颜色（灰色）
   bg_color: '#ffffff',
   bg_opacity: 15,    // 降低窗口背景透明度，让原生毛玻璃更清透
   cell_color: '#ffffff', // 默认单元格背景颜色
@@ -100,6 +102,7 @@ export const defaultDarkSettings: Omit<AppSettings, 'id'> = {
   theme_mode: 'dark',
   primary_color: '#60a5fa',
   text_color: '#f9fafb',
+  muted_text_color: '#9ca3af', // 副文字颜色（深色模式下的灰色）
   bg_color: '#000000',
   bg_opacity: 20,    // 降低窗口背景透明度，让原生毛玻璃更清透
   cell_color: '#1f2937', // 默认单元格背景颜色（深色模式）

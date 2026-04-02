@@ -32,6 +32,7 @@ const primaryColor = computed(() => settings.value?.primary_color ?? '#3b82f6');
 const themeMode = computed(() => settings.value?.theme_mode ?? 'light');
 const fontFamily = computed(() => settings.value?.font_family ?? 'system-ui');
 const fontSize = computed(() => settings.value?.font_size ?? 14);
+const mutedTextColor = computed(() => settings.value?.muted_text_color ?? (themeMode.value === 'dark' ? '#9ca3af' : '#6b7280'));
 
 const calendarStyle = computed(() => ({
   fontFamily: fontFamily.value,
@@ -216,7 +217,8 @@ function toggleMonthView() {
         <button
           @click="handlePrevView"
           class="p-0.5 rounded transition-colors duration-200"
-          :class="themeMode === 'dark' ? 'hover:bg-gray-700 text-gray-400' : 'hover:bg-gray-100 text-gray-500'"
+          :style="{ color: mutedTextColor }"
+          :class="themeMode === 'dark' ? 'hover:bg-gray-700' : 'hover:bg-gray-100'"
         >
           <ChevronLeft class="w-4 h-4" />
         </button>
@@ -247,7 +249,8 @@ function toggleMonthView() {
         <button
           @click="handleNextView"
           class="p-0.5 rounded transition-colors duration-200"
-          :class="themeMode === 'dark' ? 'hover:bg-gray-700 text-gray-400' : 'hover:bg-gray-100 text-gray-500'"
+          :style="{ color: mutedTextColor }"
+          :class="themeMode === 'dark' ? 'hover:bg-gray-700' : 'hover:bg-gray-100'"
         >
           <ChevronRight class="w-4 h-4" />
         </button>
@@ -259,8 +262,7 @@ function toggleMonthView() {
             v-for="(d, index) in weekdays"
             :key="d + index"
             class="w-[26px]"
-            :style="{ color: isWeekend(index) ? 'var(--theme-primary)' : '' }"
-            :class="!isWeekend(index) ? (themeMode === 'dark' ? 'text-gray-400' : 'text-gray-500') : ''"
+            :style="{ color: isWeekend(index) ? 'var(--theme-primary)' : mutedTextColor }"
           >
             {{ d }}
           </span>
