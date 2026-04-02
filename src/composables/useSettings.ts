@@ -1,11 +1,114 @@
-import { ref } from 'vue';
+import { ref, computed } from 'vue';
 import { invoke } from '@tauri-apps/api/core';
+import { getCurrentWindow } from '@tauri-apps/api/window';
+import { listen } from '@tauri-apps/api/event';
 import type { AppSettings, ThemeMode } from '../types';
 import { defaultLightSettings, defaultDarkSettings, extractCommonParts } from '../types';
 import { hexToRgba, adjustBrightness } from '../utils/color';
 
 const currentSettings = ref<AppSettings | null>(null);
 const currentMode = ref<ThemeMode>('light');
+const systemTheme = ref<'light' | 'dark'>('light');
+let systemThemeInitialized = false;
+
+// 解析实际主题（将 system 转换为 light/dark）
+const effectiveTheme = computed(() => {
+  if (currentMode.value === 'system') {
+    return systemTheme.value;
+  }
+  return currentMode.value;
+});
+
+// 应用设置到 DOM
+function applySettingsToDom(): void {
+  if (!currentSettings.value) return;
+
+  const settings = currentSettings.value;
+  const root = document.documentElement;
+  const theme = effectiveTheme.value;
+
+  const primary = settings.primary_color;
+  const textPrimary = settings.text_color;
+  const bgColor = settings.bg_color;
+  const bgOpacity = settings.bg_opacity / 100;
+  const cellOpacity = settings.cell_opacity / 100;
+
+  // 注入颜色与透明度变量
+  root.style.setProperty('--primary', primary);
+  root.style.setProperty('--primary-light', hexToRgba(primary, 0.1));
+  root.style.setProperty('--primary-light-hover', hexToRgba(primary, 0.2));
+
+  root.style.setProperty('--text-primary', textPrimary);
+  root.style.setProperty('--text-secondary', adjustBrightness(textPrimary, 20));
+  root.style.setProperty('--text-muted', settings.muted_text_color);
+
+  root.style.setProperty('--glass-bg', hexToRgba(bgColor, bgOpacity));
+  root.style.setProperty('--cell-bg', hexToRgba(settings.cell_color, cellOpacity));
+  root.style.setProperty('--cell-bg-muted', hexToRgba(settings.cell_color, cellOpacity * 0.6));
+  // 单独注入透明度变量，供 color-mix() 使用
+  root.style.setProperty('--cell-bg-opacity', String(cellOpacity));
+
+  root.style.setProperty('--hover-bg', hexToRgba('#000000', 0.05));
+  root.style.setProperty('--schedule-bg', hexToRgba('#ffffff', cellOpacity + 0.2));
+  root.style.setProperty('--schedule-hover', hexToRgba('#ffffff', cellOpacity + 0.4));
+
+  root.style.setProperty('--border-light', hexToRgba('#000000', 0.1));
+  // 注入新增的边框颜色
+  root.style.setProperty('--cell-border-color', settings.cell_border_color || '#d1d5db');
+
+  // 注入 CSS 毛玻璃模糊变量
+  root.style.setProperty('--backdrop-blur', settings.enable_blur ? '16px' : '0px');
+
+  // 注入标题栏样式变量
+  if (settings.header_cell_style) {
+    // 标题栏应用单元格风格
+    root.style.setProperty('--header-bg', 'var(--cell-bg)');
+    root.style.setProperty('--header-border-color', 'var(--cell-border-color)');
+  } else {
+    // 标题栏使用默认样式（透明）
+    root.style.setProperty('--header-bg', 'transparent');
+    root.style.setProperty('--header-border-color', settings.cell_border_color || '#d1d5db');
+  }
+
+  // 注入公用配置变量（字体、大小、间距、粗细）
+  root.style.setProperty('--font-family-base', settings.font_family);
+  root.style.setProperty('--font-size-base', `${settings.font_size}px`);
+  root.style.setProperty('--font-weight-base', `${settings.font_weight}`);
+  root.style.setProperty('--cell-gap', `${settings.cell_gap}px`);
+  root.style.setProperty('--cell-border-width', `${settings.cell_border_width}px`);
+  root.style.setProperty('--cell-border-style', settings.cell_border_style || 'solid');
+  root.style.setProperty('--cell-border-dash-interval', `${settings.cell_border_dash_interval || 4}px`);
+
+  root.setAttribute('data-theme', theme);
+  currentMode.value = settings.theme_mode;
+}
+
+// 初始化系统主题检测
+async function initSystemThemeDetection() {
+  if (systemThemeInitialized) return;
+
+  try {
+    const win = getCurrentWindow();
+    const theme = await win.theme();
+    systemTheme.value = theme || 'light';
+    systemThemeInitialized = true;
+
+    // 监听系统主题变化
+    await listen<'light' | 'dark'>('tauri://theme-changed', (event) => {
+      systemTheme.value = event.payload || 'light';
+      // 如果当前是 system 模式，重新应用设置
+      if (currentMode.value === 'system' && currentSettings.value) {
+        applySettingsToDom();
+      }
+    });
+  } catch (error) {
+    console.error('Failed to init system theme:', error);
+    // Fallback
+    if (typeof window !== 'undefined') {
+      systemTheme.value = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+    }
+  }
+}
 
 // 初始化自启动状态
 async function initAutostart(): Promise<boolean> {
@@ -30,11 +133,17 @@ async function setAutostart(enable: boolean): Promise<void> {
 
 export function useSettings() {
   async function initSettings(): Promise<void> {
+    // 初始化系统主题检测
+    await initSystemThemeDetection();
+
     const saved = localStorage.getItem('chronos_settings');
     if (saved) {
       const parsed = JSON.parse(saved);
-      // 合并默认配置，防止新增字段为 undefined
-      const defaults = parsed.theme_mode === 'dark' ? defaultDarkSettings : defaultLightSettings;
+      // 根据 theme_mode 和实际主题加载对应默认值
+      const actualTheme = parsed.theme_mode === 'system'
+        ? systemTheme.value
+        : (parsed.theme_mode || 'light');
+      const defaults = actualTheme === 'dark' ? defaultDarkSettings : defaultLightSettings;
       currentSettings.value = { ...defaults, ...parsed };
 
       // 同步自启动状态（从系统读取）
@@ -51,7 +160,7 @@ export function useSettings() {
     } else {
       currentSettings.value = { ...defaultLightSettings };
     }
-    await applySettings();
+    applySettingsToDom();
   }
 
   async function saveSettings(settings: AppSettings): Promise<void> {
@@ -68,12 +177,15 @@ export function useSettings() {
     // 提取公用配置部分
     const commonParts = extractCommonParts(settings);
 
-    // 保存当前模式
-    localStorage.setItem(`chronos_settings_${settings.theme_mode}`, JSON.stringify(settings));
+    // 获取实际主题
+    const actualMode = settings.theme_mode === 'system' ? systemTheme.value : settings.theme_mode;
+
+    // 保存当前设置到实际主题对应的存储
+    localStorage.setItem(`chronos_settings_${actualMode}`, JSON.stringify(settings));
     localStorage.setItem('chronos_settings', JSON.stringify(settings));
 
     // 同步公用配置到另一种模式
-    const otherMode = settings.theme_mode === 'light' ? 'dark' : 'light';
+    const otherMode = actualMode === 'light' ? 'dark' : 'light';
     const otherSaved = localStorage.getItem(`chronos_settings_${otherMode}`);
     if (otherSaved) {
       const otherSettings = JSON.parse(otherSaved);
@@ -85,81 +197,25 @@ export function useSettings() {
       localStorage.setItem(`chronos_settings_${otherMode}`, JSON.stringify({ ...otherDefaults, ...commonParts }));
     }
 
-    await applySettings();
+    applySettingsToDom();
   }
 
   async function applySettings(): Promise<void> {
-    if (!currentSettings.value) return;
-
-    const settings = currentSettings.value;
-    const root = document.documentElement;
-
-    const primary = settings.primary_color;
-    const textPrimary = settings.text_color;
-    const bgColor = settings.bg_color;
-    const bgOpacity = settings.bg_opacity / 100;
-    const cellOpacity = settings.cell_opacity / 100;
-
-    // 注入颜色与透明度变量
-    root.style.setProperty('--primary', primary);
-    root.style.setProperty('--primary-light', hexToRgba(primary, 0.1));
-    root.style.setProperty('--primary-light-hover', hexToRgba(primary, 0.2));
-
-    root.style.setProperty('--text-primary', textPrimary);
-    root.style.setProperty('--text-secondary', adjustBrightness(textPrimary, 20));
-    root.style.setProperty('--text-muted', settings.muted_text_color);
-    
-    root.style.setProperty('--glass-bg', hexToRgba(bgColor, bgOpacity));
-    root.style.setProperty('--cell-bg', hexToRgba(settings.cell_color, cellOpacity));
-    root.style.setProperty('--cell-bg-muted', hexToRgba(settings.cell_color, cellOpacity * 0.6));
-    // 单独注入透明度变量，供 color-mix() 使用
-    root.style.setProperty('--cell-bg-opacity', String(cellOpacity));
-    
-    root.style.setProperty('--hover-bg', hexToRgba('#000000', 0.05));
-    root.style.setProperty('--schedule-bg', hexToRgba('#ffffff', cellOpacity + 0.2));
-    root.style.setProperty('--schedule-hover', hexToRgba('#ffffff', cellOpacity + 0.4));
-    
-    root.style.setProperty('--border-light', hexToRgba('#000000', 0.1));
-    // 注入新增的边框颜色
-    root.style.setProperty('--cell-border-color', settings.cell_border_color || '#d1d5db');
-
-    // 注入 CSS 毛玻璃模糊变量
-    root.style.setProperty('--backdrop-blur', settings.enable_blur ? '16px' : '0px');
-
-    // 注入标题栏样式变量
-    if (settings.header_cell_style) {
-      // 标题栏应用单元格风格
-      root.style.setProperty('--header-bg', 'var(--cell-bg)');
-      root.style.setProperty('--header-border-color', 'var(--cell-border-color)');
-    } else {
-      // 标题栏使用默认样式（透明）
-      root.style.setProperty('--header-bg', 'transparent');
-      root.style.setProperty('--header-border-color', settings.cell_border_color || '#d1d5db');
-    }
-    
-    // 注入公用配置变量（字体、大小、间距、粗细）
-    root.style.setProperty('--font-family-base', settings.font_family);
-    root.style.setProperty('--font-size-base', `${settings.font_size}px`);
-    root.style.setProperty('--font-weight-base', `${settings.font_weight}`);
-    root.style.setProperty('--cell-gap', `${settings.cell_gap}px`);
-    root.style.setProperty('--cell-border-width', `${settings.cell_border_width}px`);
-    root.style.setProperty('--cell-border-style', settings.cell_border_style || 'solid');
-    root.style.setProperty('--cell-border-dash-interval', `${settings.cell_border_dash_interval || 4}px`);
-
-    root.setAttribute('data-theme', settings.theme_mode);
-    currentMode.value = settings.theme_mode;
+    applySettingsToDom();
   }
 
   function getSettingsForMode(mode: ThemeMode): AppSettings {
-    const saved = localStorage.getItem(`chronos_settings_${mode}`);
+    // 对于 system 模式，返回当前系统主题对应的设置
+    const actualMode = mode === 'system' ? systemTheme.value : mode;
+
+    const saved = localStorage.getItem(`chronos_settings_${actualMode}`);
     if (saved) {
       const parsed = JSON.parse(saved);
-      const defaults = mode === 'light' ? defaultLightSettings : defaultDarkSettings;
-      return { ...defaults, ...parsed };
+      const defaults = actualMode === 'light' ? defaultLightSettings : defaultDarkSettings;
+      return { ...defaults, ...parsed, theme_mode: mode };
     }
-    return mode === 'light' 
-      ? { ...defaultLightSettings }
-      : { ...defaultDarkSettings };
+    const defaults = actualMode === 'light' ? defaultLightSettings : defaultDarkSettings;
+    return { ...defaults, theme_mode: mode };
   }
 
   async function saveSettingsForMode(mode: ThemeMode, settings: AppSettings): Promise<void> {
@@ -171,7 +227,7 @@ export function useSettings() {
     currentSettings.value = settings;
     currentMode.value = mode;
     localStorage.setItem('chronos_settings', JSON.stringify(settings));
-    await applySettings();
+    applySettingsToDom();
   }
 
   function getSetting<K extends keyof AppSettings>(key: K): AppSettings[K] | undefined {
@@ -204,6 +260,8 @@ export function useSettings() {
   return {
     currentSettings,
     currentMode,
+    effectiveTheme,
+    systemTheme,
     initSettings,
     saveSettings,
     applySettings,

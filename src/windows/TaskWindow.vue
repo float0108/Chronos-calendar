@@ -31,6 +31,15 @@ const tasks = ref<MainTask[]>([]);
 const currentTask = ref<MainTask | null>(null);
 const subTasks = ref<Schedule[]>([]);
 
+// 实际主题（解析 system）
+const effectiveTheme = computed(() => {
+  if (settings.value.theme_mode === 'system') {
+    // 从 data-theme 属性获取当前实际主题（由主窗口维护）
+    return document.documentElement.getAttribute('data-theme') as 'light' | 'dark' || 'light';
+  }
+  return settings.value.theme_mode;
+});
+
 // 视图模式: 'task' = 主任务详情, 'list' = 子任务列表, 'detail' = 子任务编辑
 const viewMode = ref<'task' | 'list' | 'detail'>('list');
 
@@ -61,6 +70,7 @@ const themeStyle = computed(() => {
   const s = settings.value;
   const bgOpacity = s.bg_opacity / 100;
   const cellOpacity = s.cell_opacity / 100;
+  const theme = effectiveTheme.value;
   return {
     '--theme-bg': hexToRgba(s.bg_color, bgOpacity),
     '--theme-cell': hexToRgba(s.cell_color, cellOpacity),
@@ -69,7 +79,7 @@ const themeStyle = computed(() => {
     '--theme-text-muted': s.muted_text_color,
     '--theme-primary': s.primary_color,
     '--theme-primary-alpha': hexToRgba(s.primary_color, 0.2),
-    '--theme-border': s.cell_border_color || (s.theme_mode === 'dark' ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.05)'),
+    '--theme-border': s.cell_border_color || (theme === 'dark' ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.05)'),
     '--theme-font-family': s.font_family,
     '--theme-font-size': `${s.font_size}px`,
     'font-family': s.font_family,
@@ -81,7 +91,10 @@ function loadSettings() {
   const saved = localStorage.getItem('chronos_settings');
   if (saved) {
     const parsed = JSON.parse(saved);
-    const defaults = parsed.theme_mode === 'dark' ? defaultDarkSettings : defaultLightSettings;
+    const actualTheme = parsed.theme_mode === 'system'
+      ? (document.documentElement.getAttribute('data-theme') as 'light' | 'dark' || 'light')
+      : (parsed.theme_mode || 'light');
+    const defaults = actualTheme === 'dark' ? defaultDarkSettings : defaultLightSettings;
     settings.value = { ...defaults, ...parsed };
   }
   applyTheme();
@@ -93,7 +106,7 @@ function applyTheme() {
   root.style.setProperty('--primary', s.primary_color);
   root.style.setProperty('--text-primary', s.text_color);
   root.style.setProperty('--text-muted', s.muted_text_color);
-  root.setAttribute('data-theme', s.theme_mode);
+  // 不覆盖 data-theme，由主窗口维护
 }
 
 function handleSettingsUpdate() {
@@ -398,7 +411,7 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <div class="task-overlay fixed inset-0 z-[9999] flex w-full h-full" :style="themeStyle" :class="{ 'dark': settings.theme_mode === 'dark' }">
+  <div class="task-overlay fixed inset-0 z-[9999] flex w-full h-full" :style="themeStyle" :class="{ 'dark': effectiveTheme === 'dark' }">
     <div class="task-panel relative flex flex-col overflow-hidden w-full h-full rounded-lg transition-colors shadow-lg"
       :style="{
         backgroundColor: 'var(--theme-bg)',

@@ -6,11 +6,13 @@ import type { AppSettings, ThemeMode } from '../types';
 import { defaultLightSettings, defaultDarkSettings, extractCommonParts } from '../types/index';
 import { hexToRgba, adjustBrightness } from '../utils/color';
 import { useFonts } from '../composables/useFonts';
+import { useSystemTheme } from '../composables/useSystemTheme';
 import CommonSettings from './CommonSettings.vue';
 import ModeSettings from './ModeSettings.vue';
 import PageSettings from './PageSettings.vue';
 
 const { loadFonts, isFontsLoaded } = useFonts();
+const { systemTheme, onThemeChange } = useSystemTheme();
 
 const activeMainTab = ref<'common' | 'mode' | 'page'>('common');
 const activeTab = ref<ThemeMode>('light');
@@ -20,11 +22,20 @@ const hasChanges = ref(false);
 const isRefreshingFonts = ref(false);
 const fontsLoading = ref(!isFontsLoaded());
 
+// 实际主题（解析 system 为 light/dark）
+const effectiveTheme = computed(() => {
+  if (activeTab.value === 'system') {
+    return systemTheme.value;
+  }
+  return activeTab.value;
+});
+
 // 动态主题样式
 const themeStyle = computed(() => {
   const s = localSettings.value;
   const bgOpacity = s.bg_opacity / 100;
   const cellOpacity = s.cell_opacity / 100;
+  const theme = effectiveTheme.value;
   return {
     '--theme-bg': hexToRgba(s.bg_color, bgOpacity),
     '--theme-cell': hexToRgba(s.cell_color, cellOpacity),
@@ -35,7 +46,7 @@ const themeStyle = computed(() => {
     '--theme-primary': s.primary_color,
     '--theme-primary-light': hexToRgba(s.primary_color, 0.1),
     '--theme-primary-hover': hexToRgba(s.primary_color, 0.2),
-    '--theme-border': s.cell_border_color || (s.theme_mode === 'dark' ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.06)'),
+    '--theme-border': s.cell_border_color || (theme === 'dark' ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.06)'),
     '--theme-font-family': s.font_family,
     '--theme-font-size': `${s.font_size}px`,
     'font-family': s.font_family,
@@ -54,10 +65,14 @@ async function loadSettings() {
     const saved = localStorage.getItem('chronos_settings');
     if (saved) {
       const loadedSettings = JSON.parse(saved);
-      const defaults = loadedSettings.theme_mode === 'dark' ? defaultDarkSettings : defaultLightSettings;
+      // 根据 theme_mode 加载对应默认值
+      const actualTheme = loadedSettings.theme_mode === 'system'
+        ? systemTheme.value
+        : (loadedSettings.theme_mode || 'light');
+      const defaults = actualTheme === 'dark' ? defaultDarkSettings : defaultLightSettings;
       localSettings.value = { ...defaults, ...loadedSettings };
       originalSettings.value = JSON.parse(JSON.stringify(localSettings.value));
-      activeTab.value = loadedSettings.theme_mode;
+      activeTab.value = loadedSettings.theme_mode || 'light';
       applySettings();
     }
   } catch (error) {
@@ -79,6 +94,7 @@ function applySettings() {
   const bgColor = s.bg_color;
   const bgOpacity = s.bg_opacity / 100;
   const cellOpacity = s.cell_opacity / 100;
+  const theme = effectiveTheme.value;
 
   root.style.setProperty('--primary', primary);
   root.style.setProperty('--primary-light', hexToRgba(primary, 0.1));
@@ -109,7 +125,7 @@ function applySettings() {
   root.style.setProperty('--font-weight-base', `${s.font_weight}`);
   root.style.setProperty('--cell-gap', `${s.cell_gap}px`);
 
-  root.setAttribute('data-theme', s.theme_mode);
+  root.setAttribute('data-theme', theme);
 }
 
 onMounted(async () => {
@@ -125,6 +141,15 @@ onMounted(async () => {
   });
   // 添加键盘快捷键
   window.addEventListener('keydown', handleKeydown);
+
+  // 监听系统主题变化
+  onThemeChange(() => {
+    if (activeTab.value === 'system') {
+      // 重新加载对应主题的设置
+      handleSwitchMode('system');
+      applySettings();
+    }
+  });
 });
 
 onUnmounted(() => {
@@ -163,7 +188,10 @@ async function handleSave() {
   const savedSettings = { ...localSettings.value, theme_mode: activeTab.value };
   try {
     localStorage.setItem('chronos_settings', JSON.stringify(savedSettings));
-    localStorage.setItem(`chronos_settings_${activeTab.value}`, JSON.stringify(savedSettings));
+
+    // 保存当前设置到实际主题对应的存储
+    const actualMode = activeTab.value === 'system' ? systemTheme.value : activeTab.value;
+    localStorage.setItem(`chronos_settings_${actualMode}`, JSON.stringify(savedSettings));
 
     window.dispatchEvent(new StorageEvent('storage', {
       key: 'chronos_settings',
@@ -172,7 +200,7 @@ async function handleSave() {
     }));
 
     const commonParts = extractCommonParts(savedSettings);
-    const otherMode = activeTab.value === 'light' ? 'dark' : 'light';
+    const otherMode = actualMode === 'light' ? 'dark' : 'light';
     const otherSaved = localStorage.getItem(`chronos_settings_${otherMode}`);
     if (otherSaved) {
       const otherSettings = JSON.parse(otherSaved);
@@ -194,26 +222,29 @@ function handleSwitchMode(mode: ThemeMode) {
   activeTab.value = mode;
   const currentCommonParts = extractCommonParts(localSettings.value);
 
-  const saved = localStorage.getItem(`chronos_settings_${mode}`);
+  // 对于 system 模式，加载当前系统主题对应的设置
+  const actualMode = mode === 'system' ? systemTheme.value : mode;
+
+  const saved = localStorage.getItem(`chronos_settings_${actualMode}`);
   if (saved) {
     localSettings.value = { ...JSON.parse(saved), ...currentCommonParts, theme_mode: mode };
   } else {
-    localSettings.value = mode === 'light'
+    localSettings.value = actualMode === 'light'
       ? { ...defaultLightSettings, ...currentCommonParts, theme_mode: mode }
       : { ...defaultDarkSettings, ...currentCommonParts, theme_mode: mode };
   }
 }
 
 function handleReset() {
-  const defaults = activeTab.value === 'light' ? defaultLightSettings : defaultDarkSettings;
-  localSettings.value = { ...defaults };
+  const defaults = effectiveTheme.value === 'light' ? defaultLightSettings : defaultDarkSettings;
+  localSettings.value = { ...defaults, theme_mode: activeTab.value };
 }
 </script>
 
 <template>
   <div class="settings-overlay fixed inset-0 z-[9999] flex w-full h-full bg-transparent" :style="themeStyle">
     <div class="settings-panel relative flex flex-col overflow-hidden rounded-lg shadow-lg"
-         :class="{ 'dark-mode': localSettings.theme_mode === 'dark', 'light-mode': localSettings.theme_mode === 'light' }"
+         :class="{ 'dark-mode': effectiveTheme === 'dark', 'light-mode': effectiveTheme === 'light' }"
          :style="{ border: '1px solid var(--theme-border)' }">
       <div class="flex flex-1 overflow-hidden">
         <!-- 左侧导航栏 -->

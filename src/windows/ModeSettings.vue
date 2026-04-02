@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, provide } from 'vue';
-import { Sun, Moon } from 'lucide-vue-next';
+import { Sun, Moon, Monitor } from 'lucide-vue-next';
 import type { AppSettings, ThemeMode } from '../types';
 import ColorPicker from '../components/ui/ColorPicker.vue';
 import SliderControl from '../components/ui/SliderControl.vue';
@@ -49,22 +49,31 @@ provide('themeColors', themeColors);
          :style="{ borderBottom: '1px solid ' + themeColors.border }">
       <div class="flex p-1 gap-1 rounded-xl" :style="{ backgroundColor: themeColors.bg }">
         <button @click="emit('switchMode', 'light')"
-          class="flex-1 flex items-center justify-center gap-2 py-2 rounded-lg text-sm font-medium transition-all"
+          class="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-sm font-medium transition-all"
           :style="activeTab === 'light' ? {
             backgroundColor: 'rgba(255,255,255,0.9)',
             color: '#f97316',
             boxShadow: '0 1px 3px rgba(0,0,0,0.1)'
           } : { color: themeColors.textMuted }">
-          <Sun class="w-4 h-4 pointer-events-none" /> 浅色模式
+          <Sun class="w-4 h-4 pointer-events-none" /> 浅色
         </button>
         <button @click="emit('switchMode', 'dark')"
-          class="flex-1 flex items-center justify-center gap-2 py-2 rounded-lg text-sm font-medium transition-all"
+          class="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-sm font-medium transition-all"
           :style="activeTab === 'dark' ? {
             backgroundColor: 'rgb(30 41 59)',
             color: '#7dd3fc',
             boxShadow: '0 1px 3px rgba(0,0,0,0.2)'
           } : { color: themeColors.textMuted }">
-          <Moon class="w-4 h-4 pointer-events-none" /> 深色模式
+          <Moon class="w-4 h-4 pointer-events-none" /> 深色
+        </button>
+        <button @click="emit('switchMode', 'system')"
+          class="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-sm font-medium transition-all"
+          :style="activeTab === 'system' ? {
+            backgroundColor: props.settings.theme_mode === 'dark' ? 'rgb(30 41 59)' : 'rgba(255,255,255,0.9)',
+            color: props.settings.theme_mode === 'dark' ? '#a78bfa' : '#8b5cf6',
+            boxShadow: '0 1px 3px rgba(0,0,0,0.1)'
+          } : { color: themeColors.textMuted }">
+          <Monitor class="w-4 h-4 pointer-events-none" /> 系统
         </button>
       </div>
     </div>

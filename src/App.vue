@@ -43,7 +43,7 @@ const {
   updateScheduleFatherTask,
   batchAddSchedules,
 } = useSchedules();
-const { currentSettings, initSettings, saveSettings, getSetting } = useSettings();
+const { currentSettings, effectiveTheme, initSettings, saveSettings, getSetting } = useSettings();
 const { showSuccess, showError } = useToast();
 const { loadFonts } = useFonts();
 const { pushAction, handleToggleDone: toggleDoneWithUndo, handleMoveSchedule: moveScheduleWithUndo, handleUndo: undo, handleRedo: redo, canUndo, canRedo } = useScheduleUndo(
@@ -75,6 +75,7 @@ const themeStyle = computed(() => {
   if (!s) return {};
   const bgOpacity = s.bg_opacity / 100;
   const cellOpacity = s.cell_opacity / 100;
+  const theme = effectiveTheme.value;
   return {
     '--theme-bg': hexToRgba(s.bg_color, bgOpacity),
     '--theme-cell': hexToRgba(s.cell_color, cellOpacity),
@@ -83,7 +84,7 @@ const themeStyle = computed(() => {
     '--theme-text-muted': s.muted_text_color,
     '--theme-primary': s.primary_color,
     '--theme-primary-alpha': hexToRgba(s.primary_color, 0.15),
-    '--theme-border': s.cell_border_color || (s.theme_mode === 'dark' ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.05)'),
+    '--theme-border': s.cell_border_color || (theme === 'dark' ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.05)'),
     'font-family': s.font_family,
     'font-size': `${s.font_size}px`,
     'backgroundColor': hexToRgba(s.bg_color, bgOpacity),

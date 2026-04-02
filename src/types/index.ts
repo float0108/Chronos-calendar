@@ -22,7 +22,7 @@ export type ResizeDirection = 'East' | 'West' | 'South' | 'SouthEast';
 export type ViewMode = 'todo' | 'done';
 
 // Settings types
-export type ThemeMode = 'light' | 'dark';
+export type ThemeMode = 'light' | 'dark' | 'system';
 export type WeekStartsOn = 0 | 1;
 
 export type BorderStyle = 'solid' | 'dashed' | 'dotted' | 'dash-dot' | 'dash-dot-dot';
