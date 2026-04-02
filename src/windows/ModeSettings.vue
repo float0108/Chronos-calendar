@@ -106,7 +106,7 @@ provide('themeColors', themeColors);
               <h3 class="text-sm font-medium" :style="{ color: themeColors.text }">毛玻璃背景特效</h3>
               <p class="text-xs mt-0.5" :style="{ color: themeColors.textMuted, opacity: 0.7 }">为应用主窗口开启模糊效果</p>
             </div>
-            <label class="relative inline-flex items-center cursor-pointer">
+            <label class="relative inline-flex items-center">
               <input type="checkbox" :checked="settings.enable_blur" @change="updateSetting('enable_blur', !settings.enable_blur)" class="sr-only peer" />
               <div class="w-11 h-6 rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all"
                    :style="{

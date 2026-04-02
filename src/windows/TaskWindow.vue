@@ -438,7 +438,7 @@ onUnmounted(() => {
             @mousedown="(e) => e.target === e.currentTarget && handleIconDrag()">
             <template v-if="!isEditingTitle">
               <span
-                class="text-base font-medium leading-relaxed transition-opacity truncate max-w-[200px] cursor-pointer hover:opacity-80"
+                class="text-base font-medium leading-relaxed transition-opacity truncate max-w-[200px] hover:opacity-80"
                 :style="{ color: 'var(--theme-text)' }"
                 @click="startEditingTitle(currentTask?.content || '')">
                 {{ currentTask?.content || 'Task' }}
@@ -484,7 +484,7 @@ onUnmounted(() => {
             @mousedown="(e) => e.target === e.currentTarget && handleIconDrag()">
             <template v-if="!isEditingTitle">
               <span
-                class="text-base font-medium leading-relaxed transition-opacity truncate max-w-[200px] cursor-pointer hover:opacity-80"
+                class="text-base font-medium leading-relaxed transition-opacity truncate max-w-[200px] hover:opacity-80"
                 :style="{ color: 'var(--theme-text)' }"
                 @click="startEditingTitle(currentTask?.content || '')">
                 {{ currentTask?.content || 'Task' }}

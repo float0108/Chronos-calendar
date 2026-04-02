@@ -122,10 +122,10 @@ const cellStyle = computed(() => {
       <div class="space-y-3 rounded-xl p-4" :style="cellStyle">
         <div class="flex items-center justify-between">
           <div>
-            <label class="text-sm font-medium cursor-pointer" :style="{ color: themeColors.textMuted }">开机自启动</label>
+            <label class="text-sm font-medium" :style="{ color: themeColors.textMuted }">开机自启动</label>
             <p class="text-xs mt-0.5" :style="{ color: themeColors.textMuted, opacity: 0.7 }">启动后应用将在后台静默运行</p>
           </div>
-          <label class="relative inline-flex items-center cursor-pointer">
+          <label class="relative inline-flex items-center">
             <input type="checkbox" :checked="settings.autostart" @change="updateSetting('autostart', !settings.autostart)" class="sr-only peer" />
             <div class="w-11 h-6 rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all"
                  :style="{
@@ -137,7 +137,7 @@ const cellStyle = computed(() => {
         <div class="flex items-center justify-between py-1">
           <label class="text-sm font-medium" :style="{ color: themeColors.textMuted }">每周开始于</label>
           <div class="flex gap-1 p-0.5 rounded-lg" :style="{ backgroundColor: themeColors.bg }">
-            <label class="flex items-center px-3 py-1 cursor-pointer rounded-md transition-colors"
+            <label class="flex items-center px-3 py-1 rounded-md transition-colors"
                    :style="settings.week_starts_on === 0 ? {
                      backgroundColor: settings.theme_mode === 'dark' ? 'rgba(255,255,255,0.1)' : 'rgba(255,255,255,0.9)',
                      boxShadow: '0 1px 2px rgba(0,0,0,0.05)'
@@ -145,7 +145,7 @@ const cellStyle = computed(() => {
               <input type="radio" :value="0" :checked="settings.week_starts_on === 0" @change="updateSetting('week_starts_on', 0)" class="sr-only" />
               <span class="text-sm" :style="{ color: settings.week_starts_on === 0 ? themeColors.text : themeColors.textMuted, fontWeight: settings.week_starts_on === 0 ? '500' : 'normal' }">周日</span>
             </label>
-            <label class="flex items-center px-3 py-1 cursor-pointer rounded-md transition-colors"
+            <label class="flex items-center px-3 py-1 rounded-md transition-colors"
                    :style="settings.week_starts_on === 1 ? {
                      backgroundColor: settings.theme_mode === 'dark' ? 'rgba(255,255,255,0.1)' : 'rgba(255,255,255,0.9)',
                      boxShadow: '0 1px 2px rgba(0,0,0,0.05)'
@@ -161,7 +161,7 @@ const cellStyle = computed(() => {
           <div class="grid grid-cols-2 gap-2">
             <button type="button"
                    @click="updateSetting('display_mode', 'month')"
-                   class="flex items-center justify-center gap-2 p-2.5 border rounded-lg cursor-pointer transition-all text-left"
+                   class="flex items-center justify-center gap-2 p-2.5 border rounded-lg transition-all text-left"
                    :style="settings.display_mode === 'month' ? {
                      borderColor: themeColors.primary,
                      backgroundColor: settings.theme_mode === 'dark' ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.02)'
@@ -173,7 +173,7 @@ const cellStyle = computed(() => {
             </button>
             <button type="button"
                    @click="updateSetting('display_mode', 'floating_weeks')"
-                   class="flex items-center justify-center gap-2 p-2.5 border rounded-lg cursor-pointer transition-all text-left"
+                   class="flex items-center justify-center gap-2 p-2.5 border rounded-lg transition-all text-left"
                    :style="settings.display_mode === 'floating_weeks' ? {
                      borderColor: themeColors.primary,
                      backgroundColor: settings.theme_mode === 'dark' ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.02)'

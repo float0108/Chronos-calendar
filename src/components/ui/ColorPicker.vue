@@ -55,7 +55,7 @@ function selectTransparent() {
         type="color"
         :value="modelValue === 'transparent' ? '#ffffff' : modelValue"
         @input="handleChange"
-        class="w-10 h-10 rounded-lg cursor-pointer bg-transparent"
+        class="w-10 h-10 rounded-lg bg-transparent"
         :class="{ 'opacity-50': modelValue === 'transparent' }"
         :style="{ border: '1px solid ' + themeColors.border }"
       />

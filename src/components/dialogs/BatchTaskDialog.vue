@@ -271,7 +271,7 @@ onUnmounted(() => { document.body.style.overflow = ''; });
               <div class="flex gap-2 items-center">
                 <select
                   v-model="cycleType"
-                  class="schedule-input flex-1 px-2 py-1.5 rounded outline-none focus:ring-1 transition-colors appearance-none cursor-pointer"
+                  class="schedule-input flex-1 px-2 py-1.5 rounded outline-none focus:ring-1 transition-colors appearance-none"
                   :style="{
                     backgroundColor: 'var(--theme-cell)',
                     borderColor: 'var(--theme-border)',

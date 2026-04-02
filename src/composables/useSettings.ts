@@ -53,6 +53,10 @@ function applySettingsToDom(): void {
   root.style.setProperty('--schedule-hover', hexToRgba('#ffffff', cellOpacity + 0.4));
 
   root.style.setProperty('--border-light', hexToRgba('#000000', 0.1));
+
+  // 实色背景（用于对话框等需要不透明背景的组件）
+  root.style.setProperty('--solid-bg', theme === 'dark' ? '#000000' : '#ffffff');
+
   // 注入新增的边框颜色
   root.style.setProperty('--cell-border-color', settings.cell_border_color || '#d1d5db');
 

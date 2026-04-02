@@ -61,10 +61,10 @@ function adjustPercent(key: 'desc_dialog_width' | 'desc_dialog_height', delta: n
       <div class="space-y-3 rounded-xl p-4" :style="cellStyle">
         <div class="flex items-center justify-between">
           <div>
-            <label class="text-sm font-medium cursor-pointer" :style="{ color: themeColors.textMuted }">标题栏应用单元格风格</label>
+            <label class="text-sm font-medium" :style="{ color: themeColors.textMuted }">标题栏应用单元格风格</label>
             <p class="text-xs mt-0.5" :style="{ color: themeColors.textMuted, opacity: 0.7 }">应用单元格背景、边框和透明度到标题栏</p>
           </div>
-          <label class="relative inline-flex items-center cursor-pointer">
+          <label class="relative inline-flex items-center">
             <input type="checkbox" :checked="settings.header_cell_style" @change="updateSetting('header_cell_style', !settings.header_cell_style)" class="sr-only peer" />
             <div class="w-11 h-6 rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all"
                  :style="{

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue';
-import { ChevronLeft, ChevronRight, MoreVertical, Lock, Unlock, Undo2, Redo2, ListTodo, CheckCircle2, Kanban, StickyNote, Search } from 'lucide-vue-next';
+import { ChevronLeft, ChevronRight, MoreVertical, Lock, Unlock, Undo2, ListTodo, CheckCircle2, Kanban, StickyNote, Search } from 'lucide-vue-next';
 import dayjs from 'dayjs';
 import MiniCalendar from './MiniCalendar.vue';
 import DropdownMenu from '../ui/DropdownMenu.vue';

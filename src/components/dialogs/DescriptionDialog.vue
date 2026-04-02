@@ -2,7 +2,6 @@
 import { ref, watch, nextTick, onUnmounted, computed, onMounted } from 'vue';
 import type { Schedule } from '../../types';
 import { useSettings } from '../../composables/useSettings';
-import { hexToRgba, adjustBrightness } from '../../utils/color';
 import ScheduleEditor from '../ScheduleEditor.vue';
 
 const props = defineProps<{
@@ -28,11 +27,10 @@ const scheduleEditorRef = ref<InstanceType<typeof ScheduleEditor> | null>(null);
 const themeStyle = computed(() => {
   const s = currentSettings.value;
   if (!s) return {};
-  const cellOpacity = s.cell_opacity / 100;
   const widthPercent = s.desc_dialog_width ?? 40;
   const heightPercent = s.desc_dialog_height ?? 70;
   return {
-    '--theme-cell': hexToRgba(s.cell_color, cellOpacity),
+    '--theme-cell': 'var(--solid-bg)',
     '--theme-text': s.text_color,
     '--theme-text-muted': s.muted_text_color,
     '--theme-primary': s.primary_color,
@@ -106,7 +104,6 @@ onUnmounted(() => {
     >
       <Transition name="pop">
         <div class="dialog-content w-full rounded-2xl shadow-lg flex flex-col overflow-hidden"
-             :class="{ 'dark-mode': currentSettings?.theme_mode === 'dark', 'light-mode': currentSettings?.theme_mode !== 'dark' }"
              :style="themeStyle">
 
           <div class="dialog-header px-4 pt-4 pb-2 shrink-0">
@@ -152,32 +149,18 @@ onUnmounted(() => {
   max-height: 90vh;
 }
 
-/* 亮色模式：白色背景，黑色文字 */
-.dialog-content.light-mode {
-  background-color: #ffffff;
-  color: #000000;
+/* 使用主题变量 */
+.dialog-content {
+  background-color: var(--theme-cell);
+  color: var(--theme-text);
 }
 
-/* 暗色模式：黑色背景，白色文字 */
-.dialog-content.dark-mode {
-  background-color: #000000;
-  color: #ffffff;
+.dialog-content .title-input {
+  color: var(--theme-text);
 }
 
-.dialog-content.light-mode .title-input {
-  color: #000000;
-}
-
-.dialog-content.dark-mode .title-input {
-  color: #ffffff;
-}
-
-.dialog-content.light-mode .title-input::placeholder {
-  color: rgba(0, 0, 0, 0.5);
-}
-
-.dialog-content.dark-mode .title-input::placeholder {
-  color: rgba(255, 255, 255, 0.5);
+.dialog-content .title-input::placeholder {
+  color: var(--theme-text-muted);
 }
 
 .dialog-header {

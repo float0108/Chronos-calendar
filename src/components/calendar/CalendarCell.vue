@@ -29,7 +29,6 @@ const { saveHistory, saveHistoryDebounced, handleEditUndo, handleEditRedo, reset
 
 const isEditing = ref(false);
 const editLines = ref<EditLine[]>([]);
-const originalLines = ref<EditLine[]>([]); // 保存原始内容用于取消
 const cellRef = ref<HTMLElement | null>(null);
 const textareaRefs = ref<(HTMLTextAreaElement | null)[]>([]);
 const tooltipRef = ref<InstanceType<typeof ScheduleTooltip> | null>(null);
@@ -57,13 +56,6 @@ const borderStyleClass = computed(() => {
   if (style === 'solid') return '';
   return `border-style-${style}`;
 });
-
-// activeLine 用于将来的功能扩展（如行内完成状态切换）
-const _activeLine = computed(() => {
-  if (activeLineIndex.value === null || !editLines.value[activeLineIndex.value]) return null;
-  return editLines.value[activeLineIndex.value];
-});
-void _activeLine; // 避免未使用警告
 
 function initEditLines(): EditLine[] {
   const validSchedules = props.schedules.filter(s => s.id !== -1 && s.content.trim() !== '');
@@ -134,7 +126,6 @@ function startEditing() {
 
   const lines = initEditLines();
   editLines.value = lines;
-  originalLines.value = JSON.parse(JSON.stringify(lines)); // 保存原始内容
   isEditing.value = true;
   activeLineIndex.value = editLines.value.length - 1;
 
@@ -341,7 +332,7 @@ function handleScheduleMouseEnter(event: MouseEvent, schedule: Schedule) {
     if (y < 0) y = gap;
   }
 
-  tooltipPosition.value = { x, y, width: tooltipWidth };
+  tooltipPosition.value = { x, y };
 
   tooltipTimeout = window.setTimeout(() => {
     hoveredSchedule.value = schedule;
@@ -453,7 +444,7 @@ function handleDrop(event: DragEvent) {
     'bg-[var(--cell-bg)]': isCurrentMonth && !cellStyle.backgroundColor,
     'bg-[var(--cell-bg-muted)]': !isCurrentMonth && !cellStyle.backgroundColor,
     'today-cell': isToday && !isEditing,
-    'editing shadow-2xl z-30 bg-white dark:bg-gray-800 scale-[1.02] !border-transparent': isEditing,
+    'editing shadow-2xl z-30 bg-[var(--cell-bg)] scale-[1.02] !border-transparent': isEditing,
     'drag-over': isDragOver,
     [borderStyleClass]: !!borderStyleClass
   }" :style="cellStyle"

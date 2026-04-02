@@ -63,7 +63,7 @@ const sliderStyle = computed(() => {
       :step="step || 1"
       :value="displayValue"
       @input="handleChange"
-      class="w-full h-2 rounded-lg appearance-none cursor-pointer slider-input"
+      class="w-full h-2 rounded-lg appearance-none slider-input"
       :style="sliderStyle"
     />
   </div>

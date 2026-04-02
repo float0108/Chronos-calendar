@@ -1,18 +1,11 @@
 <script setup lang="ts">
 import { Settings, LogOut, Upload, FileDown, FolderDown, Cloud, Eye, EyeOff, CalendarPlus, Minimize } from 'lucide-vue-next';
-import { computed } from 'vue';
 
 defineProps<{
   visible: boolean;
   hideWeekends: boolean;
   isLocked: boolean;
 }>();
-
-// 检测当前主题模式
-const isDarkMode = computed(() => {
-  if (typeof document === 'undefined') return false;
-  return document.documentElement.getAttribute('data-theme') === 'dark';
-});
 
 const emit = defineEmits<{
   (e: 'settings'): void;
@@ -68,7 +61,6 @@ function handleOpenBatchTask() {
     <div
       v-if="visible"
       class="dropdown-menu fixed rounded-lg shadow-lg overflow-hidden z-50"
-      :class="isDarkMode ? 'dark-mode' : 'light-mode'"
       :style="{ top: '60px', right: '16px' }"
       @mousedown.stop
       @click.stop
@@ -166,81 +158,38 @@ function handleOpenBatchTask() {
 </template>
 
 <style scoped>
-/* 亮色模式：白色背景，黑色文字 */
-.dropdown-menu.light-mode {
-  background-color: #ffffff;
-  border: 1px solid #e5e7eb;
+.dropdown-menu {
+  background-color: var(--solid-bg);
+  border: 1px solid var(--border-light);
 }
 
-/* 暗色模式：黑色背景，白色文字 */
-.dropdown-menu.dark-mode {
-  background-color: #000000;
-  border: 1px solid #374151;
+.menu-item {
+  color: var(--text-primary);
 }
 
-/* 菜单项样式 - 亮色模式 */
-.dropdown-menu.light-mode .menu-item {
-  color: #000000;
+.menu-item:hover:not(:disabled) {
+  background-color: var(--hover-bg);
 }
 
-.dropdown-menu.light-mode .menu-item:hover:not(:disabled) {
-  background-color: #f3f4f6;
+.menu-item-disabled {
+  color: var(--text-muted);
 }
 
-/* 菜单项样式 - 暗色模式 */
-.dropdown-menu.dark-mode .menu-item {
-  color: #ffffff;
-}
-
-.dropdown-menu.dark-mode .menu-item:hover:not(:disabled) {
-  background-color: #374151;
-}
-
-/* 禁用项样式 */
-.dropdown-menu.light-mode .menu-item-disabled {
-  color: #9ca3af;
-}
-
-.dropdown-menu.dark-mode .menu-item-disabled {
-  color: #6b7280;
-}
-
-/* 分割线样式 */
-.dropdown-menu.light-mode .menu-divider {
+.menu-divider {
   height: 1px;
-  background-color: #e5e7eb;
+  background-color: var(--border-light);
 }
 
-.dropdown-menu.dark-mode .menu-divider {
-  height: 1px;
-  background-color: #374151;
+.menu-label {
+  color: var(--text-muted);
+  background-color: var(--hover-bg);
 }
 
-/* 标签样式 */
-.dropdown-menu.light-mode .menu-label {
-  color: #6b7280;
-  background-color: #f9fafb;
-}
-
-.dropdown-menu.dark-mode .menu-label {
-  color: #9ca3af;
-  background-color: #111827;
-}
-
-/* 退出按钮样式 */
-.dropdown-menu.light-mode .menu-item-quit {
+.menu-item-quit {
   color: #ef4444;
 }
 
-.dropdown-menu.light-mode .menu-item-quit:hover {
-  background-color: #fef2f2;
-}
-
-.dropdown-menu.dark-mode .menu-item-quit {
-  color: #f87171;
-}
-
-.dropdown-menu.dark-mode .menu-item-quit:hover {
-  background-color: #7f1d1d;
+.menu-item-quit:hover {
+  background-color: rgba(239, 68, 68, 0.1);
 }
 </style>
