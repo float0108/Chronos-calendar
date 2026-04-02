@@ -205,14 +205,14 @@ onUnmounted(() => {
         <template v-if="!isEditing">
           <span
             v-if="isAddMode"
-            class="text-[13px] font-medium leading-relaxed flex-1 truncate"
+            class="text-sm font-medium leading-relaxed flex-1 truncate"
             :style="{ color: 'var(--theme-text-muted)' }"
           >
             添加新项...
           </span>
           <span
             v-else
-            class="text-[13px] font-medium leading-relaxed flex-1 truncate"
+            class="text-sm font-medium leading-relaxed flex-1 truncate"
             :style="{ color: isDone ? 'var(--theme-text-muted)' : 'var(--theme-text)' }"
             @click.stop="handleTitleClick"
             @dblclick.stop="handleTitleDblclick"
@@ -228,7 +228,7 @@ onUnmounted(() => {
               ref="inputRef"
               v-model="editTitle"
               type="text"
-              class="w-full outline-none pl-2 pr-8 py-0.5 -mx-1 rounded text-[13px] font-medium leading-relaxed selection:bg-[var(--theme-primary-alpha)] caret-[var(--theme-text)] bg-white dark:bg-neutral-800 border border-transparent focus:border-[var(--theme-border)] shadow-sm"
+              class="w-full outline-none pl-2 pr-8 py-0.5 -mx-1 rounded text-sm font-medium leading-relaxed selection:bg-[var(--theme-primary-alpha)] caret-[var(--theme-text)] bg-white dark:bg-neutral-800 border border-transparent focus:border-[var(--theme-border)] shadow-sm"
               :style="{ color: 'var(--theme-text)' }"
               :placeholder="isAddMode ? '输入内容并回车保存...' : ''"
               @blur="handleBlur"
@@ -249,7 +249,7 @@ onUnmounted(() => {
 
         <span
           v-if="date && !isAddMode"
-          class="shrink-0 text-[11px] opacity-50 hover:opacity-80 cursor-pointer"
+          class="shrink-0 text-xs opacity-50 hover:opacity-80 cursor-pointer"
           :style="{ color: 'var(--theme-text-muted)' }"
           @click.stop="handleDateClick"
         >
@@ -259,7 +259,7 @@ onUnmounted(() => {
 
       <div
         v-if="preview && !isAddMode"
-        class="text-[12px] leading-relaxed truncate opacity-50 mt-0.5 pl-6"
+        class="text-sm leading-relaxed truncate opacity-50 mt-0.5 pl-6"
         :style="{ color: 'var(--theme-text-muted)' }"
       >
         {{ preview }}

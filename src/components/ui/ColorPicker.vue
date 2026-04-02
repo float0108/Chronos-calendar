@@ -47,7 +47,7 @@ function selectTransparent() {
 
 <template>
   <div class="color-picker">
-    <label class="block text-[13px] font-medium mb-2" :style="{ color: themeColors.textMuted }">
+    <label class="block text-sm font-medium mb-2" :style="{ color: themeColors.textMuted }">
       {{ label }}
     </label>
     <div class="flex items-center gap-3">
@@ -63,7 +63,7 @@ function selectTransparent() {
         type="text"
         :value="modelValue"
         @input="handleChange"
-        class="flex-1 px-3 py-2 text-[13px] rounded-lg focus:outline-none"
+        class="flex-1 px-3 py-2 text-sm rounded-lg focus:outline-none"
         :style="{
           border: '1px solid ' + themeColors.border,
           backgroundColor: themeColors.bg,

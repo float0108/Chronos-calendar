@@ -258,7 +258,7 @@ onUnmounted(() => {
         <div class="flex-1 min-w-0 flex justify-center items-center relative h-6"
           @mousedown="(e) => e.target === e.currentTarget && handleIconDrag()">
           <span v-show="!isSearchFocused"
-            class="text-[14px] font-medium leading-relaxed transition-opacity"
+            class="text-base font-medium leading-relaxed transition-opacity"
             :style="{ color: 'var(--theme-text)' }"
             @click="isSearchFocused = true">
             Board
@@ -269,7 +269,7 @@ onUnmounted(() => {
             v-model="searchKeyword"
             type="text"
             placeholder="..."
-            class="absolute inset-0 w-full h-full bg-black/5 dark:bg-white/5 rounded-md px-2 outline-none text-[13px] leading-relaxed text-center selection:bg-[var(--theme-primary-alpha)] caret-[var(--theme-text)]"
+            class="absolute inset-0 w-full h-full bg-black/5 dark:bg-white/5 rounded-md px-2 outline-none text-sm leading-relaxed text-center selection:bg-[var(--theme-primary-alpha)] caret-[var(--theme-text)]"
             :style="{ color: 'var(--theme-text)' }"
             @input="loadTasks"
             @focus="isSearchFocused = true"

@@ -113,7 +113,7 @@ onUnmounted(() => {
             <input
               v-model="content"
               type="text"
-              class="dialog-input w-full text-[14px] font-semibold tracking-tight bg-transparent border-none focus:outline-none focus:ring-0"
+              class="title-input w-full text-base font-semibold tracking-tight bg-transparent border-none focus:outline-none focus:ring-0"
               placeholder="输入标题..."
             />
           </div>
@@ -164,32 +164,24 @@ onUnmounted(() => {
   color: #ffffff;
 }
 
-.dialog-content.light-mode .dialog-input {
+.dialog-content.light-mode .title-input {
   color: #000000;
 }
 
-.dialog-content.dark-mode .dialog-input {
+.dialog-content.dark-mode .title-input {
   color: #ffffff;
 }
 
-.dialog-content.light-mode .dialog-input::placeholder {
+.dialog-content.light-mode .title-input::placeholder {
   color: rgba(0, 0, 0, 0.5);
 }
 
-.dialog-content.dark-mode .dialog-input::placeholder {
+.dialog-content.dark-mode .title-input::placeholder {
   color: rgba(255, 255, 255, 0.5);
 }
 
 .dialog-header {
   border-bottom: 1px solid var(--border-light);
-}
-
-.dialog-input {
-  color: var(--text-primary);
-}
-
-.dialog-input::placeholder {
-  color: var(--text-muted);
 }
 
 .fade-enter-active, .fade-leave-active { transition: opacity 0.2s ease; }

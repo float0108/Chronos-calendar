@@ -171,7 +171,7 @@ onUnmounted(() => {
             v-model="searchKeyword"
             type="text"
             placeholder="搜索日程..."
-            class="w-full h-7 bg-black/5 dark:bg-white/5 rounded-md pl-3 pr-8 outline-none text-[13px] leading-relaxed selection:bg-[var(--theme-primary-alpha)] caret-[var(--theme-text)]"
+            class="w-full h-7 bg-black/5 dark:bg-white/5 rounded-md pl-3 pr-8 outline-none text-sm leading-relaxed selection:bg-[var(--theme-primary-alpha)] caret-[var(--theme-text)]"
             :style="{ color: 'var(--theme-text)' }"
           />
           <button
@@ -216,7 +216,7 @@ onUnmounted(() => {
           <div class="p-4 rounded-full" :style="{ backgroundColor: 'var(--theme-cell)' }">
             <Search class="w-6 h-6 opacity-30" :style="{ color: 'var(--theme-text)' }" />
           </div>
-          <div class="mt-3 text-[13px] opacity-50" :style="{ color: 'var(--theme-text-muted)' }">
+          <div class="mt-3 text-sm opacity-50" :style="{ color: 'var(--theme-text-muted)' }">
             未找到相关日程
           </div>
         </div>
@@ -226,7 +226,7 @@ onUnmounted(() => {
           <div class="p-4 rounded-full" :style="{ backgroundColor: 'var(--theme-cell)' }">
             <Search class="w-6 h-6 opacity-30" :style="{ color: 'var(--theme-text)' }" />
           </div>
-          <div class="mt-3 text-[13px] opacity-50" :style="{ color: 'var(--theme-text-muted)' }">
+          <div class="mt-3 text-sm opacity-50" :style="{ color: 'var(--theme-text-muted)' }">
             输入关键词搜索日程
           </div>
         </div>

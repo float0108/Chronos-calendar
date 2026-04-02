@@ -192,7 +192,7 @@ defineExpose({ loadTasks });
 </script>
 
 <template>
-  <div class="schedule-editor flex flex-col gap-3 h-full text-[12px]">
+  <div class="schedule-editor flex flex-col gap-3 h-full text-sm">
 
     <div v-if="showContent" class="flex flex-col gap-1 shrink-0">
       <label class="flex items-center gap-1.5 font-medium" :style="{ color: 'var(--theme-text-muted)' }">
@@ -202,7 +202,7 @@ defineExpose({ loadTasks });
         v-model="localContent"
         type="text"
         placeholder="输入标题..."
-        class="schedule-input w-full px-2 py-1.5 rounded text-[12px] outline-none focus:ring-1 transition-colors"
+        class="schedule-input w-full px-2 py-1.5 rounded text-sm outline-none focus:ring-1 transition-colors"
         :style="{
           backgroundColor: 'var(--theme-cell)',
           borderColor: 'var(--theme-border)',
@@ -222,7 +222,7 @@ defineExpose({ loadTasks });
           <button
             type="button"
             @click="openCreateDateCalendar"
-            class="schedule-input w-full px-2 py-1.5 rounded text-[12px] text-left outline-none focus:ring-1 transition-colors"
+            class="schedule-input w-full px-2 py-1.5 rounded text-sm text-left outline-none focus:ring-1 transition-colors"
             :style="{
               backgroundColor: 'var(--theme-cell)',
               borderColor: 'var(--theme-border)',
@@ -251,7 +251,7 @@ defineExpose({ loadTasks });
           <button
             type="button"
             @click="openDoneDateCalendar"
-            class="schedule-input w-full px-2 py-1.5 rounded text-[12px] text-left outline-none focus:ring-1 transition-colors"
+            class="schedule-input w-full px-2 py-1.5 rounded text-sm text-left outline-none focus:ring-1 transition-colors"
             :style="{
               backgroundColor: 'var(--theme-cell)',
               borderColor: 'var(--theme-border)',
@@ -278,7 +278,7 @@ defineExpose({ loadTasks });
         <span>关联任务</span>
       </label>
 
-      <div v-if="!editableFatherTask" class="schedule-input w-full px-2 py-1.5 rounded text-[12px]"
+      <div v-if="!editableFatherTask" class="schedule-input w-full px-2 py-1.5 rounded text-sm"
         :style="{
           backgroundColor: 'var(--theme-cell)',
           borderColor: 'var(--theme-border)',
@@ -288,7 +288,7 @@ defineExpose({ loadTasks });
       </div>
 
       <div v-else class="relative">
-        <div v-if="localFatherTaskId" class="schedule-input flex items-center gap-1 px-2 py-1.5 rounded text-[12px]"
+        <div v-if="localFatherTaskId" class="schedule-input flex items-center gap-1 px-2 py-1.5 rounded text-sm"
           :style="{
             backgroundColor: 'var(--theme-cell)',
             borderColor: 'var(--theme-border)',
@@ -304,7 +304,7 @@ defineExpose({ loadTasks });
           v-model="searchKeyword"
           type="text"
           placeholder="搜索主任务..."
-          class="schedule-input w-full px-2 py-1.5 rounded text-[12px] outline-none focus:ring-1 transition-colors"
+          class="schedule-input w-full px-2 py-1.5 rounded text-sm outline-none focus:ring-1 transition-colors"
           :style="{
             backgroundColor: 'var(--theme-cell)',
             borderColor: 'var(--theme-border)',
@@ -328,7 +328,7 @@ defineExpose({ loadTasks });
             :key="task.id"
             type="button"
             @mousedown.prevent="selectTask(task)"
-            class="w-full px-2 py-1.5 text-left text-[12px] transition-colors flex items-center gap-2 hover:bg-black/5 dark:hover:bg-white/5"
+            class="w-full px-2 py-1.5 text-left text-sm transition-colors flex items-center gap-2 hover:bg-black/5 dark:hover:bg-white/5"
             :class="{ 'opacity-50': task.is_done }"
             :style="{ color: 'var(--theme-text)' }">
             <span class="w-1.5 h-1.5 rounded-full shrink-0" :class="task.is_done ? 'bg-green-500' : 'bg-blue-500'"></span>
@@ -346,7 +346,7 @@ defineExpose({ loadTasks });
           }">
           <button
             @mousedown.prevent="handleCreateNewTask"
-            class="w-full flex items-center gap-1.5 px-2 py-1.5 text-[12px] rounded transition-colors text-left hover:bg-black/5 dark:hover:bg-white/5"
+            class="w-full flex items-center gap-1.5 px-2 py-1.5 text-sm rounded transition-colors text-left hover:bg-black/5 dark:hover:bg-white/5"
             :style="{ color: 'var(--theme-primary)' }"
           >
             <Plus class="w-3 h-3" />
@@ -364,7 +364,7 @@ defineExpose({ loadTasks });
       <textarea
         v-model="localDescription"
         placeholder="添加描述..."
-        class="schedule-input w-full flex-1 h-full rounded px-2 py-1.5 text-[12px] leading-relaxed outline-none resize-none focus:ring-1 transition-colors"
+        class="schedule-input w-full flex-1 h-full rounded px-2 py-1.5 text-sm leading-relaxed outline-none resize-none focus:ring-1 transition-colors"
         :style="{
           backgroundColor: 'var(--theme-cell)',
           borderColor: 'var(--theme-border)',

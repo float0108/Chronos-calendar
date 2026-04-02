@@ -297,7 +297,7 @@ onUnmounted(() => {
           <div class="flex-1 min-w-0 flex justify-center items-center relative h-6"
                @mousedown="(e) => e.target === e.currentTarget && handleIconDrag()">
             <span v-show="!isSearchFocused"
-                  class="text-[14px] font-medium leading-relaxed transition-opacity cursor-text"
+                  class="text-base font-medium leading-relaxed transition-opacity cursor-text"
                   :style="{ color: 'var(--theme-text)' }"
                   @click="isSearchFocused = true">
               Notes
@@ -308,7 +308,7 @@ onUnmounted(() => {
               v-model="searchKeyword"
               type="text"
               placeholder="..."
-              class="absolute inset-0 w-full h-full bg-black/5 dark:bg-white/5 rounded-md px-2 outline-none text-[13px] leading-relaxed text-center selection:bg-[var(--theme-primary-alpha)] caret-[var(--theme-text)]"
+              class="absolute inset-0 w-full h-full bg-black/5 dark:bg-white/5 rounded-md px-2 outline-none text-sm leading-relaxed text-center selection:bg-[var(--theme-primary-alpha)] caret-[var(--theme-text)]"
               :style="{ color: 'var(--theme-text)' }"
               @input="loadNotesList"
               @focus="isSearchFocused = true"
@@ -339,7 +339,7 @@ onUnmounted(() => {
                 v-model="title"
                 type="text"
                 placeholder="Aa"
-                class="bg-transparent outline-none text-[14px] font-medium leading-relaxed text-center selection:bg-[var(--theme-primary-alpha)] max-w-[200px] caret-[var(--theme-text)] pointer-events-auto"
+                class="bg-transparent outline-none text-base font-medium leading-relaxed text-center selection:bg-[var(--theme-primary-alpha)] max-w-[200px] caret-[var(--theme-text)] pointer-events-auto"
                 :style="{ color: 'var(--theme-text)' }"
                 @mousedown.stop
               />
@@ -397,7 +397,7 @@ onUnmounted(() => {
                 <textarea
                   v-model="content"
                   placeholder="..."
-                  class="w-full flex-1 bg-transparent resize-none outline-none text-[14px] leading-[1.8] custom-scrollbar placeholder:transition-opacity focus:placeholder:opacity-40 selection:bg-[var(--theme-primary-alpha)] p-4"
+                  class="w-full flex-1 bg-transparent resize-none outline-none text-base leading-[1.8] custom-scrollbar placeholder:transition-opacity focus:placeholder:opacity-40 selection:bg-[var(--theme-primary-alpha)] p-4"
                   :style="{ color: 'var(--theme-text-secondary)' }"
                 ></textarea>
 
@@ -413,12 +413,12 @@ onUnmounted(() => {
                    }">
                 <button
                   @click="handleDateClick"
-                  class="text-[12px] opacity-50 hover:opacity-100 transition-opacity"
+                  class="text-sm opacity-50 hover:opacity-100 transition-opacity"
                   :style="{ color: 'var(--theme-text-muted)' }"
                 >
                   {{ formatDate(currentNote?.create_date) }}
                 </button>
-                <div class="flex items-center gap-1.5 text-[12px] opacity-50"
+                <div class="flex items-center gap-1.5 text-sm opacity-50"
                      :style="{ color: 'var(--theme-text-muted)' }">
                   <PenLine class="w-3 h-3" />
                   <span>{{ content.length }}</span>

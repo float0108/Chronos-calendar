@@ -212,21 +212,22 @@ function handleReset() {
 
 <template>
   <div class="settings-overlay fixed inset-0 z-[9999] flex w-full h-full bg-transparent" :style="themeStyle">
-    <div class="settings-panel relative flex flex-col overflow-hidden"
-         :class="{ 'dark-mode': localSettings.theme_mode === 'dark', 'light-mode': localSettings.theme_mode === 'light' }">
+    <div class="settings-panel relative flex flex-col overflow-hidden rounded-lg shadow-lg"
+         :class="{ 'dark-mode': localSettings.theme_mode === 'dark', 'light-mode': localSettings.theme_mode === 'light' }"
+         :style="{ border: '1px solid var(--theme-border)' }">
       <div class="flex flex-1 overflow-hidden">
         <!-- 左侧导航栏 -->
         <div class="w-48 shrink-0 flex flex-col settings-sidebar">
           <!-- 标题区 -->
           <div class="flex items-center gap-2 px-4 py-4 shrink-0" data-tauri-drag-region>
             <span class="w-1.5 h-1.5 rounded-full animate-pulse" :style="{ backgroundColor: 'var(--theme-primary)' }"></span>
-            <h1 class="text-[15px] font-bold tracking-tight settings-text">设置</h1>
+            <h1 class="text-lg font-bold tracking-tight settings-text">设置</h1>
           </div>
 
           <!-- 导航菜单 -->
           <nav class="flex-1 px-3 py-2 space-y-1">
             <button @click="activeMainTab = 'common'"
-              class="w-full flex items-center gap-3 px-3 py-2.5 text-[13px] font-medium rounded-lg transition-all text-left"
+              class="w-full flex items-center gap-3 px-3 py-2.5 text-sm font-medium rounded-lg transition-all text-left"
               :class="activeMainTab === 'common' ? 'settings-nav-active' : 'settings-nav-inactive'">
               <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
@@ -235,7 +236,7 @@ function handleReset() {
               公用配置
             </button>
             <button @click="activeMainTab = 'mode'"
-              class="w-full flex items-center gap-3 px-3 py-2.5 text-[13px] font-medium rounded-lg transition-all text-left"
+              class="w-full flex items-center gap-3 px-3 py-2.5 text-sm font-medium rounded-lg transition-all text-left"
               :class="activeMainTab === 'mode' ? 'settings-nav-active' : 'settings-nav-inactive'">
               <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
@@ -243,7 +244,7 @@ function handleReset() {
               模式配置
             </button>
             <button @click="activeMainTab = 'page'"
-              class="w-full flex items-center gap-3 px-3 py-2.5 text-[13px] font-medium rounded-lg transition-all text-left"
+              class="w-full flex items-center gap-3 px-3 py-2.5 text-sm font-medium rounded-lg transition-all text-left"
               :class="activeMainTab === 'page' ? 'settings-nav-active' : 'settings-nav-inactive'">
               <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2M9 7a2 2 0 012-2h2a2 2 0 012 2m0 10V7m0 10a2 2 0 002 2h2a2 2 0 002-2V7a2 2 0 00-2-2h-2a2 2 0 00-2 2" />
@@ -255,7 +256,7 @@ function handleReset() {
           <!-- 底部操作区 -->
           <div class="px-3 py-3 space-y-2 settings-sidebar-footer">
             <button @click="handleReset"
-              class="w-full flex items-center gap-2 px-3 py-2 text-[12px] font-medium rounded-lg transition-all hover:bg-black/5 settings-nav-inactive">
+              class="w-full flex items-center gap-2 px-3 py-2 text-sm font-medium rounded-lg transition-all hover:bg-black/5 settings-nav-inactive">
               <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
               </svg>
@@ -288,7 +289,7 @@ function handleReset() {
         <div class="flex-1 overflow-hidden flex flex-col settings-content">
           <!-- 顶部标题栏 -->
           <div class="flex items-center justify-between px-5 py-4 shrink-0 settings-content-header" data-tauri-drag-region>
-            <h2 class="text-[14px] font-semibold settings-text">{{ activeMainTab === 'common' ? '公用配置' : activeMainTab === 'mode' ? '模式配置' : '页面设置' }}</h2>
+            <h2 class="text-base font-semibold settings-text">{{ activeMainTab === 'common' ? '公用配置' : activeMainTab === 'mode' ? '模式配置' : '页面设置' }}</h2>
             <button @click="handleClose"
               class="w-8 h-8 flex items-center justify-center rounded-lg transition-all hover:bg-black/5 dark:hover:bg-white/10"
               title="关闭">

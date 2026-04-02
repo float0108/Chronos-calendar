@@ -49,10 +49,10 @@ const sliderStyle = computed(() => {
 <template>
   <div class="slider-control">
     <div class="flex items-center justify-between mb-2">
-      <label class="text-[13px] font-medium" :style="{ color: themeColors.textMuted }">
+      <label class="text-sm font-medium" :style="{ color: themeColors.textMuted }">
         {{ label }}
       </label>
-      <span class="text-[13px] font-mono" :style="{ color: themeColors.text }">
+      <span class="text-sm font-mono" :style="{ color: themeColors.text }">
         {{ displayValue }}{{ unit || '' }}
       </span>
     </div>

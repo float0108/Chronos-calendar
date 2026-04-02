@@ -46,18 +46,18 @@ const cellStyle = computed(() => {
   <div class="p-5 space-y-6">
     <!-- 排版与字体 -->
     <div class="space-y-3">
-      <h3 class="text-[13px] font-semibold flex items-center gap-2" :style="{ color: themeColors.text }">
+      <h3 class="text-sm font-semibold flex items-center gap-2" :style="{ color: themeColors.text }">
         <span class="w-1 h-1 rounded-full" :style="{ backgroundColor: themeColors.primary }"></span> 排版与字体
       </h3>
 
       <div class="space-y-3 rounded-xl p-4" :style="cellStyle">
         <div class="space-y-1.5">
-          <label class="text-[13px] font-medium ml-0.5" :style="{ color: themeColors.textMuted }">全局字体</label>
+          <label class="text-sm font-medium ml-0.5" :style="{ color: themeColors.textMuted }">全局字体</label>
           <div class="flex items-center gap-2">
             <select :value="settings.font_family"
               :disabled="fontsLoading"
               @change="updateSetting('font_family', ($event.target as HTMLSelectElement).value)"
-              class="flex-1 px-3 py-2 rounded-lg text-[13px] focus:outline-none focus:ring-2 transition-all disabled:opacity-50"
+              class="flex-1 px-3 py-2 rounded-lg text-sm focus:outline-none focus:ring-2 transition-all disabled:opacity-50"
               :style="{
                 backgroundColor: settings.theme_mode === 'dark' ? 'rgba(255,255,255,0.08)' : 'rgba(255,255,255,0.8)',
                 border: '1px solid ' + themeColors.border,
@@ -84,24 +84,24 @@ const cellStyle = computed(() => {
         </div>
 
         <div class="flex items-center justify-between py-1">
-          <label class="text-[13px] font-medium" :style="{ color: themeColors.textMuted }">基础字号</label>
+          <label class="text-sm font-medium" :style="{ color: themeColors.textMuted }">基础字号</label>
           <div class="flex items-center gap-2">
             <input type="number" :value="settings.font_size" @input="updateSetting('font_size', Number(($event.target as HTMLInputElement).value))" min="10" max="32" step="0.5"
-              class="w-16 px-2.5 py-1.5 text-[13px] text-center rounded-lg focus:outline-none focus:ring-2 transition-all"
+              class="w-16 px-2.5 py-1.5 text-sm text-center rounded-lg focus:outline-none focus:ring-2 transition-all"
               :style="{
                 backgroundColor: settings.theme_mode === 'dark' ? 'rgba(255,255,255,0.08)' : 'rgba(255,255,255,0.8)',
                 border: '1px solid ' + themeColors.border,
                 color: themeColors.text
               }" />
-            <span class="text-[12px] w-4" :style="{ color: themeColors.textMuted }">px</span>
+            <span class="text-sm w-4" :style="{ color: themeColors.textMuted }">px</span>
           </div>
         </div>
 
         <div class="flex items-center justify-between py-1">
-          <label class="text-[13px] font-medium" :style="{ color: themeColors.textMuted }">基础字重</label>
+          <label class="text-sm font-medium" :style="{ color: themeColors.textMuted }">基础字重</label>
           <div class="flex items-center gap-2">
             <input type="number" :value="settings.font_weight" @input="updateSetting('font_weight', Number(($event.target as HTMLInputElement).value))" min="100" max="900" step="100"
-              class="w-16 px-2.5 py-1.5 text-[13px] text-center rounded-lg focus:outline-none focus:ring-2 transition-all"
+              class="w-16 px-2.5 py-1.5 text-sm text-center rounded-lg focus:outline-none focus:ring-2 transition-all"
               :style="{
                 backgroundColor: settings.theme_mode === 'dark' ? 'rgba(255,255,255,0.08)' : 'rgba(255,255,255,0.8)',
                 border: '1px solid ' + themeColors.border,
@@ -115,15 +115,15 @@ const cellStyle = computed(() => {
 
     <!-- 系统与日历 -->
     <div class="space-y-3">
-      <h3 class="text-[13px] font-semibold flex items-center gap-2" :style="{ color: themeColors.text }">
+      <h3 class="text-sm font-semibold flex items-center gap-2" :style="{ color: themeColors.text }">
         <span class="w-1 h-1 rounded-full" :style="{ backgroundColor: themeColors.primary }"></span> 系统与日历
       </h3>
 
       <div class="space-y-3 rounded-xl p-4" :style="cellStyle">
         <div class="flex items-center justify-between">
           <div>
-            <label class="text-[13px] font-medium cursor-pointer" :style="{ color: themeColors.textMuted }">开机自启动</label>
-            <p class="text-[11px] mt-0.5" :style="{ color: themeColors.textMuted, opacity: 0.7 }">启动后应用将在后台静默运行</p>
+            <label class="text-sm font-medium cursor-pointer" :style="{ color: themeColors.textMuted }">开机自启动</label>
+            <p class="text-xs mt-0.5" :style="{ color: themeColors.textMuted, opacity: 0.7 }">启动后应用将在后台静默运行</p>
           </div>
           <label class="relative inline-flex items-center cursor-pointer">
             <input type="checkbox" :checked="settings.autostart" @change="updateSetting('autostart', !settings.autostart)" class="sr-only peer" />
@@ -135,7 +135,7 @@ const cellStyle = computed(() => {
         </div>
         <hr :style="{ borderColor: themeColors.border }">
         <div class="flex items-center justify-between py-1">
-          <label class="text-[13px] font-medium" :style="{ color: themeColors.textMuted }">每周开始于</label>
+          <label class="text-sm font-medium" :style="{ color: themeColors.textMuted }">每周开始于</label>
           <div class="flex gap-1 p-0.5 rounded-lg" :style="{ backgroundColor: themeColors.bg }">
             <label class="flex items-center px-3 py-1 cursor-pointer rounded-md transition-colors"
                    :style="settings.week_starts_on === 0 ? {
@@ -143,7 +143,7 @@ const cellStyle = computed(() => {
                      boxShadow: '0 1px 2px rgba(0,0,0,0.05)'
                    } : {}">
               <input type="radio" :value="0" :checked="settings.week_starts_on === 0" @change="updateSetting('week_starts_on', 0)" class="sr-only" />
-              <span class="text-[13px]" :style="{ color: settings.week_starts_on === 0 ? themeColors.text : themeColors.textMuted, fontWeight: settings.week_starts_on === 0 ? '500' : 'normal' }">周日</span>
+              <span class="text-sm" :style="{ color: settings.week_starts_on === 0 ? themeColors.text : themeColors.textMuted, fontWeight: settings.week_starts_on === 0 ? '500' : 'normal' }">周日</span>
             </label>
             <label class="flex items-center px-3 py-1 cursor-pointer rounded-md transition-colors"
                    :style="settings.week_starts_on === 1 ? {
@@ -151,13 +151,13 @@ const cellStyle = computed(() => {
                      boxShadow: '0 1px 2px rgba(0,0,0,0.05)'
                    } : {}">
               <input type="radio" :value="1" :checked="settings.week_starts_on === 1" @change="updateSetting('week_starts_on', 1)" class="sr-only" />
-              <span class="text-[13px]" :style="{ color: settings.week_starts_on === 1 ? themeColors.text : themeColors.textMuted, fontWeight: settings.week_starts_on === 1 ? '500' : 'normal' }">周一</span>
+              <span class="text-sm" :style="{ color: settings.week_starts_on === 1 ? themeColors.text : themeColors.textMuted, fontWeight: settings.week_starts_on === 1 ? '500' : 'normal' }">周一</span>
             </label>
           </div>
         </div>
 
         <div class="space-y-3 pt-1">
-          <label class="text-[13px] font-medium" :style="{ color: themeColors.textMuted }">显示模式</label>
+          <label class="text-sm font-medium" :style="{ color: themeColors.textMuted }">显示模式</label>
           <div class="grid grid-cols-2 gap-2">
             <button type="button"
                    @click="updateSetting('display_mode', 'month')"
@@ -169,7 +169,7 @@ const cellStyle = computed(() => {
                      borderColor: themeColors.border,
                      backgroundColor: 'transparent'
                    }">
-              <span class="text-[13px] font-medium" :style="{ color: themeColors.text }">整月显示</span>
+              <span class="text-sm font-medium" :style="{ color: themeColors.text }">整月显示</span>
             </button>
             <button type="button"
                    @click="updateSetting('display_mode', 'floating_weeks')"
@@ -181,7 +181,7 @@ const cellStyle = computed(() => {
                      borderColor: themeColors.border,
                      backgroundColor: 'transparent'
                    }">
-              <span class="text-[13px] font-medium" :style="{ color: themeColors.text }">浮动周</span>
+              <span class="text-sm font-medium" :style="{ color: themeColors.text }">浮动周</span>
             </button>
           </div>
         </div>
@@ -195,18 +195,18 @@ const cellStyle = computed(() => {
              }">
           <div class="flex items-center justify-between">
             <div>
-              <label class="text-[13px] font-medium" :style="{ color: themeColors.textMuted }">浮动周数量</label>
-              <p class="text-[10px] mt-0.5 leading-tight" :style="{ color: themeColors.textMuted, opacity: 0.7 }">奇数: 当周居中 / 偶数: 偏向前置周</p>
+              <label class="text-sm font-medium" :style="{ color: themeColors.textMuted }">浮动周数量</label>
+              <p class="text-xs mt-0.5 leading-tight" :style="{ color: themeColors.textMuted, opacity: 0.7 }">奇数: 当周居中 / 偶数: 偏向前置周</p>
             </div>
             <div class="flex items-center gap-2">
               <input type="number" :value="settings.floating_weeks_count" @input="updateSetting('floating_weeks_count', Number(($event.target as HTMLInputElement).value))" min="2" max="10" step="1"
-                class="w-16 px-2.5 py-1.5 text-[13px] text-center rounded-lg focus:outline-none focus:ring-2 transition-all"
+                class="w-16 px-2.5 py-1.5 text-sm text-center rounded-lg focus:outline-none focus:ring-2 transition-all"
                 :style="{
                   backgroundColor: settings.theme_mode === 'dark' ? 'rgba(255,255,255,0.08)' : 'rgba(255,255,255,0.8)',
                   border: '1px solid ' + themeColors.border,
                   color: themeColors.text
                 }" />
-              <span class="text-[12px] w-4" :style="{ color: themeColors.textMuted }">周</span>
+              <span class="text-sm w-4" :style="{ color: themeColors.textMuted }">周</span>
             </div>
           </div>
         </div>

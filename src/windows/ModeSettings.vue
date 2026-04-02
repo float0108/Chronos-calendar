@@ -49,7 +49,7 @@ provide('themeColors', themeColors);
          :style="{ borderBottom: '1px solid ' + themeColors.border }">
       <div class="flex p-1 gap-1 rounded-xl" :style="{ backgroundColor: themeColors.bg }">
         <button @click="emit('switchMode', 'light')"
-          class="flex-1 flex items-center justify-center gap-2 py-2 rounded-lg text-[13px] font-medium transition-all"
+          class="flex-1 flex items-center justify-center gap-2 py-2 rounded-lg text-sm font-medium transition-all"
           :style="activeTab === 'light' ? {
             backgroundColor: 'rgba(255,255,255,0.9)',
             color: '#f97316',
@@ -58,7 +58,7 @@ provide('themeColors', themeColors);
           <Sun class="w-4 h-4 pointer-events-none" /> 浅色模式
         </button>
         <button @click="emit('switchMode', 'dark')"
-          class="flex-1 flex items-center justify-center gap-2 py-2 rounded-lg text-[13px] font-medium transition-all"
+          class="flex-1 flex items-center justify-center gap-2 py-2 rounded-lg text-sm font-medium transition-all"
           :style="activeTab === 'dark' ? {
             backgroundColor: 'rgb(30 41 59)',
             color: '#7dd3fc',
@@ -72,7 +72,7 @@ provide('themeColors', themeColors);
     <div class="p-5 space-y-6">
       <!-- 核心色彩 -->
       <div class="space-y-3">
-        <h3 class="text-[13px] font-semibold flex items-center gap-2" :style="{ color: themeColors.text }">
+        <h3 class="text-sm font-semibold flex items-center gap-2" :style="{ color: themeColors.text }">
           <span class="w-1 h-1 rounded-full" :style="{ backgroundColor: themeColors.primary }"></span> 核心色彩
         </h3>
         <div class="space-y-3 rounded-xl p-4" :style="cellStyle">
@@ -88,14 +88,14 @@ provide('themeColors', themeColors);
 
       <!-- 特效与透明度 -->
       <div class="space-y-3 pb-4">
-        <h3 class="text-[13px] font-semibold flex items-center gap-2" :style="{ color: themeColors.text }">
+        <h3 class="text-sm font-semibold flex items-center gap-2" :style="{ color: themeColors.text }">
           <span class="w-1 h-1 rounded-full" :style="{ backgroundColor: themeColors.primary }"></span> 特效与透明度
         </h3>
         <div class="space-y-3 rounded-xl p-4" :style="cellStyle">
           <div class="flex items-center justify-between">
             <div>
-              <h3 class="text-[13px] font-medium" :style="{ color: themeColors.text }">毛玻璃背景特效</h3>
-              <p class="text-[11px] mt-0.5" :style="{ color: themeColors.textMuted, opacity: 0.7 }">为应用主窗口开启模糊效果</p>
+              <h3 class="text-sm font-medium" :style="{ color: themeColors.text }">毛玻璃背景特效</h3>
+              <p class="text-xs mt-0.5" :style="{ color: themeColors.textMuted, opacity: 0.7 }">为应用主窗口开启模糊效果</p>
             </div>
             <label class="relative inline-flex items-center cursor-pointer">
               <input type="checkbox" :checked="settings.enable_blur" @change="updateSetting('enable_blur', !settings.enable_blur)" class="sr-only peer" />

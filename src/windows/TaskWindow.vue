@@ -425,7 +425,7 @@ onUnmounted(() => {
             @mousedown="(e) => e.target === e.currentTarget && handleIconDrag()">
             <template v-if="!isEditingTitle">
               <span
-                class="text-[14px] font-medium leading-relaxed transition-opacity truncate max-w-[200px] cursor-pointer hover:opacity-80"
+                class="text-base font-medium leading-relaxed transition-opacity truncate max-w-[200px] cursor-pointer hover:opacity-80"
                 :style="{ color: 'var(--theme-text)' }"
                 @click="startEditingTitle(currentTask?.content || '')">
                 {{ currentTask?.content || 'Task' }}
@@ -436,7 +436,7 @@ onUnmounted(() => {
                 ref="titleInputRef"
                 v-model="editingTitle"
                 type="text"
-                class="w-full max-w-[200px] outline-none px-2 py-0.5 rounded text-[14px] font-medium leading-relaxed text-center bg-white dark:bg-neutral-800 border border-transparent focus:border-[var(--theme-border)] shadow-sm"
+                class="w-full max-w-[200px] outline-none px-2 py-0.5 rounded text-base font-medium leading-relaxed text-center bg-white dark:bg-neutral-800 border border-transparent focus:border-[var(--theme-border)] shadow-sm"
                 :style="{ color: 'var(--theme-text)' }"
                 @blur="saveTaskTitle"
                 @keydown.enter="saveTaskTitle"
@@ -471,7 +471,7 @@ onUnmounted(() => {
             @mousedown="(e) => e.target === e.currentTarget && handleIconDrag()">
             <template v-if="!isEditingTitle">
               <span
-                class="text-[14px] font-medium leading-relaxed transition-opacity truncate max-w-[200px] cursor-pointer hover:opacity-80"
+                class="text-base font-medium leading-relaxed transition-opacity truncate max-w-[200px] cursor-pointer hover:opacity-80"
                 :style="{ color: 'var(--theme-text)' }"
                 @click="startEditingTitle(currentTask?.content || '')">
                 {{ currentTask?.content || 'Task' }}
@@ -482,7 +482,7 @@ onUnmounted(() => {
                 ref="titleInputRef"
                 v-model="editingTitle"
                 type="text"
-                class="w-full max-w-[200px] outline-none px-2 py-0.5 rounded text-[14px] font-medium leading-relaxed text-center bg-white dark:bg-neutral-800 border border-transparent focus:border-[var(--theme-border)] shadow-sm"
+                class="w-full max-w-[200px] outline-none px-2 py-0.5 rounded text-base font-medium leading-relaxed text-center bg-white dark:bg-neutral-800 border border-transparent focus:border-[var(--theme-border)] shadow-sm"
                 :style="{ color: 'var(--theme-text)' }"
                 @blur="saveTaskTitle"
                 @keydown.enter="saveTaskTitle"
@@ -521,7 +521,7 @@ onUnmounted(() => {
           <div class="flex-1 flex justify-center items-center h-6 px-2"
             @mousedown="handleIconDrag">
             <span
-              class="text-[14px] font-medium leading-relaxed truncate max-w-[200px]"
+              class="text-base font-medium leading-relaxed truncate max-w-[200px]"
               :style="{ color: 'var(--theme-text)' }">
               {{ editingSubTask?.content || '...' }}
             </span>

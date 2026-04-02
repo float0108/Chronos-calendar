@@ -226,7 +226,7 @@ function toggleMonthView() {
         <div class="flex items-center gap-0.5">
           <button
             @click="toggleYearView"
-            class="text-[11px] font-bold tracking-wide px-1.5 py-0.5 rounded transition-colors"
+            class="text-xs font-bold tracking-wide px-1.5 py-0.5 rounded transition-colors"
             :class="[
               themeMode === 'dark' ? 'text-gray-200 hover:bg-gray-700' : 'text-gray-800 hover:bg-gray-100',
               currentView === 'year' ? (themeMode === 'dark' ? 'bg-gray-700' : 'bg-gray-200') : ''
@@ -236,7 +236,7 @@ function toggleMonthView() {
           </button>
           <button
             @click="toggleMonthView"
-            class="text-[11px] font-bold tracking-wide px-1.5 py-0.5 rounded transition-colors"
+            class="text-xs font-bold tracking-wide px-1.5 py-0.5 rounded transition-colors"
             :class="[
               themeMode === 'dark' ? 'text-gray-200 hover:bg-gray-700' : 'text-gray-800 hover:bg-gray-100',
               currentView === 'month' ? (themeMode === 'dark' ? 'bg-gray-700' : 'bg-gray-200') : ''
@@ -257,7 +257,7 @@ function toggleMonthView() {
       </div>
 
       <div v-show="currentView === 'date'">
-        <div class="grid grid-cols-7 gap-0.5 text-center text-[10px] font-bold mb-1 uppercase tracking-wider">
+        <div class="grid grid-cols-7 gap-0.5 text-center text-xs font-bold mb-1 uppercase tracking-wider">
           <span
             v-for="(d, index) in weekdays"
             :key="d + index"
@@ -273,7 +273,7 @@ function toggleMonthView() {
             v-for="(day, index) in calendarDays"
             :key="index"
             @click="handleSelect(day)"
-            class="relative flex items-center justify-center w-[26px] h-[26px] text-[11px] rounded transition-all duration-200"
+            class="relative flex items-center justify-center w-[26px] h-[26px] text-xs rounded transition-all duration-200"
             :class="[
               !day.isCurrentMonth ? (themeMode === 'dark' ? 'hover:bg-gray-700/40' : 'hover:bg-gray-50') : '',
               day.isCurrentMonth && !day.dayjsObj.isSame(props.currentDate, 'day') ? (themeMode === 'dark' ? 'hover:bg-gray-700' : 'hover:bg-gray-100') : '',
@@ -304,7 +304,7 @@ function toggleMonthView() {
           v-for="m in 12"
           :key="m"
           @click="selectMonth(m - 1)"
-          class="py-2 text-[11px] font-bold rounded transition-colors"
+          class="py-2 text-xs font-bold rounded transition-colors"
           :class="[
             (m - 1) === internalViewDate.month()
               ? 'text-white'
@@ -323,7 +323,7 @@ function toggleMonthView() {
           v-for="y in displayedYears"
           :key="y"
           @click="selectYear(y)"
-          class="py-2 text-[11px] font-bold rounded transition-colors"
+          class="py-2 text-xs font-bold rounded transition-colors"
           :class="[
             y === internalViewDate.year()
               ? 'text-white'

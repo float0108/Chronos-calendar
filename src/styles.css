@@ -51,11 +51,13 @@
   
   /* Typography */
   --font-size-base: 14px;
-  --font-size-xs: calc(var(--font-size-base) * 0.75);
-  --font-size-sm: calc(var(--font-size-base) * 0.875);
-  --font-size-md: var(--font-size-base);
-  --font-size-lg: calc(var(--font-size-base) * 1.125);
-  --font-size-xl: calc(var(--font-size-base) * 1.25);
+  /* 衍生字号 - 固定倍数 */
+  --font-size-xs: calc(var(--font-size-base) * 0.75);    /* 10.5px - 极小标签 */
+  --font-size-sm: calc(var(--font-size-base) * 0.857);   /* 12px - 注释字号 */
+  --font-size-md: var(--font-size-base);                 /* 基础字号 */
+  --font-size-lg: calc(var(--font-size-base) * 1.07);    /* 15px - 小标题 */
+  --font-size-xl: calc(var(--font-size-base) * 1.14);    /* 16px - 标题字号 */
+  --font-size-2xl: calc(var(--font-size-base) * 1.285);  /* 18px - 大标题 */
   --font-weight-base: 400;
   --font-weight-bold: calc(var(--font-weight-base) + 200);
   
@@ -188,6 +190,7 @@ html, body {
 .text-base { font-size: var(--font-size-md); }
 .text-lg { font-size: var(--font-size-lg); }
 .text-xl { font-size: var(--font-size-xl); }
+.text-2xl { font-size: var(--font-size-2xl); }
 
 /* Color utilities */
 .text-primary { color: var(--text-primary); }
