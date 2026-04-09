@@ -1,4 +1,5 @@
 mod commands;
+mod mcp;
 mod tray;
 mod windows;
 
@@ -53,9 +54,36 @@ pub fn run() {
             commands::open_search_window,
             commands::close_search_window,
             commands::toggle_search_window,
-            commands::is_search_window_visible
+            commands::is_search_window_visible,
+            commands::start_mcp_server,
+            commands::stop_mcp_server,
+            commands::get_mcp_status
         ])
         .setup(|app| {
+            // 管理 MCP 服务状态
+            app.manage(commands::McpState::default());
+
+            // 自动启动 MCP 服务 (默认端口 3000)
+            let mcp_state = app.state::<commands::McpState>();
+            let handle = mcp_state.handle.clone();
+            let app_handle = std::sync::Arc::new(app.handle().clone());
+
+            std::thread::spawn(move || {
+                let rt = tokio::runtime::Runtime::new().unwrap();
+                rt.block_on(async {
+                    let mut guard = handle.lock().await;
+                    match crate::mcp::start_mcp_server(3000, Some(app_handle)) {
+                        Ok(server_handle) => {
+                            println!("MCP service started on port 3000");
+                            *guard = Some(server_handle);
+                        }
+                        Err(e) => {
+                            eprintln!("Failed to start MCP service: {}", e);
+                        }
+                    }
+                });
+            });
+
             let window = app.get_webview_window("main").unwrap();
             let _ = window.set_skip_taskbar(true);
 

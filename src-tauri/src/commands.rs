@@ -2,6 +2,10 @@ use tauri::{Emitter, Manager, WebviewUrl, WebviewWindowBuilder};
 use tauri_plugin_window_state::{AppHandleExt, StateFlags, WindowExt};
 use font_kit::source::SystemSource;
 use std::collections::HashSet;
+use std::sync::Arc;
+use tokio::sync::Mutex;
+use serde_json::json;
+use crate::mcp::McpServerHandle;
 
 #[cfg(target_os = "windows")]
 use crate::windows::apply_window_settings;
@@ -535,5 +539,76 @@ pub async fn is_search_window_visible(app: tauri::AppHandle) -> Result<bool, Str
         window.is_visible().map_err(|e| e.to_string())
     } else {
         Ok(false)
+    }
+}
+
+// === MCP 服务 ===
+
+/// MCP 服务状态
+pub struct McpState {
+    pub handle: Arc<Mutex<Option<McpServerHandle>>>,
+}
+
+impl Default for McpState {
+    fn default() -> Self {
+        Self {
+            handle: Arc::new(Mutex::new(None)),
+        }
+    }
+}
+
+/// 启动 MCP 服务器
+#[tauri::command]
+pub async fn start_mcp_server(
+    app: tauri::AppHandle,
+    port: Option<u16>,
+) -> Result<String, String> {
+    let state = app.state::<McpState>();
+    let mut handle_guard = state.handle.lock().await;
+
+    // 如果已经启动，返回当前状态
+    if handle_guard.is_some() {
+        return Ok("MCP 服务已在运行中".to_string());
+    }
+
+    let port = port.unwrap_or(3000);
+    let app_handle = std::sync::Arc::new(app.clone());
+    let new_handle = crate::mcp::start_mcp_server(port, Some(app_handle))?;
+
+    *handle_guard = Some(new_handle);
+
+    Ok(format!("MCP 服务已启动，监听端口 {}", port))
+}
+
+/// 停止 MCP 服务器
+#[tauri::command]
+pub async fn stop_mcp_server(app: tauri::AppHandle) -> Result<String, String> {
+    let state = app.state::<McpState>();
+    let mut handle_guard = state.handle.lock().await;
+
+    if let Some(handle) = handle_guard.take() {
+        handle.cancel_token.cancel();
+        Ok("MCP 服务已停止".to_string())
+    } else {
+        Ok("MCP 服务未在运行".to_string())
+    }
+}
+
+/// 获取 MCP 服务状态
+#[tauri::command]
+pub async fn get_mcp_status(app: tauri::AppHandle) -> Result<serde_json::Value, String> {
+    let state = app.state::<McpState>();
+    let handle_guard = state.handle.lock().await;
+
+    if let Some(handle) = handle_guard.as_ref() {
+        Ok(json!({
+            "running": true,
+            "port": handle.addr.port()
+        }))
+    } else {
+        Ok(json!({
+            "running": false,
+            "port": null
+        }))
     }
 }
