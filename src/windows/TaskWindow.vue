@@ -21,7 +21,6 @@ import {
   type Schedule,
   type MainTask
 } from '../composables/db';
-import { initDatabase } from '../composables/db/connection';
 import { hexToRgba, adjustBrightness } from '../utils/color';
 import ScheduleEditor from '../components/ScheduleEditor.vue';
 import type { AppSettings } from '../types';
@@ -371,7 +370,6 @@ async function handleIconDrag() {
 
 onMounted(async () => {
   loadSettings();
-  await initDatabase();
 
   // 加载所有主任务（只加载一次）
   tasks.value = await loadMainTasks();

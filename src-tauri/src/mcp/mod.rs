@@ -2,7 +2,6 @@
 //!
 //! 提供标准化的 MCP 接口，允许 AI 助手访问和管理日程/任务数据
 
-mod database;
 mod server;
 mod service;
 mod tools;

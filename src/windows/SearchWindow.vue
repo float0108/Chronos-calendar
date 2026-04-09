@@ -5,7 +5,6 @@ import { emit } from '@tauri-apps/api/event';
 import { X, Search, XCircle } from 'lucide-vue-next';
 import ListItem from '../components/ListItem.vue';
 import { searchSchedules } from '../composables/db';
-import { initDatabase } from '../composables/db/connection';
 import { hexToRgba, adjustBrightness } from '../utils/color';
 import type { AppSettings, Schedule } from '../types';
 import { defaultLightSettings, defaultDarkSettings } from '../types';
@@ -136,7 +135,6 @@ async function handleIconDrag() {
 
 onMounted(async () => {
   loadSettings();
-  await initDatabase();
   window.addEventListener('storage', handleSettingsUpdate);
 
   await nextTick();

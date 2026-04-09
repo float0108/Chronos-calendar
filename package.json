@@ -17,7 +17,6 @@
     "@tauri-apps/plugin-dialog": "^2.6.0",
     "@tauri-apps/plugin-fs": "^2.4.5",
     "@tauri-apps/plugin-process": "^2.0.0",
-    "@tauri-apps/plugin-sql": "^2.0.0",
     "dayjs": "^1.11.13",
     "jszip": "^3.10.1",
     "lucide-vue-next": "^0.460.0",

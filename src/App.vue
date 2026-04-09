@@ -21,7 +21,7 @@ import { useToast } from './composables/useToast';
 import { hexToRgba, adjustBrightness } from './utils/color';
 import type { ViewMode, Schedule, BatchTaskConfig } from './types';
 
-const { initDatabase, exportAllData, importAndMergeData } = useDatabase();
+const { exportAllData, importAndMergeData } = useDatabase();
 const {
   schedules,
   currentDate,
@@ -400,7 +400,6 @@ function handleKeyDown(event: KeyboardEvent) {
 }
 
 onMounted(async () => {
-  await initDatabase();
   await refreshSchedules();
   await initSettings();
   await loadFonts();

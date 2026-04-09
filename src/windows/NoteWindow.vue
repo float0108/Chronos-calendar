@@ -13,7 +13,6 @@ import {
   deleteNote,
   type Note
 } from '../composables/db';
-import { initDatabase } from '../composables/db/connection';
 import { hexToRgba, adjustBrightness } from '../utils/color';
 import type { AppSettings } from '../types';
 import { defaultLightSettings, defaultDarkSettings } from '../types';
@@ -265,7 +264,6 @@ async function handleIconDrag() {
 
 onMounted(async () => {
   loadSettings();
-  await initDatabase();
   await loadNotesList();
   window.addEventListener('storage', handleSettingsUpdate);
 

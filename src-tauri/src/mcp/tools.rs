@@ -1,5 +1,5 @@
 //! MCP 工具数据结构
 //!
-//! 重新导出 database 模块中的数据结构
+//! 重新导出 db 模块中的数据结构
 
-pub use super::database::{ScheduleItem, MainTaskItem, SchedulePatch, MainTaskPatch};
+pub use crate::db::{ScheduleItem, MainTaskItem, SchedulePatch, MainTaskPatch};

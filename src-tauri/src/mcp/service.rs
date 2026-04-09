@@ -8,8 +8,7 @@ use rmcp::{schemars, tool, ServerHandler};
 use serde_json::json;
 use tauri::{AppHandle, Emitter};
 
-use super::database::DatabaseManager;
-use super::tools::{MainTaskItem, MainTaskPatch, ScheduleItem, SchedulePatch};
+use crate::db::{DatabaseManager, MainTaskItem, MainTaskPatch, ScheduleItem, SchedulePatch};
 use super::types::*;
 
 /// Chronos MCP 服务

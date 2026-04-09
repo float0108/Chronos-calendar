@@ -8,18 +8,10 @@ import JSZip from 'jszip';
 import { decodeCSVBuffer } from './csv/encoding';
 import { schedulesToCSV, csvToSchedules } from './csv/generator';
 import type { Schedule } from '../types';
-import type { MainTask } from '../composables/db/mainTask';
-import type { Note } from '../composables/db/note';
+import type { MainTask, Note, ExportData } from '../api/database';
 
-/**
- * 备份数据结构（用于 CSV 导出）
- */
-export interface ExportData {
-  schedules: Schedule[];
-  mainTasks: MainTask[];
-  notes: Note[];
-  cellMetadata: { date: string; cell_color: string }[];
-}
+// 重新导出 ExportData 供其他模块使用
+export type { ExportData } from '../api/database';
 
 /**
  * 将数据转换为 CSV 格式

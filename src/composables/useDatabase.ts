@@ -1,10 +1,10 @@
 /**
  * 数据库操作 composable
+ *
+ * 所有数据库操作通过 Tauri command 调用后端
  */
-import { ref } from 'vue';
 import type { Schedule } from '../types';
 import {
-  initDatabase as dbInit,
   loadSchedules,
   loadTodoSchedules,
   loadDoneSchedules,
@@ -27,12 +27,10 @@ import {
   clearAllTables,
 } from './db';
 
-const db = ref<unknown>(null);
-
 export function useDatabase() {
   return {
-    db,
-    initDatabase: dbInit,
+    // 不再需要前端初始化数据库，后端在启动时自动初始化
+    initDatabase: async () => { /* no-op */ },
     loadSchedules,
     loadTodoSchedules,
     loadDoneSchedules,

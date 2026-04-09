@@ -75,9 +75,13 @@ pub async fn start_mcp_server(
         return Ok("MCP 服务已在运行中".to_string());
     }
 
+    // 获取共享的 DatabaseManager
+    let db_state = app.state::<super::database::DbState>();
+    let db_manager = db_state.manager.clone();
+
     let port = port.unwrap_or(3000);
     let app_handle = Arc::new(app.clone());
-    let new_handle = crate::mcp::start_mcp_server(port, Some(app_handle))?;
+    let new_handle = crate::mcp::start_mcp_server(port, Some(app_handle), Some(db_manager))?;
 
     *handle_guard = Some(new_handle);
 

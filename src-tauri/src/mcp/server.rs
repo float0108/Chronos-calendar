@@ -9,7 +9,7 @@ use rmcp::transport::sse_server::SseServer;
 use tauri::AppHandle;
 use tokio_util::sync::CancellationToken;
 
-use super::database::DatabaseManager;
+use crate::db::DatabaseManager;
 use super::service::ChronosMcpService;
 
 /// MCP 服务器句柄
@@ -23,7 +23,16 @@ pub struct McpServerHandle {
 unsafe impl Send for McpServerHandle {}
 
 /// 启动 MCP 服务器（在独立线程中运行）
-pub fn start_mcp_server(port: u16, app_handle: Option<Arc<AppHandle>>) -> Result<McpServerHandle, String> {
+///
+/// # 参数
+/// - `port`: 监听端口
+/// - `app_handle`: 可选的 Tauri AppHandle
+/// - `db_manager`: 可选的共享 DatabaseManager，如果为 None 则创建新的
+pub fn start_mcp_server(
+    port: u16,
+    app_handle: Option<Arc<AppHandle>>,
+    db_manager: Option<Arc<DatabaseManager>>,
+) -> Result<McpServerHandle, String> {
     let addr: SocketAddr = ([127, 0, 0, 1], port).into();
     let cancel_token = CancellationToken::new();
     let cancel_token_clone = cancel_token.clone();
@@ -38,12 +47,16 @@ pub fn start_mcp_server(port: u16, app_handle: Option<Arc<AppHandle>>) -> Result
         };
 
         rt.block_on(async move {
-            let db = match DatabaseManager::new() {
-                Ok(db) => Arc::new(db),
-                Err(e) => {
-                    eprintln!("[MCP] Failed to initialize database: {}", e);
-                    return;
-                }
+            // 使用传入的 DatabaseManager 或创建新的
+            let db = match db_manager {
+                Some(db) => db,
+                None => match DatabaseManager::new() {
+                    Ok(db) => Arc::new(db),
+                    Err(e) => {
+                        eprintln!("[MCP] Failed to initialize database: {}", e);
+                        return;
+                    }
+                },
             };
 
             let server = match SseServer::serve_with_config(rmcp::transport::sse_server::SseServerConfig {
