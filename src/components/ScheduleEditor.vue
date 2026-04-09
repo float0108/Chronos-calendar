@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, watch, computed, onMounted, onUnmounted } from 'vue';
 import { Calendar, CheckCircle, Link2, FileText, X, Check, Plus } from 'lucide-vue-next';
-import { loadMainTasks, type MainTask } from '../composables/db';
+import { loadMainTasks, type MainTask } from '../api/database';
 import MiniCalendar from './calendar/MiniCalendar.vue';
 import dayjs from 'dayjs';
 

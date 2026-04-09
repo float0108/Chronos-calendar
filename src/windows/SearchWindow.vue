@@ -4,7 +4,7 @@ import { getCurrentWindow } from '@tauri-apps/api/window';
 import { emit } from '@tauri-apps/api/event';
 import { X, Search, XCircle } from 'lucide-vue-next';
 import ListItem from '../components/ListItem.vue';
-import { searchSchedules } from '../composables/db';
+import { searchSchedules } from '../api/database';
 import { hexToRgba, adjustBrightness } from '../utils/color';
 import type { AppSettings, Schedule } from '../types';
 import { defaultLightSettings, defaultDarkSettings } from '../types';

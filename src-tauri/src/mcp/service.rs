@@ -284,6 +284,14 @@ impl ChronosMcpService {
         }
     }
 
+    #[tool(description = "根据主任务 ID 获取所有关联的子日程项。")]
+    pub async fn get_schedules_by_father_task(&self, #[tool(aggr)] req: GetSchedulesByFatherTaskRequest) -> String {
+        match self.db.get_schedules_by_father_task(req.father_task_id) {
+            Ok(items) => json!({ "success": true, "data": items, "count": items.len() }).to_string(),
+            Err(e) => json!({ "success": false, "error": e }).to_string(),
+        }
+    }
+
     // ========== 主任务工具 ==========
 
     #[tool(description = "添加单个主任务。返回新创建的任务 ID。")]

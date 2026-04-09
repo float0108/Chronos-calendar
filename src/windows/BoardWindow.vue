@@ -14,7 +14,7 @@ import {
   toggleMainTaskStatus,
   deleteMainTask,
   type MainTask
-} from '../composables/db';
+} from '../api/database';
 import { hexToRgba, adjustBrightness } from '../utils/color';
 import type { AppSettings } from '../types';
 import { defaultLightSettings, defaultDarkSettings } from '../types';

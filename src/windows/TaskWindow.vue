@@ -20,7 +20,7 @@ import {
   updateMainTaskDoneDate,
   type Schedule,
   type MainTask
-} from '../composables/db';
+} from '../api/database';
 import { hexToRgba, adjustBrightness } from '../utils/color';
 import ScheduleEditor from '../components/ScheduleEditor.vue';
 import type { AppSettings } from '../types';

@@ -119,6 +119,13 @@ pub struct GetSchedulesByDateRequest {
     pub date: String,
 }
 
+/// 按主任务ID获取子日程请求
+#[derive(Debug, Deserialize, schemars::JsonSchema)]
+pub struct GetSchedulesByFatherTaskRequest {
+    #[schemars(description = "主任务 ID（必填）")]
+    pub father_task_id: i64,
+}
+
 // ========== 主任务相关请求 ==========
 
 /// 添加主任务请求

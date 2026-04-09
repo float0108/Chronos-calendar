@@ -25,7 +25,7 @@ import {
   exportAllData,
   importAndMergeData,
   clearAllTables,
-} from './db';
+} from '../api/database';
 
 export function useDatabase() {
   return {
