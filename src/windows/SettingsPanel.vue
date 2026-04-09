@@ -10,11 +10,12 @@ import { useSystemTheme } from '../composables/useSystemTheme';
 import CommonSettings from './CommonSettings.vue';
 import ModeSettings from './ModeSettings.vue';
 import PageSettings from './PageSettings.vue';
+import BasicSettings from './BasicSettings.vue';
 
 const { loadFonts, isFontsLoaded } = useFonts();
 const { systemTheme, onThemeChange } = useSystemTheme();
 
-const activeMainTab = ref<'common' | 'mode' | 'page'>('common');
+const activeMainTab = ref<'basic' | 'common' | 'mode' | 'page'>('common');
 const activeTab = ref<ThemeMode>('light');
 const localSettings = ref<AppSettings>({ ...defaultLightSettings });
 const originalSettings = ref<AppSettings | null>(null);
@@ -257,6 +258,14 @@ function handleReset() {
 
           <!-- 导航菜单 -->
           <nav class="flex-1 px-3 py-2 space-y-1">
+            <button @click="activeMainTab = 'basic'"
+              class="w-full flex items-center gap-3 px-3 py-2.5 text-sm font-medium rounded-lg transition-all text-left"
+              :class="activeMainTab === 'basic' ? 'settings-nav-active' : 'settings-nav-inactive'">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" />
+              </svg>
+              基础设置
+            </button>
             <button @click="activeMainTab = 'common'"
               class="w-full flex items-center gap-3 px-3 py-2.5 text-sm font-medium rounded-lg transition-all text-left"
               :class="activeMainTab === 'common' ? 'settings-nav-active' : 'settings-nav-inactive'">
@@ -320,7 +329,7 @@ function handleReset() {
         <div class="flex-1 overflow-hidden flex flex-col settings-content">
           <!-- 顶部标题栏 -->
           <div class="flex items-center justify-between px-5 py-4 shrink-0 settings-content-header" data-tauri-drag-region>
-            <h2 class="text-base font-semibold settings-text">{{ activeMainTab === 'common' ? '公用配置' : activeMainTab === 'mode' ? '模式配置' : '页面设置' }}</h2>
+            <h2 class="text-base font-semibold settings-text">{{ activeMainTab === 'basic' ? '基础设置' : activeMainTab === 'common' ? '公用配置' : activeMainTab === 'mode' ? '模式配置' : '页面设置' }}</h2>
             <button @click="handleClose"
               class="w-8 h-8 flex items-center justify-center rounded-lg transition-all hover:bg-black/5 dark:hover:bg-white/10"
               title="关闭">
@@ -332,6 +341,12 @@ function handleReset() {
 
           <!-- 内容 -->
           <div class="flex-1 overflow-y-auto px-5 pb-5">
+            <BasicSettings
+              v-show="activeMainTab === 'basic'"
+              :settings="localSettings"
+              @update:settings="localSettings = $event"
+            />
+
             <CommonSettings
               v-show="activeMainTab === 'common'"
               :settings="localSettings"

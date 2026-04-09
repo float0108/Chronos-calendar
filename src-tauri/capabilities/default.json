@@ -36,6 +36,7 @@
     "autostart:allow-is-enabled",
     "window-state:default",
     "process:default",
-    "process:allow-exit"
+    "process:allow-exit",
+    "store:default"
   ]
 }

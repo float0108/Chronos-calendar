@@ -32,6 +32,7 @@ pub fn run() {
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_fs::init())
         .plugin(tauri_plugin_process::init())
+        .plugin(tauri_plugin_store::Builder::default().build())
         .plugin(tauri_plugin_autostart::init(
             MacosLauncher::LaunchAgent,
             Some(vec!["--autostart"]),
@@ -41,6 +42,8 @@ pub fn run() {
             commands::app::get_system_fonts,
             commands::app::set_autostart,
             commands::app::get_autostart_status,
+            commands::app::get_app_settings,
+            commands::app::save_app_settings,
             commands::app::start_mcp_server,
             commands::app::stop_mcp_server,
             commands::app::get_mcp_status,
@@ -126,18 +129,41 @@ pub fn run() {
             // 管理 MCP 服务状态
             app.manage(commands::McpState::default());
 
-            // 自动启动 MCP 服务 (默认端口 3000)
+            // 从 store 读取 MCP 配置并启动服务
             let mcp_state = app.state::<commands::McpState>();
             let handle = mcp_state.handle.clone();
             let app_handle = std::sync::Arc::new(app.handle().clone());
 
+            // 读取 MCP 配置
+            let (mcp_enabled, mcp_port) = {
+                use tauri_plugin_store::StoreExt;
+                match app.store("app-settings.json") {
+                    Ok(store) => {
+                        if let Some(value) = store.get("app_settings") {
+                            if let Ok(settings) = serde_json::from_value::<commands::app::AppSettings>(value.clone()) {
+                                (settings.mcp_enabled, settings.mcp_port)
+                            } else {
+                                (true, 3269) // 默认启用，端口 3269
+                            }
+                        } else {
+                            (true, 3269) // 默认启用，端口 3269
+                        }
+                    }
+                    Err(_) => (true, 3269) // 默认启用，端口 3269
+                }
+            };
+
             std::thread::spawn(move || {
                 let rt = tokio::runtime::Runtime::new().unwrap();
                 rt.block_on(async {
+                    if !mcp_enabled {
+                        println!("MCP service disabled by settings");
+                        return;
+                    }
                     let mut guard = handle.lock().await;
-                    match crate::mcp::start_mcp_server(3000, Some(app_handle), Some(db_manager)) {
+                    match crate::mcp::start_mcp_server(mcp_port, Some(app_handle), Some(db_manager)) {
                         Ok(server_handle) => {
-                            println!("MCP service started on port 3000");
+                            println!("MCP service started on port {}", mcp_port);
                             *guard = Some(server_handle);
                         }
                         Err(e) => {

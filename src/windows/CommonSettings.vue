@@ -120,20 +120,6 @@ const cellStyle = computed(() => {
       </h3>
 
       <div class="space-y-3 rounded-xl p-4" :style="cellStyle">
-        <div class="flex items-center justify-between">
-          <div>
-            <label class="text-sm font-medium" :style="{ color: themeColors.textMuted }">开机自启动</label>
-            <p class="text-xs mt-0.5" :style="{ color: themeColors.textMuted, opacity: 0.7 }">启动后应用将在后台静默运行</p>
-          </div>
-          <label class="relative inline-flex items-center">
-            <input type="checkbox" :checked="settings.autostart" @change="updateSetting('autostart', !settings.autostart)" class="sr-only peer" />
-            <div class="w-11 h-6 rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all"
-                 :style="{
-                   backgroundColor: settings.autostart ? themeColors.primary : (settings.theme_mode === 'dark' ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.15)')
-                 }"></div>
-          </label>
-        </div>
-        <hr :style="{ borderColor: themeColors.border }">
         <div class="flex items-center justify-between py-1">
           <label class="text-sm font-medium" :style="{ color: themeColors.textMuted }">每周开始于</label>
           <div class="flex gap-1 p-0.5 rounded-lg" :style="{ backgroundColor: themeColors.bg }">
