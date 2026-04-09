@@ -8,10 +8,6 @@ const props = defineProps<{
   settings: AppSettings;
 }>();
 
-const emit = defineEmits<{
-  (e: 'update:settings', value: AppSettings): void;
-}>();
-
 // 应用设置状态
 const autostart = ref(false);
 const mcpEnabled = ref(true);
