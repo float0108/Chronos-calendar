@@ -299,6 +299,34 @@ impl DatabaseManager {
         Ok(items)
     }
 
+    /// 按日期范围加载待办日程（未完成的日程）
+    pub fn get_todo_schedules_by_range(&self, start_date: &str, end_date: &str) -> Result<Vec<ScheduleItem>, String> {
+        let conn = self.conn.lock().map_err(|e| e.to_string())?;
+        let mut stmt = conn.prepare(
+            "SELECT id, create_date, content, is_done, priority, done_date, description, father_task
+             FROM schedules
+             WHERE create_date >= ?1 AND create_date <= ?2 AND is_done = 0
+             ORDER BY id ASC"
+        ).map_err(|e| format!("Failed to prepare statement: {}", e))?;
+
+        let items = stmt.query_map(params![start_date, end_date], |row| {
+            Ok(ScheduleItem {
+                id: row.get(0)?,
+                create_date: row.get(1)?,
+                content: row.get(2)?,
+                is_done: row.get::<_, i32>(3)? != 0,
+                priority: row.get(4)?,
+                done_date: row.get(5)?,
+                description: row.get(6)?,
+                father_task: row.get(7)?,
+            })
+        }).map_err(|e| format!("Failed to get todo schedules: {}", e))?
+        .collect::<Result<Vec<_>, _>>()
+        .map_err(|e| format!("Failed to collect results: {}", e))?;
+
+        Ok(items)
+    }
+
     /// 按完成日期范围加载日程
     pub fn get_done_schedules_by_range(&self, start_date: &str, end_date: &str) -> Result<Vec<ScheduleItem>, String> {
         let conn = self.conn.lock().map_err(|e| e.to_string())?;

@@ -50,7 +50,9 @@ export function useSchedules() {
 
     schedules.value.clear();
     result.forEach(schedule => {
-      const dateStr = schedule.create_date;
+      // todo 视图按 create_date 组织，done 视图按 done_date 组织
+      const dateStr = viewMode.value === 'done' ? schedule.done_date : schedule.create_date;
+      if (!dateStr) return; // 跳过没有有效日期的记录
       if (!schedules.value.has(dateStr)) {
         schedules.value.set(dateStr, []);
       }
