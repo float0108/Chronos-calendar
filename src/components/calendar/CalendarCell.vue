@@ -477,7 +477,8 @@ function handleDrop(event: DragEvent) {
     </div>
 
     <div class="flex-1 overflow-hidden px-1 pb-1 flex flex-col relative">
-      <div v-if="!isEditing" class="content-area h-full overflow-y-auto no-scrollbar px-1">
+      <div v-if="!isEditing" class="content-area h-full overflow-y-auto no-scrollbar px-1"
+        @dblclick="startEditing">
         <div v-for="(s, i) in schedules.filter(s => s.id !== -1 && s.content.trim() !== '')" :key="i"
           class="schedule-item flex items-center gap-1 mb-0.5 text-xs leading-tight transition-all py-0.5 px-1 -mx-1 rounded"
           :class="[
@@ -487,6 +488,7 @@ function handleDrop(event: DragEvent) {
           :style="{ color: (s.is_done && viewMode !== 'done') ? 'var(--text-muted)' : 'var(--text-primary)' }""
           :draggable="!isLocked"
           @click="handleScheduleClick($event, s)"
+          @dblclick.stop
           @contextmenu.prevent="handleScheduleContextMenu($event, s)"
           @mouseenter="handleScheduleMouseEnter($event, s)"
           @mouseleave="handleScheduleMouseLeave"

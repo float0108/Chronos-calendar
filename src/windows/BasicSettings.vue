@@ -97,9 +97,9 @@ onMounted(loadSettings);
               <label class="text-sm font-medium" :style="{ color: themeColors.textMuted }">开机自启动</label>
               <p class="text-xs mt-0.5" :style="{ color: themeColors.textMuted, opacity: 0.7 }">启动后应用将在后台静默运行</p>
             </div>
-            <label class="relative inline-flex items-center">
+            <label class="relative inline-flex items-center cursor-pointer">
               <input type="checkbox" v-model="autostart" class="sr-only peer" />
-              <div class="w-11 h-6 rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all"
+              <div class="w-11 h-6 rounded-full peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all"
                    :style="{
                      backgroundColor: autostart ? themeColors.primary : (props.settings.theme_mode === 'dark' ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.15)')
                    }"></div>
@@ -120,9 +120,9 @@ onMounted(loadSettings);
               <label class="text-sm font-medium" :style="{ color: themeColors.textMuted }">启用 MCP 服务</label>
               <p class="text-xs mt-0.5" :style="{ color: themeColors.textMuted, opacity: 0.7 }">允许 AI 助手通过 MCP 协议访问日历数据</p>
             </div>
-            <label class="relative inline-flex items-center">
+            <label class="relative inline-flex items-center cursor-pointer">
               <input type="checkbox" v-model="mcpEnabled" class="sr-only peer" />
-              <div class="w-11 h-6 rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all"
+              <div class="w-11 h-6 rounded-full peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all"
                    :style="{
                      backgroundColor: mcpEnabled ? themeColors.primary : (props.settings.theme_mode === 'dark' ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.15)')
                    }"></div>

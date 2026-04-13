@@ -226,3 +226,106 @@ pub struct ListMainTasksRequest {
     #[schemars(description = "最大返回数量，默认 100")]
     pub limit: Option<usize>,
 }
+
+// ========== 备忘录相关请求 ==========
+
+/// 添加备忘录请求
+#[derive(Debug, Deserialize, schemars::JsonSchema)]
+pub struct AddNoteRequest {
+    #[schemars(description = "备忘录标题（必填）")]
+    pub title: String,
+    #[schemars(description = "备忘录内容")]
+    pub content: Option<String>,
+    #[schemars(description = "创建日期 (YYYY-MM-DD 格式)，默认为今天")]
+    pub create_date: Option<String>,
+}
+
+/// 批量添加备忘录请求
+#[derive(Debug, Deserialize, schemars::JsonSchema)]
+pub struct AddNotesRequest {
+    #[schemars(description = "备忘录项列表")]
+    pub items: Vec<AddNoteRequest>,
+}
+
+/// 更新备忘录请求
+#[derive(Debug, Deserialize, schemars::JsonSchema)]
+pub struct UpdateNoteRequest {
+    #[schemars(description = "备忘录 ID（必填）")]
+    pub id: i64,
+    #[schemars(description = "备忘录标题（必填）")]
+    pub title: String,
+    #[schemars(description = "备忘录内容")]
+    pub content: Option<String>,
+    #[schemars(description = "创建日期")]
+    pub create_date: Option<String>,
+}
+
+/// 部分更新备忘录请求
+#[derive(Debug, Deserialize, schemars::JsonSchema)]
+pub struct PatchNoteRequest {
+    #[schemars(description = "备忘录 ID（必填）")]
+    pub id: i64,
+    #[schemars(description = "备忘录标题")]
+    pub title: Option<String>,
+    #[schemars(description = "备忘录内容")]
+    pub content: Option<String>,
+    #[schemars(description = "创建日期")]
+    pub create_date: Option<String>,
+}
+
+/// 删除备忘录请求
+#[derive(Debug, Deserialize, schemars::JsonSchema)]
+pub struct DeleteNoteRequest {
+    #[schemars(description = "备忘录 ID（必填）")]
+    pub id: i64,
+}
+
+/// 批量删除备忘录请求
+#[derive(Debug, Deserialize, schemars::JsonSchema)]
+pub struct DeleteNotesRequest {
+    #[schemars(description = "备忘录 ID 列表（必填）")]
+    pub ids: Vec<i64>,
+}
+
+/// 获取备忘录请求
+#[derive(Debug, Deserialize, schemars::JsonSchema)]
+pub struct GetNoteRequest {
+    #[schemars(description = "备忘录 ID（必填）")]
+    pub id: i64,
+}
+
+/// 按标题搜索备忘录请求
+#[derive(Debug, Deserialize, schemars::JsonSchema)]
+pub struct SearchNotesByTitleRequest {
+    #[schemars(description = "搜索关键词（必填）")]
+    pub query: String,
+    #[schemars(description = "最大返回数量，默认 100")]
+    pub limit: Option<usize>,
+}
+
+/// 按标题和内容搜索备忘录请求
+#[derive(Debug, Deserialize, schemars::JsonSchema)]
+pub struct SearchNotesRequest {
+    #[schemars(description = "搜索关键词（必填）")]
+    pub query: String,
+    #[schemars(description = "最大返回数量，默认 100")]
+    pub limit: Option<usize>,
+}
+
+/// 列出备忘录请求
+#[derive(Debug, Deserialize, schemars::JsonSchema)]
+pub struct ListNotesRequest {
+    #[schemars(description = "最大返回数量，默认 100")]
+    pub limit: Option<usize>,
+}
+
+/// 按创建日期范围获取备忘录标题请求
+#[derive(Debug, Deserialize, schemars::JsonSchema)]
+pub struct GetNotesByDateRangeRequest {
+    #[schemars(description = "筛选方式：before（之前）或 after（之后）")]
+    pub filter: String,
+    #[schemars(description = "日期 (YYYY-MM-DD 格式，必填)")]
+    pub date: String,
+    #[schemars(description = "最大返回数量，默认 100")]
+    pub limit: Option<usize>,
+}

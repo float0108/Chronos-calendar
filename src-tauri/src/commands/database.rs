@@ -321,7 +321,7 @@ pub async fn db_search_notes(
     state: State<'_, DbState>,
     keyword: String,
 ) -> Result<Vec<NoteItem>, String> {
-    state.manager.search_notes(&keyword)
+    state.manager.search_notes(&keyword, None)
 }
 
 #[tauri::command]

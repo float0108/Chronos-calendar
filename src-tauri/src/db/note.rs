@@ -56,18 +56,20 @@ impl DatabaseManager {
         Ok(items)
     }
 
-    /// 搜索备忘录
-    pub fn search_notes(&self, query: &str) -> Result<Vec<NoteItem>, String> {
+    /// 搜索备忘录（按标题或内容）
+    pub fn search_notes(&self, query: &str, limit: Option<usize>) -> Result<Vec<NoteItem>, String> {
         let conn = self.conn.lock().map_err(|e| e.to_string())?;
         let search_pattern = format!("%{}%", query);
+        let limit_val = limit.unwrap_or(100);
 
         let mut stmt = conn.prepare(
             "SELECT id, title, content, create_date FROM notes
              WHERE title LIKE ?1 OR content LIKE ?1
-             ORDER BY id DESC"
+             ORDER BY id DESC
+             LIMIT ?2"
         ).map_err(|e| format!("Failed to prepare statement: {}", e))?;
 
-        let items = stmt.query_map(params![search_pattern], |row| {
+        let items = stmt.query_map(params![search_pattern, limit_val as i32], |row| {
             Ok(NoteItem {
                 id: row.get(0)?,
                 title: row.get(1)?,
@@ -75,6 +77,93 @@ impl DatabaseManager {
                 create_date: row.get(3)?,
             })
         }).map_err(|e| format!("Failed to search notes: {}", e))?
+        .collect::<Result<Vec<_>, _>>()
+        .map_err(|e| format!("Failed to collect results: {}", e))?;
+
+        Ok(items)
+    }
+
+    /// 按标题搜索备忘录
+    pub fn search_notes_by_title(&self, query: &str, limit: Option<usize>) -> Result<Vec<NoteItem>, String> {
+        let conn = self.conn.lock().map_err(|e| e.to_string())?;
+        let search_pattern = format!("%{}%", query);
+        let limit_val = limit.unwrap_or(100);
+
+        let mut stmt = conn.prepare(
+            "SELECT id, title, content, create_date FROM notes
+             WHERE title LIKE ?1
+             ORDER BY id DESC
+             LIMIT ?2"
+        ).map_err(|e| format!("Failed to prepare statement: {}", e))?;
+
+        let items = stmt.query_map(params![search_pattern, limit_val as i32], |row| {
+            Ok(NoteItem {
+                id: row.get(0)?,
+                title: row.get(1)?,
+                content: row.get(2)?,
+                create_date: row.get(3)?,
+            })
+        }).map_err(|e| format!("Failed to search notes by title: {}", e))?
+        .collect::<Result<Vec<_>, _>>()
+        .map_err(|e| format!("Failed to collect results: {}", e))?;
+
+        Ok(items)
+    }
+
+    /// 按创建日期范围获取备忘录标题
+    /// filter: "before" 或 "after"
+    pub fn get_notes_by_date_range(&self, filter: &str, date: &str, limit: Option<usize>) -> Result<Vec<NoteItem>, String> {
+        let conn = self.conn.lock().map_err(|e| e.to_string())?;
+        let limit_val = limit.unwrap_or(100);
+
+        let (op, order) = match filter.to_lowercase().as_str() {
+            "before" => ("<", "DESC"),
+            "after" => (">", "ASC"),
+            _ => return Err(format!("Invalid filter: {}. Use 'before' or 'after'", filter)),
+        };
+
+        let sql = format!(
+            "SELECT id, title, content, create_date FROM notes
+             WHERE create_date {} ?
+             ORDER BY create_date {}
+             LIMIT ?",
+            op, order
+        );
+
+        let mut stmt = conn.prepare(&sql)
+            .map_err(|e| format!("Failed to prepare statement: {}", e))?;
+
+        let items = stmt.query_map(params![date, limit_val as i32], |row| {
+            Ok(NoteItem {
+                id: row.get(0)?,
+                title: row.get(1)?,
+                content: row.get(2)?,
+                create_date: row.get(3)?,
+            })
+        }).map_err(|e| format!("Failed to get notes by date range: {}", e))?
+        .collect::<Result<Vec<_>, _>>()
+        .map_err(|e| format!("Failed to collect results: {}", e))?;
+
+        Ok(items)
+    }
+
+    /// 获取备忘录列表（支持限制数量）
+    pub fn get_all_notes_with_limit(&self, limit: Option<usize>) -> Result<Vec<NoteItem>, String> {
+        let conn = self.conn.lock().map_err(|e| e.to_string())?;
+        let limit_val = limit.unwrap_or(100);
+
+        let mut stmt = conn.prepare(
+            "SELECT id, title, content, create_date FROM notes ORDER BY id DESC LIMIT ?"
+        ).map_err(|e| format!("Failed to prepare statement: {}", e))?;
+
+        let items = stmt.query_map(params![limit_val as i32], |row| {
+            Ok(NoteItem {
+                id: row.get(0)?,
+                title: row.get(1)?,
+                content: row.get(2)?,
+                create_date: row.get(3)?,
+            })
+        }).map_err(|e| format!("Failed to get notes: {}", e))?
         .collect::<Result<Vec<_>, _>>()
         .map_err(|e| format!("Failed to collect results: {}", e))?;
 

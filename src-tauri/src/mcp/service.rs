@@ -8,7 +8,7 @@ use rmcp::{schemars, tool, ServerHandler};
 use serde_json::json;
 use tauri::{AppHandle, Emitter};
 
-use crate::db::{DatabaseManager, MainTaskItem, MainTaskPatch, ScheduleItem, SchedulePatch};
+use crate::db::{DatabaseManager, MainTaskItem, MainTaskPatch, NoteItem, NotePatch, ScheduleItem, SchedulePatch};
 use super::types::*;
 
 /// Chronos MCP 服务
@@ -424,6 +424,158 @@ impl ChronosMcpService {
     #[tool(description = "获取所有主任务列表。支持限制返回数量。")]
     pub async fn list_main_tasks(&self, #[tool(aggr)] req: ListMainTasksRequest) -> String {
         match self.db.get_all_main_tasks(req.limit) {
+            Ok(items) => json!({ "success": true, "data": items, "count": items.len() }).to_string(),
+            Err(e) => json!({ "success": false, "error": e }).to_string(),
+        }
+    }
+
+    // ========== 备忘录工具 ==========
+
+    #[tool(description = "添加单个备忘录。返回新创建的备忘录 ID。")]
+    pub async fn add_note(&self, #[tool(aggr)] req: AddNoteRequest) -> String {
+        println!("[MCP] Tool called: add_note, title: {}", req.title);
+        let item = NoteItem {
+            id: 0,
+            title: req.title,
+            content: req.content.unwrap_or_default(),
+            create_date: req.create_date.unwrap_or_default(),
+        };
+        match self.db.add_note(&item) {
+            Ok(id) => {
+                println!("[MCP] Note added successfully, id: {}", id);
+                self.notify_data_changed();
+                json!({ "success": true, "id": id, "message": "备忘录添加成功" }).to_string()
+            }
+            Err(e) => {
+                println!("[MCP] Failed to add note: {}", e);
+                json!({ "success": false, "error": e }).to_string()
+            }
+        }
+    }
+
+    #[tool(description = "批量添加备忘录。返回新创建的备忘录 ID 列表。")]
+    pub async fn add_notes(&self, #[tool(aggr)] req: AddNotesRequest) -> String {
+        let items: Vec<NoteItem> = req.items.into_iter().map(|r| NoteItem {
+            id: 0,
+            title: r.title,
+            content: r.content.unwrap_or_default(),
+            create_date: r.create_date.unwrap_or_default(),
+        }).collect();
+
+        let mut ids = Vec::new();
+        for item in &items {
+            match self.db.add_note(item) {
+                Ok(id) => ids.push(id),
+                Err(e) => return json!({ "success": false, "error": e }).to_string(),
+            }
+        }
+        self.notify_data_changed();
+        json!({ "success": true, "ids": ids, "count": ids.len(), "message": "批量添加备忘录成功" }).to_string()
+    }
+
+    #[tool(description = "完整更新备忘录的所有字段。返回是否成功。")]
+    pub async fn update_note(&self, #[tool(aggr)] req: UpdateNoteRequest) -> String {
+        let item = NoteItem {
+            id: 0,
+            title: req.title,
+            content: req.content.unwrap_or_default(),
+            create_date: req.create_date.unwrap_or_default(),
+        };
+        match self.db.update_note(req.id, &item) {
+            Ok(success) => {
+                if success { self.notify_data_changed(); }
+                json!({
+                    "success": success,
+                    "message": if success { "备忘录更新成功" } else { "备忘录不存在" }
+                }).to_string()
+            }
+            Err(e) => json!({ "success": false, "error": e }).to_string(),
+        }
+    }
+
+    #[tool(description = "部分更新备忘录，只修改指定字段。返回是否成功。")]
+    pub async fn patch_note(&self, #[tool(aggr)] req: PatchNoteRequest) -> String {
+        let patch = NotePatch {
+            title: req.title,
+            content: req.content,
+            create_date: req.create_date,
+        };
+        match self.db.patch_note(req.id, &patch) {
+            Ok(success) => {
+                if success { self.notify_data_changed(); }
+                json!({
+                    "success": success,
+                    "message": if success { "备忘录更新成功" } else { "备忘录不存在或无更新" }
+                }).to_string()
+            }
+            Err(e) => json!({ "success": false, "error": e }).to_string(),
+        }
+    }
+
+    #[tool(description = "删除单个备忘录。返回是否成功。")]
+    pub async fn delete_note(&self, #[tool(aggr)] req: DeleteNoteRequest) -> String {
+        match self.db.delete_note(req.id) {
+            Ok(success) => {
+                if success { self.notify_data_changed(); }
+                json!({
+                    "success": success,
+                    "message": if success { "备忘录删除成功" } else { "备忘录不存在" }
+                }).to_string()
+            }
+            Err(e) => json!({ "success": false, "error": e }).to_string(),
+        }
+    }
+
+    #[tool(description = "批量删除备忘录。返回删除的数量。")]
+    pub async fn delete_notes(&self, #[tool(aggr)] req: DeleteNotesRequest) -> String {
+        let mut count = 0;
+        for id in &req.ids {
+            match self.db.delete_note(*id) {
+                Ok(true) => count += 1,
+                Ok(false) => {}
+                Err(e) => return json!({ "success": false, "error": e }).to_string(),
+            }
+        }
+        if count > 0 { self.notify_data_changed(); }
+        json!({ "success": true, "deleted_count": count, "message": format!("已删除 {} 个备忘录", count) }).to_string()
+    }
+
+    #[tool(description = "根据 ID 获取单个备忘录详情。")]
+    pub async fn get_note(&self, #[tool(aggr)] req: GetNoteRequest) -> String {
+        match self.db.get_note(req.id) {
+            Ok(Some(item)) => json!({ "success": true, "data": item }).to_string(),
+            Ok(None) => json!({ "success": false, "message": "备忘录不存在" }).to_string(),
+            Err(e) => json!({ "success": false, "error": e }).to_string(),
+        }
+    }
+
+    #[tool(description = "按标题搜索备忘录。支持限制返回数量。")]
+    pub async fn search_notes_by_title(&self, #[tool(aggr)] req: SearchNotesByTitleRequest) -> String {
+        match self.db.search_notes_by_title(&req.query, req.limit) {
+            Ok(items) => json!({ "success": true, "data": items, "count": items.len() }).to_string(),
+            Err(e) => json!({ "success": false, "error": e }).to_string(),
+        }
+    }
+
+    #[tool(description = "按标题和内容搜索备忘录。支持限制返回数量。")]
+    pub async fn search_notes(&self, #[tool(aggr)] req: SearchNotesRequest) -> String {
+        match self.db.search_notes(&req.query, req.limit) {
+            Ok(items) => json!({ "success": true, "data": items, "count": items.len() }).to_string(),
+            Err(e) => json!({ "success": false, "error": e }).to_string(),
+        }
+    }
+
+    #[tool(description = "获取所有备忘录列表。支持限制返回数量。")]
+    pub async fn list_notes(&self, #[tool(aggr)] req: ListNotesRequest) -> String {
+        match self.db.get_all_notes_with_limit(req.limit) {
+            Ok(items) => json!({ "success": true, "data": items, "count": items.len() }).to_string(),
+            Err(e) => json!({ "success": false, "error": e }).to_string(),
+        }
+    }
+
+    #[tool(description = "按创建日期在指定日期之前或之后获取备忘录。filter 为 before（之前）或 after（之后）。支持限制返回数量。")]
+    pub async fn get_notes_by_date_range(&self, #[tool(aggr)] req: GetNotesByDateRangeRequest) -> String {
+        match self.db.get_notes_by_date_range(&req.filter, &req.date, req.limit) {
             Ok(items) => json!({ "success": true, "data": items, "count": items.len() }).to_string(),
             Err(e) => json!({ "success": false, "error": e }).to_string(),
         }
