@@ -120,13 +120,14 @@ function handleCancel() {
 }
 
 function handleBlur() {
-  if (isEditing.value) {
-    // 新增模式下，blur 时如果内容为空则取消
-    if (props.isAddMode && !editTitle.value.trim()) {
-      handleCancel();
-    } else {
-      handleSave();
-    }
+  // 幽灵输入框模式：blur 时不保存，必须点击确认按钮
+  if (isEditing.value && props.isAddMode && !editTitle.value.trim()) {
+    handleCancel();
+  }
+  // 非新增模式且内容为空时恢复原标题
+  if (!props.isAddMode && !editTitle.value.trim()) {
+    editTitle.value = props.title;
+    isEditing.value = false;
   }
 }
 
@@ -228,9 +229,9 @@ onUnmounted(() => {
               ref="inputRef"
               v-model="editTitle"
               type="text"
-              class="w-full outline-none pl-2 pr-8 py-0.5 -mx-1 rounded text-sm font-medium leading-relaxed selection:bg-[var(--theme-primary-alpha)] caret-[var(--theme-text)] bg-white dark:bg-neutral-800 border border-transparent focus:border-[var(--theme-border)] shadow-sm"
+              class="w-full outline-none px-1 py-0.5 -mx-1 rounded text-sm font-medium leading-relaxed selection:bg-[var(--theme-primary-alpha)] caret-[var(--theme-text)] bg-transparent border-none"
               :style="{ color: 'var(--theme-text)' }"
-              :placeholder="isAddMode ? '输入内容并回车保存...' : ''"
+              :placeholder="isAddMode ? '输入内容...' : ''"
               @blur="handleBlur"
               @keydown.enter="handleSave"
               @keydown.s.ctrl.prevent="handleSave"
@@ -239,7 +240,8 @@ onUnmounted(() => {
             />
             <button
               @mousedown.prevent="handleSave"
-              class="absolute right-1.5 top-1/2 -translate-y-1/2 w-6 h-6 flex items-center justify-center rounded-md text-emerald-500 hover:bg-emerald-50 dark:hover:bg-emerald-500/10"
+              class="absolute right-0 top-1/2 -translate-y-1/2 w-6 h-6 flex items-center justify-center rounded-md hover:opacity-70"
+              :style="{ color: 'var(--theme-primary)' }"
               title="保存"
             >
               <Check class="w-4 h-4" stroke-width="2.5" />
