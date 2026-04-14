@@ -15,7 +15,7 @@ import BasicSettings from './BasicSettings.vue';
 const { loadFonts, isFontsLoaded } = useFonts();
 const { systemTheme, onThemeChange } = useSystemTheme();
 
-const activeMainTab = ref<'basic' | 'common' | 'mode' | 'page'>('common');
+const activeMainTab = ref<'basic' | 'common' | 'mode' | 'page'>('basic');
 const activeTab = ref<ThemeMode>('light');
 const localSettings = ref<AppSettings>({ ...defaultLightSettings });
 const originalSettings = ref<AppSettings | null>(null);
