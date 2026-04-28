@@ -3,8 +3,9 @@ import { ref, onMounted, nextTick, computed, onUnmounted, watch } from 'vue';
 import { getCurrentWindow } from '@tauri-apps/api/window';
 import { invoke } from '@tauri-apps/api/core';
 import { listen, emit } from '@tauri-apps/api/event';
-import { X, LayoutList, Plus } from 'lucide-vue-next';
+import { LayoutList, Plus } from 'lucide-vue-next';
 import ListItem from '../components/ListItem.vue';
+import WindowTitleBar from '../components/WindowTitleBar.vue';
 import {
   loadMainTasks,
   searchMainTasks,
@@ -218,29 +219,29 @@ async function handleOpenTaskWindow(task: MainTask) {
   }
 }
 
+let unlisten: (() => void) | undefined;
+
 onMounted(async () => {
   loadSettings();
-  await loadTasks();
-  window.addEventListener('storage', handleSettingsUpdate);
 
   // 监听来自其他窗口的数据变更事件
-  const unlisten = await listen('schedule-changed', async () => {
+  unlisten = await listen('schedule-changed', async () => {
     await loadTasks();
   });
 
+  window.addEventListener('storage', handleSettingsUpdate);
+
+  await loadTasks();
   await nextTick();
   requestAnimationFrame(async () => {
     const win = getCurrentWindow();
     await win.show();
     await win.setFocus();
   });
-
-  onUnmounted(() => {
-    unlisten();
-  });
 });
 
 onUnmounted(() => {
+  unlisten?.();
   window.removeEventListener('storage', handleSettingsUpdate);
 });
 </script>
@@ -255,49 +256,48 @@ onUnmounted(() => {
         WebkitBackdropFilter: settings.enable_blur ? 'blur(20px) saturate(180%)' : 'none',
       }">
 
-      <div class="title-bar flex items-center gap-2 px-3 py-2.5 shrink-0 select-none group"
-        data-tauri-drag-region>
-        <button @mousedown="handleIconDrag"
-          class="shrink-0 w-6 h-6 flex items-center justify-center cursor-grab active:cursor-grabbing hover:opacity-80 transition-opacity"
+      <WindowTitleBar
+        :theme-style="themeStyle"
+        @close="handleClose"
+        @start-drag="handleIconDrag"
+      >
+        <template #left>
+          <button @mousedown.stop="handleIconDrag"
+            class="shrink-0 w-6 h-6 flex items-center justify-center cursor-grab active:cursor-grabbing hover:opacity-80 transition-opacity"
+            :style="{ color: 'var(--theme-text)' }"
+            title="Drag">
+            <LayoutList class="w-4 h-4" />
+          </button>
+        </template>
+
+        <span v-show="!isSearchFocused"
+          class="text-base font-medium leading-relaxed transition-opacity"
           :style="{ color: 'var(--theme-text)' }"
-          title="Drag">
-          <LayoutList class="w-4 h-4" />
-        </button>
+          @click="isSearchFocused = true">
+          Board
+        </span>
+        <input
+          ref="searchInputRef"
+          v-show="isSearchFocused"
+          v-model="searchKeyword"
+          type="text"
+          placeholder="..."
+          class="absolute inset-0 w-full h-full bg-black/5 dark:bg-white/5 rounded-md px-2 outline-none text-sm leading-relaxed text-center selection:bg-[var(--theme-primary-alpha)] caret-[var(--theme-text)]"
+          :style="{ color: 'var(--theme-text)' }"
+          @input="loadTasks"
+          @focus="isSearchFocused = true"
+          @blur="isSearchFocused = false"
+          @mousedown.stop
+        />
 
-        <div class="flex-1 min-w-0 flex justify-center items-center relative h-6"
-          @mousedown="(e) => e.target === e.currentTarget && handleIconDrag()">
-          <span v-show="!isSearchFocused"
-            class="text-base font-medium leading-relaxed transition-opacity"
-            :style="{ color: 'var(--theme-text)' }"
-            @click="isSearchFocused = true">
-            Board
-          </span>
-          <input
-            ref="searchInputRef"
-            v-show="isSearchFocused"
-            v-model="searchKeyword"
-            type="text"
-            placeholder="..."
-            class="absolute inset-0 w-full h-full bg-black/5 dark:bg-white/5 rounded-md px-2 outline-none text-sm leading-relaxed text-center selection:bg-[var(--theme-primary-alpha)] caret-[var(--theme-text)]"
-            :style="{ color: 'var(--theme-text)' }"
-            @input="loadTasks"
-            @focus="isSearchFocused = true"
-            @blur="isSearchFocused = false"
-          />
-        </div>
-
-        <button @click="handleStartAdding"
-          class="shrink-0 w-6 h-6 flex items-center justify-center rounded transition-all opacity-0 group-hover:opacity-100 hover:bg-black/10 dark:hover:bg-white/10 active:scale-95"
-          :style="{ color: 'var(--theme-text)' }">
-          <Plus class="w-4 h-4" />
-        </button>
-
-        <button @click="handleClose"
-          class="close-btn shrink-0 w-6 h-6 flex items-center justify-center rounded transition-all opacity-0 group-hover:opacity-100 hover:bg-black/10 dark:hover:bg-white/10 active:scale-95"
-          :style="{ color: 'var(--theme-text)' }">
-          <X class="w-4 h-4" />
-        </button>
-      </div>
+        <template #right>
+          <button @click="handleStartAdding"
+            class="shrink-0 w-6 h-6 flex items-center justify-center rounded transition-all opacity-0 group-hover:opacity-100 hover:bg-black/10 dark:hover:bg-white/10 active:scale-95"
+            :style="{ color: 'var(--theme-text)' }">
+            <Plus class="w-4 h-4" />
+          </button>
+        </template>
+      </WindowTitleBar>
 
       <div class="flex-1 overflow-y-auto custom-scrollbar px-3 pt-2 pb-3">
         <div class="space-y-2">
