@@ -15,8 +15,23 @@ use super::service::ChronosMcpService;
 /// MCP 服务器句柄
 pub struct McpServerHandle {
     pub addr: SocketAddr,
-    pub cancel_token: CancellationToken,
-    pub thread_handle: Option<std::thread::JoinHandle<()>>,
+    cancel_token: CancellationToken,
+    thread_handle: Option<std::thread::JoinHandle<()>>,
+}
+
+impl Drop for McpServerHandle {
+    fn drop(&mut self) {
+        self.cancel_token.cancel();
+        if let Some(handle) = self.thread_handle.take() {
+            let _ = handle.join();
+        }
+    }
+}
+
+impl McpServerHandle {
+    pub fn shutdown(&self) {
+        self.cancel_token.cancel();
+    }
 }
 
 // 实现 Send 以便在 Tauri 状态中使用

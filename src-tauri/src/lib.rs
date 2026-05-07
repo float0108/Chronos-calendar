@@ -65,6 +65,10 @@ pub fn run() {
             commands::window::close_search_window,
             commands::window::toggle_search_window,
             commands::window::is_search_window_visible,
+            commands::window::open_todo_window,
+            commands::window::close_todo_window,
+            commands::window::toggle_todo_window,
+            commands::window::is_todo_window_visible,
             // Database - Schedule commands
             commands::database::db_load_schedules,
             commands::database::db_load_todo_schedules,
@@ -130,8 +134,7 @@ pub fn run() {
             app.manage(commands::McpState::default());
 
             // 从 store 读取 MCP 配置并启动服务
-            let mcp_state = app.state::<commands::McpState>();
-            let handle = mcp_state.handle.clone();
+            let handle = app.state::<commands::McpState>().handle.clone();
             let app_handle = std::sync::Arc::new(app.handle().clone());
 
             // 读取 MCP 配置

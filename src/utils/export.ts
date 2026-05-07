@@ -140,7 +140,12 @@ export async function importFromJson(): Promise<ExportData | null> {
     if (!filePath) return null;
 
     const content = await readTextFile(filePath as string);
-    const data = JSON.parse(content) as ExportData;
+    let data: ExportData;
+    try {
+      data = JSON.parse(content) as ExportData;
+    } catch {
+      throw new Error('备份文件 JSON 格式无效，请确认文件未被损坏');
+    }
 
     // 验证数据结构
     if (!data.schedules || !data.mainTasks || !data.notes || !data.cellMetadata) {

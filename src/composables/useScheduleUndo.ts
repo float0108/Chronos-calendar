@@ -64,6 +64,10 @@ export function useScheduleUndo(
   }
 
   async function handleToggleDone(schedule: Schedule): Promise<void> {
+    if (schedule.id === undefined) {
+      showError('无法操作：日程 ID 不存在');
+      return;
+    }
     // 计算新的完成状态
     const newDoneState = !schedule.is_done;
 
@@ -79,7 +83,7 @@ export function useScheduleUndo(
     });
 
     // 切换完成状态
-    await toggleScheduleStatus(schedule.id!, newDoneState);
+    await toggleScheduleStatus(schedule.id, newDoneState);
     await refreshSchedules();
   }
 
@@ -107,6 +111,10 @@ export function useScheduleUndo(
   }
 
   async function handleDeleteSchedule(schedule: Schedule): Promise<void> {
+    if (schedule.id === undefined) {
+      showError('无法操作：日程 ID 不存在');
+      return;
+    }
     // 获取日程所在日期
     const date = schedule.create_date;
 
@@ -121,7 +129,7 @@ export function useScheduleUndo(
     });
 
     // 删除日程
-    await deleteSchedule(schedule.id!);
+    await deleteSchedule(schedule.id);
     await refreshSchedules();
     showSuccess('已删除日程');
   }

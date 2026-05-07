@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue';
-import { ChevronLeft, ChevronRight, MoreVertical, Lock, Unlock, Undo2, ListTodo, CheckCircle2, Kanban, StickyNote, Search } from 'lucide-vue-next';
+import { ChevronLeft, ChevronRight, MoreVertical, Lock, Unlock, Undo2, Redo, ListTodo, CheckCircle2, Kanban, StickyNote, Search } from 'lucide-vue-next';
 import dayjs from 'dayjs';
 import MiniCalendar from './MiniCalendar.vue';
 import DropdownMenu from '../ui/DropdownMenu.vue';
@@ -19,6 +19,7 @@ defineProps<{
   isBoardVisible?: boolean;
   isNoteVisible?: boolean;
   isSearchVisible?: boolean;
+  isTodoVisible?: boolean;
   hideWeekends: boolean;
 }>();
 
@@ -43,6 +44,7 @@ const emit = defineEmits<{
   (e: 'toggleBoard'): void;
   (e: 'toggleNote'): void;
   (e: 'toggleSearch'): void;
+  (e: 'toggleTodo'): void;
   (e: 'toggleWeekends'): void;
   (e: 'openBatchTask'): void;
 }>();
@@ -68,6 +70,7 @@ function handleSwitchViewMode(mode: ViewMode) { emit('switchViewMode', mode); }
 function handleToggleBoard() { emit('toggleBoard'); }
 function handleToggleNote() { emit('toggleNote'); }
 function handleToggleSearch() { emit('toggleSearch'); }
+function handleToggleTodo() { emit('toggleTodo'); }
 function handleToggleWeekends() { emit('toggleWeekends'); }
 function handleOpenBatchTask() { emit('openBatchTask'); }
 function handleStartDrag(event: MouseEvent) { startWindowDrag(event); }
@@ -120,6 +123,13 @@ const headerBorderStyle = computed(() => {
           :style="isSearchVisible ? {} : { color: 'var(--text-muted)' }"
           :title="isSearchVisible ? '隐藏搜索' : '显示搜索'">
           <Search class="w-4 h-4" />
+        </button>
+        <button @mousedown.stop @click="handleToggleTodo"
+          class="p-1.5 rounded-md transition-colors flex items-center justify-center"
+          :class="isTodoVisible ? 'bg-[var(--primary-light)] text-[var(--primary)] shadow-sm' : 'hover:bg-[var(--hover-bg)]'"
+          :style="isTodoVisible ? {} : { color: 'var(--text-muted)' }"
+          :title="isTodoVisible ? '隐藏待办' : '显示待办'">
+          <ListTodo class="w-4 h-4" />
         </button>
       </div>
 

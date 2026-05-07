@@ -68,7 +68,7 @@ pub async fn save_app_settings(
 
     // 停止现有服务
     if let Some(handle) = handle_guard.take() {
-        handle.cancel_token.cancel();
+        handle.shutdown();
     }
 
     // 如果启用 MCP，重新启动
@@ -181,7 +181,7 @@ pub async fn stop_mcp_server(app: tauri::AppHandle) -> Result<String, String> {
     let mut handle_guard = state.handle.lock().await;
 
     if let Some(handle) = handle_guard.take() {
-        handle.cancel_token.cancel();
+        handle.shutdown();
         Ok("MCP 服务已停止".to_string())
     } else {
         Ok("MCP 服务未在运行".to_string())

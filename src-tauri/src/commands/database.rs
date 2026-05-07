@@ -65,6 +65,14 @@ pub async fn db_save_schedule(
 }
 
 #[tauri::command]
+pub async fn db_save_schedules_batch(
+    state: State<'_, DbState>,
+    items: Vec<ScheduleItem>,
+) -> Result<Vec<i64>, String> {
+    state.manager.add_schedules(&items)
+}
+
+#[tauri::command]
 pub async fn db_delete_schedule(
     state: State<'_, DbState>,
     id: i64,

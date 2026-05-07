@@ -57,6 +57,7 @@ impl DatabaseManager {
             );
 
             CREATE INDEX IF NOT EXISTS idx_schedules_create_date ON schedules(create_date);
+            CREATE INDEX IF NOT EXISTS idx_schedules_done_date ON schedules(done_date);
 
             CREATE TABLE IF NOT EXISTS cell_metadata (
                 date TEXT PRIMARY KEY,

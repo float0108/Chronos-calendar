@@ -7,6 +7,8 @@ import type { Schedule } from '../../types';
 import { useEditHistory, type EditLine } from '../../composables/useEditHistory';
 import ScheduleTooltip from '../ui/ScheduleTooltip.vue';
 
+const TOOLTIP_WIDTH_DIVISOR = 5;
+
 const props = defineProps<{
   date: dayjs.Dayjs;
   schedules: Schedule[];
@@ -312,8 +314,7 @@ function handleScheduleMouseEnter(event: MouseEvent, schedule: Schedule) {
   }
 
   const rect = (event.target as HTMLElement).getBoundingClientRect();
-  // 预览窗口宽度为窗口宽度的 1/5（约 1.5 个 cell 宽度，假设 7 列时 cell 宽度约为窗口宽度/7）
-  const tooltipWidth = window.innerWidth / 5;
+  const tooltipWidth = window.innerWidth / TOOLTIP_WIDTH_DIVISOR;
   const tooltipHeight = 192;
   const gap = 10;
 

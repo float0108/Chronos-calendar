@@ -8,7 +8,7 @@ import { schedulesToCSV, exportToFile } from '../utils/export';
 import { getCalendarDays } from '../utils/date';
 
 export function useSchedules() {
-  const { loadSchedules, loadTodoSchedules, loadDoneSchedules, saveSchedule, deleteSchedule, deleteSchedulesByDate, updateScheduleColor, loadAllSchedules, importSchedules, importCellColors, clearAllData, toggleScheduleStatus, updateScheduleDescription: dbUpdateDescription, updateScheduleContent, updateScheduleDate: dbUpdateDate, updateScheduleFatherTask: dbUpdateFatherTask } = useDatabase();
+  const { loadSchedules, loadTodoSchedules, loadDoneSchedules, saveSchedule, saveSchedulesBatch, deleteSchedule, deleteSchedulesByDate, updateScheduleColor, loadAllSchedules, importSchedules, importCellColors, clearAllData, toggleScheduleStatus, updateScheduleDescription: dbUpdateDescription, updateScheduleContent, updateScheduleDate: dbUpdateDate, updateScheduleFatherTask: dbUpdateFatherTask } = useDatabase();
 
   // 导出 saveSchedule 供撤销功能使用
   const _saveSchedule = saveSchedule;
@@ -68,24 +68,6 @@ export function useSchedules() {
   function getDateSchedules(date: dayjs.Dayjs): Schedule[] {
     const dateStr = date.format('YYYY-MM-DD');
     return schedules.value.get(dateStr) || [];
-  }
-
-  // 暂时未使用，但保留以便将来使用
-  void addSchedule;
-
-  async function addSchedule(date: string, content: string, replace: boolean = false): Promise<void> {
-    if (!content.trim()) return;
-
-    try {
-      if (replace) {
-        await deleteSchedulesByDate(date);
-      }
-
-      await saveSchedule(date, content);
-      await refreshSchedules();
-    } catch (error) {
-      showError('保存日程失败，请重试');
-    }
   }
 
   async function resetSchedule(date: string, content: string | null): Promise<void> {
@@ -319,10 +301,14 @@ export function useSchedules() {
         }
       }
 
-      // 批量插入日程
-      for (const date of dates) {
-        await saveSchedule(date, config.title, false, undefined, config.description);
-      }
+      // 批量插入日程（使用事务）
+      const items = dates.map(date => ({
+        create_date: date,
+        content: config.title,
+        is_done: false,
+        description: config.description || null,
+      }));
+      await saveSchedulesBatch(items);
 
       await refreshSchedules();
       showSuccess(`成功创建 ${dates.length} 个任务`);

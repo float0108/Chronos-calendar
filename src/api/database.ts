@@ -178,6 +178,22 @@ export async function saveSchedule(
   });
 }
 
+export interface ScheduleItemInput {
+  create_date: string;
+  content: string;
+  is_done: boolean;
+  priority?: number;
+  done_date?: string | null;
+  description?: string | null;
+  father_task?: number | null;
+}
+
+export async function saveSchedulesBatch(
+  items: ScheduleItemInput[]
+): Promise<number[]> {
+  return await invoke('db_save_schedules_batch', { items });
+}
+
 export async function deleteSchedule(id: number): Promise<void> {
   await invoke('db_delete_schedule', { id });
 }
@@ -408,24 +424,30 @@ export async function importSchedules(
   schedules: Schedule[],
   merge: boolean
 ): Promise<{ inserted: number, updated: number }> {
-  // 简化实现：直接插入
   let inserted = 0;
   let updated = 0;
 
   if (merge) {
-    // TODO: 实现合并逻辑
+    // 合并模式：先尝试插入，失败则更新
     for (const s of schedules) {
       try {
         await saveSchedule(s.create_date || '', s.content, s.is_done, s.done_date || undefined, s.description || undefined);
         inserted++;
-      } catch {
+      } catch (error) {
+        console.error('Failed to import schedule:', s, error);
         updated++;
       }
     }
   } else {
+    // 覆盖模式：直接插入
     for (const s of schedules) {
-      await saveSchedule(s.create_date || '', s.content, s.is_done, s.done_date || undefined, s.description || undefined);
-      inserted++;
+      try {
+        await saveSchedule(s.create_date || '', s.content, s.is_done, s.done_date || undefined, s.description || undefined);
+        inserted++;
+      } catch (error) {
+        console.error('Failed to import schedule:', s, error);
+        throw error; // 覆盖模式下失败应该抛出异常
+      }
     }
   }
 
