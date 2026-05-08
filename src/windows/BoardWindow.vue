@@ -2,7 +2,7 @@
 import { ref, onMounted, nextTick, computed, onUnmounted, watch } from 'vue';
 import { getCurrentWindow } from '@tauri-apps/api/window';
 import { invoke } from '@tauri-apps/api/core';
-import { listen, emit } from '@tauri-apps/api/event';
+import { listen } from '@tauri-apps/api/event';
 import { LayoutList, Plus } from 'lucide-vue-next';
 import ListItem from '../components/ListItem.vue';
 import WindowTitleBar from '../components/WindowTitleBar.vue';
@@ -96,15 +96,6 @@ async function loadTasks() {
   }
 }
 
-// 通知其他窗口刷新数据
-async function notifyRefresh() {
-  try {
-    await emit('schedule-changed', {});
-  } catch (error) {
-    console.error('Failed to notify refresh:', error);
-  }
-}
-
 function handleStartAdding() {
   isAdding.value = true;
 }
@@ -121,7 +112,6 @@ async function handleAddTask(content: string) {
     const newTaskId = await saveMainTask(trimmed);
     // 确保数据已写入数据库后再刷新列表
     await loadTasks();
-    await notifyRefresh();
     // 如果有返回ID，自动打开新创建的任务窗口
     if (newTaskId) {
       const newTask = tasks.value.find(t => t.id === newTaskId);
@@ -144,7 +134,6 @@ async function handleToggleDone(task: MainTask) {
   try {
     await toggleMainTaskStatus(task.id, !task.is_done);
     await loadTasks();
-    await notifyRefresh();
   } catch (error) {
     console.error('Failed to toggle task:', error);
   }
@@ -154,7 +143,6 @@ async function handleDeleteTask(taskId: number) {
   try {
     await deleteMainTask(taskId);
     await loadTasks();
-    await notifyRefresh();
   } catch (error) {
     console.error('Failed to delete task:', error);
   }
@@ -171,7 +159,6 @@ async function handleUpdateTask(task: MainTask, newContent: string) {
   try {
     await updateMainTaskContent(task.id, trimmed);
     await loadTasks();
-    await notifyRefresh();
   } catch (error) {
     console.error('Failed to update task:', error);
   }
@@ -182,7 +169,6 @@ async function handleUpdateTaskDate(task: MainTask, newDate: string) {
   try {
     await updateMainTaskCreateDate(task.id, newDate);
     await loadTasks();
-    await notifyRefresh();
   } catch (error) {
     console.error('Failed to update task date:', error);
   }

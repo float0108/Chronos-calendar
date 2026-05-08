@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, onMounted, nextTick, computed, onUnmounted, watch } from 'vue';
 import { getCurrentWindow } from '@tauri-apps/api/window';
-import { listen, emit } from '@tauri-apps/api/event';
+import { listen } from '@tauri-apps/api/event';
 import { Plus, CheckSquare } from 'lucide-vue-next';
 import ListItem from '../components/ListItem.vue';
 import WindowTitleBar from '../components/WindowTitleBar.vue';
@@ -102,15 +102,6 @@ async function loadSchedulesData() {
   }
 }
 
-// 通知其他窗口刷新数据
-async function notifyRefresh() {
-  try {
-    await emit('schedule-changed', {});
-  } catch (error) {
-    console.error('Failed to notify refresh:', error);
-  }
-}
-
 function handleStartAdding() {
   isAdding.value = true;
 }
@@ -126,7 +117,6 @@ async function handleAddSchedule(content: string) {
     const today = dayjs().format('YYYY-MM-DD');
     await import('../api/database').then(db => db.saveSchedule(today, trimmed, false));
     await loadSchedulesData();
-    await notifyRefresh();
   } catch (error) {
     console.error('Failed to add schedule:', error);
   }
@@ -142,7 +132,6 @@ async function handleToggleDone(schedule: Schedule) {
   try {
     await toggleScheduleStatus(schedule.id, !schedule.is_done);
     await loadSchedulesData();
-    await notifyRefresh();
   } catch (error) {
     console.error('Failed to toggle schedule:', error);
   }
@@ -152,7 +141,6 @@ async function handleDeleteSchedule(scheduleId: number) {
   try {
     await deleteSchedule(scheduleId);
     await loadSchedulesData();
-    await notifyRefresh();
   } catch (error) {
     console.error('Failed to delete schedule:', error);
   }
@@ -169,7 +157,6 @@ async function handleUpdateSchedule(schedule: Schedule, newContent: string) {
   try {
     await updateScheduleContent(schedule.id, trimmed);
     await loadSchedulesData();
-    await notifyRefresh();
   } catch (error) {
     console.error('Failed to update schedule:', error);
   }
@@ -180,7 +167,6 @@ async function handleUpdateScheduleDate(schedule: Schedule, newDate: string) {
   try {
     await updateScheduleDate(schedule.id, 'create_date', newDate);
     await loadSchedulesData();
-    await notifyRefresh();
   } catch (error) {
     console.error('Failed to update schedule date:', error);
   }

@@ -1,5 +1,4 @@
 import { ref } from 'vue';
-import { emit } from '@tauri-apps/api/event';
 import {
   loadSchedulesByFatherTask,
   saveSubTask,
@@ -31,32 +30,21 @@ export function useTaskWindow() {
     subTasks.value = await loadSchedulesByFatherTask(currentTask.value.id);
   }
 
-  async function notifyMainToRefresh() {
-    try {
-      await emit('schedule-changed', {});
-    } catch (error) {
-      console.error('Failed to notify main window:', error);
-    }
-  }
-
   async function addSubTask(content: string) {
     if (!currentTask.value?.id) return;
     await saveSubTask(content.trim(), currentTask.value.id);
     await loadSubTasks();
-    await notifyMainToRefresh();
   }
 
   async function toggleSubTaskDone(subTask: Schedule) {
     if (!subTask.id) return;
     await toggleScheduleStatus(subTask.id, !subTask.is_done);
     await loadSubTasks();
-    await notifyMainToRefresh();
   }
 
   async function removeSubTask(subTaskId: number) {
     await deleteSchedule(subTaskId);
     await loadSubTasks();
-    await notifyMainToRefresh();
   }
 
   async function updateSubTaskContent(subTask: Schedule, newContent: string) {
@@ -69,14 +57,12 @@ export function useTaskWindow() {
     if (trimmed === subTask.content) return;
     await updateScheduleContent(subTask.id, trimmed);
     await loadSubTasks();
-    await notifyMainToRefresh();
   }
 
   async function updateSubTaskDate(subTask: Schedule, newDate: string) {
     if (!subTask.id) return;
     await updateScheduleDate(subTask.id, 'create_date', newDate);
     await loadSubTasks();
-    await notifyMainToRefresh();
   }
 
   async function saveSubTaskDetail(subTask: Schedule, description: string, createDate: string, doneDate: string) {
@@ -96,14 +82,12 @@ export function useTaskWindow() {
     }
 
     await loadSubTasks();
-    await notifyMainToRefresh();
   }
 
   async function updateTaskTitle(taskId: number, newTitle: string) {
     const trimmed = newTitle.trim();
     if (!trimmed) return;
     await updateMainTaskContent(taskId, trimmed);
-    await notifyMainToRefresh();
   }
 
   async function saveMainTaskDetail(
@@ -132,7 +116,6 @@ export function useTaskWindow() {
     if (updatedTask) {
       currentTask.value = updatedTask;
     }
-    await notifyMainToRefresh();
   }
 
   async function selectTask(taskId: number) {
