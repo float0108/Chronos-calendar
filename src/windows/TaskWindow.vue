@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, onMounted, nextTick, computed, onUnmounted } from 'vue';
 import { getCurrentWindow } from '@tauri-apps/api/window';
+import { listen } from '@tauri-apps/api/event';
 import { ListTodo } from 'lucide-vue-next';
 import ListItem from '../components/ListItem.vue';
 import ScheduleEditor from '../components/ScheduleEditor.vue';
@@ -170,6 +171,7 @@ async function handleIconDrag() {
 }
 
 let unlisten: (() => void) | undefined;
+let unlistenScheduleChange: (() => void) | undefined;
 
 onMounted(async () => {
   loadSettings();
@@ -179,6 +181,17 @@ onMounted(async () => {
     await taskWindow.selectTask(event.payload);
     initTaskEditData();
     viewMode.value = 'list';
+  });
+
+  // 监听 schedule-changed 事件，其他窗口修改数据时刷新
+  unlistenScheduleChange = await listen('schedule-changed', async () => {
+    await taskWindow.loadMainTasks();
+    if (currentTask.value?.id) {
+      currentTask.value = taskWindow.tasks.value.find(t => t.id === currentTask.value?.id) || null;
+      if (currentTask.value) {
+        await taskWindow.loadSubTasks();
+      }
+    }
   });
 
   window.addEventListener('storage', handleSettingsUpdate);
@@ -206,6 +219,7 @@ onMounted(async () => {
 
 onUnmounted(() => {
   unlisten?.();
+  unlistenScheduleChange?.();
   window.removeEventListener('storage', handleSettingsUpdate);
 });
 </script>

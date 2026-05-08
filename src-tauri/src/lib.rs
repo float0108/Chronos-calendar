@@ -128,6 +128,7 @@ pub fn run() {
             // 管理 DbState
             app.manage(commands::DbState {
                 manager: db_manager.clone(),
+                app_handle: Some(app.handle().clone()),
             });
 
             // 管理 MCP 服务状态

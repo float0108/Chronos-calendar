@@ -3,13 +3,23 @@
 //! 提供前端调用的数据库操作接口
 
 use std::sync::Arc;
-use tauri::State;
+use tauri::{State, AppHandle, Emitter};
 
 use crate::db::*;
 
 /// 数据库状态
 pub struct DbState {
     pub manager: Arc<DatabaseManager>,
+    pub app_handle: Option<AppHandle>,
+}
+
+impl DbState {
+    /// 发送数据变更事件到所有窗口
+    fn notify_change(&self) {
+        if let Some(ref handle) = self.app_handle {
+            let _ = handle.emit("schedule-changed", ());
+        }
+    }
 }
 
 // ========== Schedule Commands ==========
@@ -61,7 +71,9 @@ pub async fn db_save_schedule(
         description,
         father_task,
     };
-    state.manager.add_schedule(&item)
+    let id = state.manager.add_schedule(&item)?;
+    state.notify_change();
+    Ok(id)
 }
 
 #[tauri::command]
@@ -69,7 +81,9 @@ pub async fn db_save_schedules_batch(
     state: State<'_, DbState>,
     items: Vec<ScheduleItem>,
 ) -> Result<Vec<i64>, String> {
-    state.manager.add_schedules(&items)
+    let ids = state.manager.add_schedules(&items)?;
+    state.notify_change();
+    Ok(ids)
 }
 
 #[tauri::command]
@@ -78,6 +92,7 @@ pub async fn db_delete_schedule(
     id: i64,
 ) -> Result<(), String> {
     state.manager.delete_schedule(id)?;
+    state.notify_change();
     Ok(())
 }
 
@@ -87,6 +102,7 @@ pub async fn db_delete_schedules_by_date(
     date: String,
 ) -> Result<(), String> {
     state.manager.delete_schedules_by_date(&date)?;
+    state.notify_change();
     Ok(())
 }
 
@@ -97,6 +113,7 @@ pub async fn db_toggle_schedule_status(
     is_done: bool,
 ) -> Result<(), String> {
     state.manager.toggle_schedule_status(id, is_done)?;
+    state.notify_change();
     Ok(())
 }
 
@@ -111,6 +128,7 @@ pub async fn db_update_schedule_content(
         ..Default::default()
     };
     state.manager.patch_schedule(id, &patch)?;
+    state.notify_change();
     Ok(())
 }
 
@@ -125,6 +143,7 @@ pub async fn db_update_schedule_description(
         ..Default::default()
     };
     state.manager.patch_schedule(id, &patch)?;
+    state.notify_change();
     Ok(())
 }
 
@@ -147,6 +166,7 @@ pub async fn db_update_schedule_date(
         }
     };
     state.manager.patch_schedule(id, &patch)?;
+    state.notify_change();
     Ok(())
 }
 
@@ -161,6 +181,7 @@ pub async fn db_update_schedule_father_task(
         ..Default::default()
     };
     state.manager.patch_schedule(id, &patch)?;
+    state.notify_change();
     Ok(())
 }
 
@@ -179,7 +200,9 @@ pub async fn db_save_sub_task(
     father_task_id: i64,
     description: Option<String>,
 ) -> Result<i64, String> {
-    state.manager.save_sub_task(&content, father_task_id, description.as_deref())
+    let id = state.manager.save_sub_task(&content, father_task_id, description.as_deref())?;
+    state.notify_change();
+    Ok(id)
 }
 
 #[tauri::command]
@@ -223,7 +246,9 @@ pub async fn db_save_main_task(
         create_date: String::new(),
         done_date: None,
     };
-    state.manager.add_main_task(&item)
+    let id = state.manager.add_main_task(&item)?;
+    state.notify_change();
+    Ok(id)
 }
 
 #[tauri::command]
@@ -237,6 +262,7 @@ pub async fn db_update_main_task_content(
         ..Default::default()
     };
     state.manager.patch_main_task(id, &patch)?;
+    state.notify_change();
     Ok(())
 }
 
@@ -251,6 +277,7 @@ pub async fn db_update_main_task_description(
         ..Default::default()
     };
     state.manager.patch_main_task(id, &patch)?;
+    state.notify_change();
     Ok(())
 }
 
@@ -265,6 +292,7 @@ pub async fn db_update_main_task_create_date(
         ..Default::default()
     };
     state.manager.patch_main_task(id, &patch)?;
+    state.notify_change();
     Ok(())
 }
 
@@ -279,6 +307,7 @@ pub async fn db_update_main_task_done_date(
         ..Default::default()
     };
     state.manager.patch_main_task(id, &patch)?;
+    state.notify_change();
     Ok(())
 }
 
@@ -289,6 +318,7 @@ pub async fn db_toggle_main_task_status(
     is_done: bool,
 ) -> Result<(), String> {
     state.manager.toggle_main_task_status(id, is_done)?;
+    state.notify_change();
     Ok(())
 }
 
@@ -303,6 +333,7 @@ pub async fn db_update_main_task_priority(
         ..Default::default()
     };
     state.manager.patch_main_task(id, &patch)?;
+    state.notify_change();
     Ok(())
 }
 
@@ -312,6 +343,7 @@ pub async fn db_delete_main_task(
     id: i64,
 ) -> Result<(), String> {
     state.manager.delete_main_task(id)?;
+    state.notify_change();
     Ok(())
 }
 
@@ -352,7 +384,9 @@ pub async fn db_create_note(
         content: content.unwrap_or_default(),
         create_date: String::new(),
     };
-    state.manager.add_note(&item)
+    let id = state.manager.add_note(&item)?;
+    state.notify_change();
+    Ok(id)
 }
 
 #[tauri::command]
@@ -369,6 +403,7 @@ pub async fn db_update_note(
         create_date: String::new(),
     };
     state.manager.update_note(id, &item)?;
+    state.notify_change();
     Ok(())
 }
 
@@ -383,6 +418,7 @@ pub async fn db_update_note_title(
         ..Default::default()
     };
     state.manager.patch_note(id, &patch)?;
+    state.notify_change();
     Ok(())
 }
 
@@ -397,6 +433,7 @@ pub async fn db_update_note_content(
         ..Default::default()
     };
     state.manager.patch_note(id, &patch)?;
+    state.notify_change();
     Ok(())
 }
 
@@ -411,6 +448,7 @@ pub async fn db_update_note_create_date(
         ..Default::default()
     };
     state.manager.patch_note(id, &patch)?;
+    state.notify_change();
     Ok(())
 }
 
@@ -420,6 +458,7 @@ pub async fn db_delete_note(
     id: i64,
 ) -> Result<(), String> {
     state.manager.delete_note(id)?;
+    state.notify_change();
     Ok(())
 }
 
@@ -432,6 +471,7 @@ pub async fn db_update_cell_color(
     color: String,
 ) -> Result<(), String> {
     state.manager.update_cell_color(&date, &color)?;
+    state.notify_change();
     Ok(())
 }
 
@@ -466,14 +506,18 @@ pub async fn db_import_and_merge_data(
     state: State<'_, DbState>,
     data: BackupData,
 ) -> Result<ImportStats, String> {
-    state.manager.import_and_merge_data(&data)
+    let stats = state.manager.import_and_merge_data(&data)?;
+    state.notify_change();
+    Ok(stats)
 }
 
 #[tauri::command]
 pub async fn db_clear_all_tables(
     state: State<'_, DbState>,
 ) -> Result<(), String> {
-    state.manager.clear_all_tables()
+    state.manager.clear_all_tables()?;
+    state.notify_change();
+    Ok(())
 }
 
 #[tauri::command]
