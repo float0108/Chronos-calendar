@@ -49,7 +49,7 @@ pub async fn db_load_todo_schedules(
     start_date: String,
     end_date: String,
 ) -> Result<Vec<ScheduleItem>, String> {
-    state.manager.get_schedules_by_range(&start_date, &end_date)
+    state.manager.get_todo_schedules_by_range(&start_date, &end_date)
 }
 
 #[tauri::command]

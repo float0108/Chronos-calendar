@@ -210,8 +210,8 @@ export async function updateScheduleContent(id: number, content: string): Promis
   await invoke('db_update_schedule_content', { id, content });
 }
 
-export async function updateScheduleDescription(id: number, description: string): Promise<void> {
-  await invoke('db_update_schedule_description', { id, description: description || null });
+export async function updateScheduleDescription(id: number, description: string | null): Promise<void> {
+  await invoke('db_update_schedule_description', { id, description });
 }
 
 export async function updateScheduleDate(

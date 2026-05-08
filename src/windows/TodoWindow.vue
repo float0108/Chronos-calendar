@@ -2,19 +2,21 @@
 import { ref, onMounted, nextTick, computed, onUnmounted, watch } from 'vue';
 import { getCurrentWindow } from '@tauri-apps/api/window';
 import { listen } from '@tauri-apps/api/event';
-import { Plus, CheckSquare } from 'lucide-vue-next';
+import { Plus, CheckSquare, Calendar, ChevronLeft } from 'lucide-vue-next';
 import ListItem from '../components/ListItem.vue';
 import WindowTitleBar from '../components/WindowTitleBar.vue';
+import ScheduleEditor from '../components/ScheduleEditor.vue';
+import { useThemeStyle } from '../composables/useTaskTheme';
 import {
   loadTodoSchedules,
   searchSchedules,
   toggleScheduleStatus,
   updateScheduleContent,
   updateScheduleDate,
+  updateScheduleDescription,
   deleteSchedule,
   type Schedule
 } from '../api/database';
-import { hexToRgba, adjustBrightness } from '../utils/color';
 import type { AppSettings, DataChange } from '../types';
 import { defaultLightSettings, defaultDarkSettings } from '../types';
 import dayjs from 'dayjs';
@@ -31,36 +33,29 @@ const effectiveTheme = computed(() => {
   return settings.value.theme_mode;
 });
 
+const { themeStyle, cellStyle } = useThemeStyle(settings, () => effectiveTheme.value);
+
 // 搜索框焦点状态
 const isSearchFocused = ref(false);
 
 // 新增模式
 const isAdding = ref(false);
 
+// 是否显示过去的未完成日程
+const showPastTodos = ref(false);
+
+// 视图模式: list=列表, detail=详情
+const viewMode = ref<'list' | 'detail'>('list');
+
+// 当前编辑的日程
+const currentSchedule = ref<Schedule | null>(null);
+const editDescription = ref('');
+const editCreateDate = ref('');
+const editDoneDate = ref('');
+const scheduleEditorRef = ref<InstanceType<typeof ScheduleEditor> | null>(null);
+
 // DOM Refs
 const searchInputRef = ref<HTMLInputElement | null>(null);
-
-// 动态主题样式
-const themeStyle = computed(() => {
-  const s = settings.value;
-  const bgOpacity = s.bg_opacity / 100;
-  const cellOpacity = s.cell_opacity / 100;
-  const theme = effectiveTheme.value;
-  return {
-    '--theme-bg': hexToRgba(s.bg_color, bgOpacity),
-    '--theme-cell': hexToRgba(s.cell_color, cellOpacity),
-    '--theme-text': s.text_color,
-    '--theme-text-secondary': adjustBrightness(s.text_color, 30),
-    '--theme-text-muted': s.muted_text_color,
-    '--theme-primary': s.primary_color,
-    '--theme-primary-alpha': hexToRgba(s.primary_color, 0.2),
-    '--theme-border': s.cell_border_color || (theme === 'dark' ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.05)'),
-    '--theme-font-family': s.font_family,
-    '--theme-font-size': `${s.font_size}px`,
-    'font-family': s.font_family,
-    'font-size': `${s.font_size}px`,
-  };
-});
 
 function loadSettings() {
   const saved = localStorage.getItem('chronos_settings');
@@ -72,15 +67,6 @@ function loadSettings() {
     const defaults = actualTheme === 'dark' ? defaultDarkSettings : defaultLightSettings;
     settings.value = { ...defaults, ...parsed };
   }
-  applyTheme();
-}
-
-function applyTheme() {
-  const s = settings.value;
-  const root = document.documentElement;
-  root.style.setProperty('--primary', s.primary_color);
-  root.style.setProperty('--text-primary', s.text_color);
-  root.style.setProperty('--text-muted', s.muted_text_color);
 }
 
 function handleSettingsUpdate() {
@@ -88,9 +74,7 @@ function handleSettingsUpdate() {
 }
 
 async function loadSchedulesData() {
-  // 获取今天和未来一年的数据用于显示未完成日程
   const today = dayjs();
-  const startDate = today.format('YYYY-MM-DD');
   const endDate = today.add(1, 'year').format('YYYY-MM-DD');
 
   try {
@@ -99,7 +83,15 @@ async function loadSchedulesData() {
       const allResults = await searchSchedules(searchKeyword.value);
       schedules.value = allResults.filter(s => !s.is_done);
     } else {
-      schedules.value = await loadTodoSchedules(startDate, endDate);
+      if (showPastTodos.value) {
+        // 显示所有未完成的日程（过去+未来）
+        const startDate = today.subtract(10, 'year').format('YYYY-MM-DD');
+        schedules.value = await loadTodoSchedules(startDate, endDate);
+      } else {
+        // 只显示今天及以后的未完成日程
+        const startDate = today.format('YYYY-MM-DD');
+        schedules.value = await loadTodoSchedules(startDate, endDate);
+      }
     }
   } catch (error) {
     console.error('Failed to load schedules:', error);
@@ -177,12 +169,53 @@ async function handleUpdateScheduleDate(schedule: Schedule, newDate: string) {
   }
 }
 
+function handleScheduleClick(schedule: Schedule) {
+  currentSchedule.value = schedule;
+  editDescription.value = schedule.description || '';
+  editCreateDate.value = schedule.create_date || '';
+  editDoneDate.value = schedule.done_date || '';
+  viewMode.value = 'detail';
+  nextTick(() => scheduleEditorRef.value?.loadTasks());
+}
+
+function handleBackToList() {
+  viewMode.value = 'list';
+  currentSchedule.value = null;
+}
+
+async function handleSaveScheduleDetail() {
+  if (!currentSchedule.value?.id) return;
+  try {
+    if (editDescription.value !== (currentSchedule.value.description || '')) {
+      await updateScheduleDescription(currentSchedule.value.id, editDescription.value || null);
+    }
+    if (editCreateDate.value !== (currentSchedule.value.create_date || '')) {
+      await updateScheduleDate(currentSchedule.value.id, 'create_date', editCreateDate.value);
+    }
+    if (editDoneDate.value !== (currentSchedule.value.done_date || '')) {
+      await updateScheduleDate(currentSchedule.value.id, 'done_date', editDoneDate.value);
+    }
+    await loadSchedulesData();
+    handleBackToList();
+  } catch (error) {
+    console.error('Failed to save schedule detail:', error);
+  }
+}
+
+function handleCancelScheduleDetail() {
+  handleBackToList();
+}
+
 watch(isSearchFocused, (focused) => {
   if (focused) {
     nextTick(() => {
       searchInputRef.value?.focus();
     });
   }
+});
+
+watch(showPastTodos, () => {
+  loadSchedulesData();
 });
 
 async function handleClose() {
@@ -239,13 +272,22 @@ onUnmounted(() => {
         WebkitBackdropFilter: settings.enable_blur ? 'blur(20px) saturate(180%)' : 'none',
       }">
 
+      <!-- 标题栏 - 使用单个 WindowTitleBar -->
       <WindowTitleBar
         :theme-style="themeStyle"
         @close="handleClose"
         @start-drag="handleIconDrag"
       >
         <template #left>
-          <button @mousedown.stop="handleIconDrag"
+          <!-- 详情视图显示返回按钮 -->
+          <button v-if="viewMode === 'detail'" @mousedown.stop="handleBackToList"
+            class="shrink-0 w-6 h-6 flex items-center justify-center cursor-pointer hover:opacity-80 transition-opacity"
+            :style="{ color: 'var(--theme-text)' }"
+            title="返回">
+            <ChevronLeft class="w-4 h-4" />
+          </button>
+          <!-- 列表视图显示拖拽按钮 -->
+          <button v-else @mousedown.stop="handleIconDrag"
             class="shrink-0 w-6 h-6 flex items-center justify-center cursor-grab active:cursor-grabbing hover:opacity-80 transition-opacity"
             :style="{ color: 'var(--theme-text)' }"
             title="Drag">
@@ -253,15 +295,23 @@ onUnmounted(() => {
           </button>
         </template>
 
-        <span v-show="!isSearchFocused"
+        <!-- 标题 -->
+        <span v-show="!isSearchFocused && viewMode === 'list'"
           class="text-base font-medium leading-relaxed transition-opacity"
           :style="{ color: 'var(--theme-text)' }"
           @click="isSearchFocused = true">
           Todo
         </span>
+        <span v-show="viewMode === 'detail'"
+          class="text-base font-medium leading-relaxed"
+          :style="{ color: 'var(--theme-text)' }">
+          日程详情
+        </span>
+
+        <!-- 搜索框 -->
         <input
           ref="searchInputRef"
-          v-show="isSearchFocused"
+          v-show="isSearchFocused && viewMode === 'list'"
           v-model="searchKeyword"
           type="text"
           placeholder="..."
@@ -274,7 +324,13 @@ onUnmounted(() => {
         />
 
         <template #right>
-          <button @click="handleStartAdding"
+          <button v-if="viewMode === 'list'" @click="showPastTodos = !showPastTodos"
+            class="shrink-0 w-6 h-6 flex items-center justify-center rounded transition-all opacity-0 group-hover:opacity-100 hover:bg-black/10 dark:hover:bg-white/10 active:scale-95"
+            :style="{ color: showPastTodos ? 'var(--theme-primary)' : 'var(--theme-text)' }"
+            title="显示过去的未完成日程">
+            <Calendar class="w-4 h-4" />
+          </button>
+          <button v-if="viewMode === 'list'" @click="handleStartAdding"
             class="shrink-0 w-6 h-6 flex items-center justify-center rounded transition-all opacity-0 group-hover:opacity-100 hover:bg-black/10 dark:hover:bg-white/10 active:scale-95"
             :style="{ color: 'var(--theme-text)' }">
             <Plus class="w-4 h-4" />
@@ -282,43 +338,82 @@ onUnmounted(() => {
         </template>
       </WindowTitleBar>
 
-      <div class="flex-1 overflow-y-auto custom-scrollbar px-3 pt-2 pb-3">
-        <div class="space-y-2">
-          <ListItem
-            v-if="isAdding"
-            key="add-new-schedule"
-            is-add-mode
-            @add="handleAddSchedule"
-            @cancel="handleCancelAdd"
-            @click.stop
-          />
+      <!-- 内容区域 -->
+      <div class="flex-1 relative overflow-hidden">
+        <Transition name="view-fade" mode="out-in">
+          <!-- 列表视图 -->
+          <div v-if="viewMode === 'list'" key="list" class="absolute inset-0 flex flex-col w-full h-full">
+            <div class="flex-1 overflow-y-auto custom-scrollbar px-3 pt-2 pb-3">
+              <div class="space-y-2">
+                <ListItem
+                  v-if="isAdding"
+                  key="add-new-schedule"
+                  is-add-mode
+                  @add="handleAddSchedule"
+                  @cancel="handleCancelAdd"
+                  @click.stop
+                />
 
-          <ListItem
-            v-for="schedule in schedules"
-            :key="schedule.id"
-            :title="schedule.content"
-            :preview="schedule.description"
-            :date="schedule.create_date"
-            :is-done="schedule.is_done"
-            center-calendar
-            @update:title="(val) => handleUpdateSchedule(schedule, val)"
-            @update:date="(val) => handleUpdateScheduleDate(schedule, val)"
-            @delete="handleDeleteSchedule(schedule.id!)"
-            @toggle-done="handleToggleDone(schedule)"
-          />
-        </div>
+                <ListItem
+                  v-for="schedule in schedules"
+                  :key="schedule.id"
+                  :title="schedule.content"
+                  :preview="schedule.description"
+                  :date="schedule.create_date"
+                  :is-done="schedule.is_done"
+                  center-calendar
+                  @update:title="(val) => handleUpdateSchedule(schedule, val)"
+                  @update:date="(val) => handleUpdateScheduleDate(schedule, val)"
+                  @delete="handleDeleteSchedule(schedule.id!)"
+                  @toggle-done="handleToggleDone(schedule)"
+                  @click="handleScheduleClick(schedule)"
+                />
+              </div>
 
-        <div v-if="schedules.length === 0 && !isAdding" class="flex flex-col items-center justify-center py-20 pointer-events-none transition-opacity">
-          <div class="p-4 rounded-full" :style="{ backgroundColor: 'var(--theme-cell)' }">
-            <CheckSquare class="w-8 h-8 opacity-20" :style="{ color: 'var(--theme-text)' }" />
+              <div v-if="schedules.length === 0 && !isAdding" class="flex flex-col items-center justify-center py-20 pointer-events-none transition-opacity">
+                <div class="p-4 rounded-full" :style="cellStyle">
+                  <CheckSquare class="w-8 h-8 opacity-20" :style="{ color: 'var(--theme-text)' }" />
+                </div>
+              </div>
+            </div>
           </div>
-        </div>
+
+          <!-- 详情视图 -->
+          <div v-else-if="viewMode === 'detail'" key="detail" class="absolute inset-0 flex flex-col w-full h-full">
+            <div class="flex-1 min-h-0 overflow-y-auto custom-scrollbar p-3">
+              <div class="h-full rounded-lg p-3" :style="cellStyle">
+                <ScheduleEditor
+                  ref="scheduleEditorRef"
+                  class="h-full"
+                  v-model:description="editDescription"
+                  v-model:create-date="editCreateDate"
+                  v-model:done-date="editDoneDate"
+                  :show-content="false"
+                  :show-father-task="false"
+                  @save="handleSaveScheduleDetail"
+                  @cancel="handleCancelScheduleDetail"
+                />
+              </div>
+            </div>
+          </div>
+        </Transition>
       </div>
     </div>
   </div>
 </template>
 
 <style scoped>
+/* 视图切换动画 */
+.view-fade-enter-active,
+.view-fade-leave-active {
+  transition: opacity 0.2s ease;
+}
+
+.view-fade-enter-from,
+.view-fade-leave-to {
+  opacity: 0;
+}
+
 /* 优雅的悬浮滚动条，默认隐藏，hover时显示 */
 .custom-scrollbar {
   scrollbar-width: thin;
@@ -355,5 +450,10 @@ onUnmounted(() => {
 input, textarea {
   -webkit-appearance: none;
   appearance: none;
+}
+
+input[type="date"]::-webkit-calendar-picker-indicator {
+  filter: var(--theme-text-muted);
+  cursor: pointer;
 }
 </style>
