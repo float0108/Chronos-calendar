@@ -141,3 +141,11 @@ export interface BatchTaskConfig {
   title: string;
   description?: string;
 }
+
+// 数据变更事件载荷（来自 Rust 后端）
+export interface DataChange {
+  entity: 'schedule' | 'main_task' | 'note' | 'cell_color' | 'batch';
+  action: 'created' | 'updated' | 'deleted' | 'imported' | 'cleared';
+  id: number;
+  data: any; // 具体数据，根据 entity 和 action 而变化
+}

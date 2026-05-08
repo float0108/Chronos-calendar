@@ -291,4 +291,7 @@ onUnmounted(() => {
 </template>
 
 <style scoped>
+.list-item {
+  list-style: none;
+}
 </style>

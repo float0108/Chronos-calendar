@@ -17,7 +17,7 @@ import {
   type MainTask
 } from '../api/database';
 import { hexToRgba, adjustBrightness } from '../utils/color';
-import type { AppSettings } from '../types';
+import type { AppSettings, DataChange } from '../types';
 import { defaultLightSettings, defaultDarkSettings } from '../types';
 
 const settings = ref<AppSettings>({ ...defaultLightSettings });
@@ -89,10 +89,15 @@ function handleSettingsUpdate() {
 }
 
 async function loadTasks() {
-  if (searchKeyword.value.trim()) {
-    tasks.value = await searchMainTasks(searchKeyword.value);
-  } else {
-    tasks.value = await loadMainTasks();
+  try {
+    if (searchKeyword.value.trim()) {
+      tasks.value = await searchMainTasks(searchKeyword.value);
+    } else {
+      tasks.value = await loadMainTasks();
+    }
+  } catch (error) {
+    console.error('Failed to load tasks:', error);
+    tasks.value = [];
   }
 }
 
@@ -211,8 +216,11 @@ onMounted(async () => {
   loadSettings();
 
   // 监听来自其他窗口的数据变更事件
-  unlisten = await listen('schedule-changed', async () => {
-    await loadTasks();
+  unlisten = await listen<DataChange>('schedule-changed', async (event) => {
+    const change = event.payload;
+    if (change.entity === 'main_task' || change.entity === 'batch') {
+      await loadTasks();
+    }
   });
 
   window.addEventListener('storage', handleSettingsUpdate);

@@ -1,4 +1,4 @@
-//! 窗口管理命令：设置、Board、Note、Task、Search 窗口
+//! 窗口管理命令：设置、Board、Note、Task 窗口
 
 use tauri::{Emitter, Manager, WebviewUrl, WebviewWindowBuilder};
 use tauri_plugin_window_state::{AppHandleExt, StateFlags, WindowExt};
@@ -329,42 +329,3 @@ pub async fn is_todo_window_visible(app: tauri::AppHandle) -> Result<bool, Strin
     is_window_visible(&app, "todo")
 }
 
-// === Search 窗口 ===
-
-const SEARCH_CONFIG: WindowConfig = WindowConfig::new(
-    "search",
-    "src/search.html",
-    "Chronos - 搜索",
-    360.0,
-    480.0,
-    300.0,
-    360.0,
-);
-
-#[tauri::command]
-pub async fn open_search_window(app: tauri::AppHandle) -> Result<(), String> {
-    if let Some(window) = app.get_webview_window("search") {
-        let _ = window.restore_state(StateFlags::SIZE | StateFlags::POSITION);
-        show_window(&window)?;
-        return Ok(());
-    }
-
-    let search_window = build_window(&app, &SEARCH_CONFIG, None)?;
-    show_window(&search_window)?;
-    Ok(())
-}
-
-#[tauri::command]
-pub async fn close_search_window(app: tauri::AppHandle) -> Result<(), String> {
-    close_window_by_name(&app, "search")
-}
-
-#[tauri::command]
-pub async fn toggle_search_window(app: tauri::AppHandle) -> Result<bool, String> {
-    toggle_window_by_config(&app, &SEARCH_CONFIG)
-}
-
-#[tauri::command]
-pub async fn is_search_window_visible(app: tauri::AppHandle) -> Result<bool, String> {
-    is_window_visible(&app, "search")
-}

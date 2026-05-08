@@ -2,7 +2,7 @@
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "default",
   "description": "Capability for the main window",
-  "windows": ["main", "settings", "board", "note", "task", "search", "todo"],
+  "windows": ["main", "settings", "board", "note", "task", "todo"],
   "permissions": [
     "core:default",
     "core:tray:default",

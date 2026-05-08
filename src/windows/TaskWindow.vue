@@ -8,7 +8,7 @@ import ScheduleEditor from '../components/ScheduleEditor.vue';
 import TaskWindowTitleBar from './TaskWindowTitleBar.vue';
 import { useThemeStyle } from '../composables/useTaskTheme';
 import { useTaskWindow } from '../composables/useTaskWindow';
-import type { AppSettings } from '../types';
+import type { AppSettings, DataChange } from '../types';
 import { defaultLightSettings, defaultDarkSettings } from '../types';
 
 const settings = ref<AppSettings>({ ...defaultLightSettings });
@@ -184,12 +184,15 @@ onMounted(async () => {
   });
 
   // 监听 schedule-changed 事件，其他窗口修改数据时刷新
-  unlistenScheduleChange = await listen('schedule-changed', async () => {
-    await taskWindow.loadMainTasks();
-    if (currentTask.value?.id) {
-      currentTask.value = taskWindow.tasks.value.find(t => t.id === currentTask.value?.id) || null;
-      if (currentTask.value) {
-        await taskWindow.loadSubTasks();
+  unlistenScheduleChange = await listen<DataChange>('schedule-changed', async (event) => {
+    const change = event.payload;
+    if (change.entity === 'main_task' || change.entity === 'schedule' || change.entity === 'batch') {
+      await taskWindow.loadMainTasks();
+      if (currentTask.value?.id) {
+        currentTask.value = taskWindow.tasks.value.find(t => t.id === currentTask.value?.id) || null;
+        if (currentTask.value) {
+          await taskWindow.loadSubTasks();
+        }
       }
     }
   });

@@ -117,13 +117,6 @@ const headerBorderStyle = computed(() => {
           :title="isNoteVisible ? '隐藏备忘录' : '显示备忘录'">
           <StickyNote class="w-4 h-4" />
         </button>
-        <button @mousedown.stop @click="handleToggleSearch"
-          class="p-1.5 rounded-md transition-colors flex items-center justify-center"
-          :class="isSearchVisible ? 'bg-[var(--primary-light)] text-[var(--primary)] shadow-sm' : 'hover:bg-[var(--hover-bg)]'"
-          :style="isSearchVisible ? {} : { color: 'var(--text-muted)' }"
-          :title="isSearchVisible ? '隐藏搜索' : '显示搜索'">
-          <Search class="w-4 h-4" />
-        </button>
         <button @mousedown.stop @click="handleToggleTodo"
           class="p-1.5 rounded-md transition-colors flex items-center justify-center"
           :class="isTodoVisible ? 'bg-[var(--primary-light)] text-[var(--primary)] shadow-sm' : 'hover:bg-[var(--hover-bg)]'"
@@ -210,6 +203,14 @@ const headerBorderStyle = computed(() => {
       </div>
 
       <div class="w-px h-4 bg-gray-300 dark:bg-gray-600 mx-0.5"></div>
+
+      <button @mousedown.stop @click="handleToggleSearch"
+        class="p-1.5 rounded-md transition-colors flex items-center justify-center"
+        :class="isSearchVisible ? 'bg-[var(--primary-light)] text-[var(--primary)] shadow-sm' : 'hover:bg-[var(--hover-bg)]'"
+        :style="isSearchVisible ? {} : { color: 'var(--text-muted)' }"
+        :title="isSearchVisible ? '隐藏搜索' : '显示搜索'">
+        <Search class="w-4 h-4" />
+      </button>
 
       <button @mousedown.stop @click="handleToggleLock" class="p-1.5 rounded-lg transition-colors"
         :class="isLocked ? 'text-red-500 bg-red-50 dark:bg-red-900/20' : 'hover:bg-[var(--hover-bg)]'"

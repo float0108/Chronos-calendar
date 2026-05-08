@@ -8,6 +8,7 @@ import CalendarGrid from './components/calendar/CalendarGrid.vue';
 import ResizeHandles from './components/ui/ResizeHandles.vue';
 import ToastContainer from './components/ui/ToastContainer.vue';
 import DescriptionDialog from './components/dialogs/DescriptionDialog.vue';
+import SearchDialog from './components/dialogs/SearchDialog.vue';
 import BatchTaskDialog from './components/dialogs/BatchTaskDialog.vue';
 import { useDatabase } from './composables/useDatabase';
 import { useSchedules } from './composables/useSchedules';
@@ -19,7 +20,7 @@ import { setWindowLocked, hideWindow, exitApp } from './utils/window';
 import { exportDatabaseBackup, exportAsZip, importFromJson } from './utils/export';
 import { useToast } from './composables/useToast';
 import { hexToRgba, adjustBrightness } from './utils/color';
-import type { ViewMode, Schedule, BatchTaskConfig } from './types';
+import type { ViewMode, Schedule, BatchTaskConfig, DataChange } from './types';
 
 const { exportAllData, importAndMergeData } = useDatabase();
 const {
@@ -356,18 +357,21 @@ async function toggleNote() {
   localStorage.setItem('chronos_note_visible', String(isVisible));
 }
 
-async function loadSearchVisibility() {
+function loadSearchVisibility() {
   const saved = localStorage.getItem('chronos_search_visible');
   if (saved === 'true') {
     isSearchVisible.value = true;
-    await invoke('open_search_window');
   }
 }
 
-async function toggleSearch() {
-  const isVisible = await invoke<boolean>('toggle_search_window');
-  isSearchVisible.value = isVisible;
-  localStorage.setItem('chronos_search_visible', String(isVisible));
+function toggleSearch() {
+  isSearchVisible.value = !isSearchVisible.value;
+  localStorage.setItem('chronos_search_visible', String(isSearchVisible.value));
+}
+
+function handleSearchClose() {
+  isSearchVisible.value = false;
+  localStorage.setItem('chronos_search_visible', 'false');
 }
 
 async function loadTodoVisibility() {
@@ -420,20 +424,21 @@ onMounted(async () => {
   await loadFonts();
   await loadBoardVisibility();
   await loadNoteVisibility();
-  await loadSearchVisibility();
+  loadSearchVisibility();
   await loadTodoVisibility();
   window.addEventListener('storage', handleSettingsUpdate);
   window.addEventListener('keydown', handleKeyDown);
 
-  // 监听来自 TaskWindow 的数据变更事件
-  listen('schedule-changed', async () => {
-    await refreshSchedules();
+  // 监听来自其他窗口的数据变更事件
+  listen<DataChange>('schedule-changed', async (event) => {
+    const change = event.payload;
+    if (change.entity === 'schedule' || change.entity === 'cell_color' || change.entity === 'batch') {
+      await refreshSchedules();
+    }
   });
 
-  // 监听来自 SearchWindow 的导航事件
-  listen<{ date: string; viewMode: ViewMode }>('navigate-to-date', (event) => {
-    handleNavigateToDate(event.payload);
-  });
+  window.addEventListener('storage', handleSettingsUpdate);
+  window.addEventListener('keydown', handleKeyDown);
 });
 
 onUnmounted(() => {
@@ -550,6 +555,12 @@ onUnmounted(() => {
       :visible="showBatchTaskDialog"
       @confirm="handleBatchTaskConfirm"
       @cancel="handleBatchTaskCancel"
+    />
+
+    <SearchDialog
+      :visible="isSearchVisible"
+      @close="handleSearchClose"
+      @navigate="handleNavigateToDate"
     />
 
     <ToastContainer />

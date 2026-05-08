@@ -15,7 +15,7 @@ import {
   type Schedule
 } from '../api/database';
 import { hexToRgba, adjustBrightness } from '../utils/color';
-import type { AppSettings } from '../types';
+import type { AppSettings, DataChange } from '../types';
 import { defaultLightSettings, defaultDarkSettings } from '../types';
 import dayjs from 'dayjs';
 
@@ -93,12 +93,17 @@ async function loadSchedulesData() {
   const startDate = today.format('YYYY-MM-DD');
   const endDate = today.add(1, 'year').format('YYYY-MM-DD');
 
-  if (searchKeyword.value.trim()) {
-    // 搜索时过滤未完成的
-    const allResults = await searchSchedules(searchKeyword.value);
-    schedules.value = allResults.filter(s => !s.is_done);
-  } else {
-    schedules.value = await loadTodoSchedules(startDate, endDate);
+  try {
+    if (searchKeyword.value.trim()) {
+      // 搜索时过滤未完成的
+      const allResults = await searchSchedules(searchKeyword.value);
+      schedules.value = allResults.filter(s => !s.is_done);
+    } else {
+      schedules.value = await loadTodoSchedules(startDate, endDate);
+    }
+  } catch (error) {
+    console.error('Failed to load schedules:', error);
+    schedules.value = [];
   }
 }
 
@@ -200,8 +205,11 @@ onMounted(async () => {
   loadSettings();
 
   // 监听来自其他窗口的数据变更事件
-  unlisten = await listen('schedule-changed', async () => {
-    await loadSchedulesData();
+  unlisten = await listen<DataChange>('schedule-changed', async (event) => {
+    const change = event.payload;
+    if (change.entity === 'schedule' || change.entity === 'batch') {
+      await loadSchedulesData();
+    }
   });
 
   window.addEventListener('storage', handleSettingsUpdate);
