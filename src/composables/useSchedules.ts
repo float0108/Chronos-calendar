@@ -8,7 +8,7 @@ import { schedulesToCSV, exportToFile } from '../utils/export';
 import { getCalendarDays } from '../utils/date';
 
 export function useSchedules() {
-  const { loadSchedules, loadTodoSchedules, loadDoneSchedules, saveSchedule, saveSchedulesBatch, deleteSchedule, deleteSchedulesByDate, updateScheduleColor, loadAllSchedules, importSchedules, importCellColors, clearAllData, toggleScheduleStatus, updateScheduleDescription: dbUpdateDescription, updateScheduleContent, updateScheduleDate: dbUpdateDate, updateScheduleFatherTask: dbUpdateFatherTask } = useDatabase();
+  const { loadSchedules, loadDoneSchedules, saveSchedule, saveSchedulesBatch, deleteSchedule, deleteSchedulesByDate, updateScheduleColor, loadAllSchedules, importSchedules, importCellColors, clearAllData, toggleScheduleStatus, updateScheduleDescription: dbUpdateDescription, updateScheduleContent, updateScheduleDate: dbUpdateDate, updateScheduleFatherTask: dbUpdateFatherTask } = useDatabase();
 
   // 导出 saveSchedule 供撤销功能使用
   const _saveSchedule = saveSchedule;

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue';
-import { ChevronLeft, ChevronRight, MoreVertical, Lock, Unlock, Undo2, Redo, ListTodo, CheckCircle2, Kanban, StickyNote, Search, ClipboardList } from 'lucide-vue-next';
+import { ChevronLeft, ChevronRight, MoreVertical, Lock, Unlock, Undo2, Redo, ListTodo, CheckCircle2, Search, ClipboardList, Kanban } from 'lucide-vue-next';
 import dayjs from 'dayjs';
 import MiniCalendar from './MiniCalendar.vue';
 import DropdownMenu from '../ui/DropdownMenu.vue';
@@ -16,9 +16,8 @@ defineProps<{
   canUndo: boolean;
   canRedo: boolean;
   viewMode: ViewMode;
-  isBoardVisible?: boolean;
-  isNoteVisible?: boolean;
   isSearchVisible?: boolean;
+  isNoteVisible?: boolean;
   isTodoVisible?: boolean;
   isTaskboardVisible?: boolean;
   hideWeekends: boolean;
@@ -42,9 +41,8 @@ const emit = defineEmits<{
   (e: 'undo'): void;
   (e: 'redo'): void;
   (e: 'switchViewMode', mode: ViewMode): void;
-  (e: 'toggleBoard'): void;
-  (e: 'toggleNote'): void;
   (e: 'toggleSearch'): void;
+  (e: 'toggleNote'): void;
   (e: 'toggleTodo'): void;
   (e: 'toggleTaskboard'): void;
   (e: 'toggleWeekends'): void;
@@ -69,9 +67,8 @@ function handleSync() { emit('sync'); }
 function handleUndo() { emit('undo'); }
 function handleRedo() { emit('redo'); }
 function handleSwitchViewMode(mode: ViewMode) { emit('switchViewMode', mode); }
-function handleToggleBoard() { emit('toggleBoard'); }
-function handleToggleNote() { emit('toggleNote'); }
 function handleToggleSearch() { emit('toggleSearch'); }
+function handleToggleNote() { emit('toggleNote'); }
 function handleToggleTodo() { emit('toggleTodo'); }
 function handleToggleTaskboard() { emit('toggleTaskboard'); }
 function handleToggleWeekends() { emit('toggleWeekends'); }
@@ -106,19 +103,19 @@ const headerBorderStyle = computed(() => {
 
     <div class="flex items-center gap-2 relative z-10 flex-1 justify-start">
       <div class="flex items-center p-0.5 rounded-lg bg-[var(--hover-bg)] dark:bg-gray-800/50">
-        <button @mousedown.stop @click="handleToggleBoard"
+        <button @mousedown.stop @click="handleToggleTaskboard"
           class="p-1.5 rounded-md transition-colors flex items-center justify-center"
-          :class="isBoardVisible ? 'bg-[var(--primary-light)] text-[var(--primary)] shadow-sm' : 'hover:bg-[var(--hover-bg)]'"
-          :style="isBoardVisible ? {} : { color: 'var(--text-muted)' }"
-          :title="isBoardVisible ? '隐藏看板' : '显示看板'">
-          <Kanban class="w-4 h-4" />
+          :class="isTaskboardVisible ? 'bg-[var(--primary-light)] text-[var(--primary)] shadow-sm' : 'hover:bg-[var(--hover-bg)]'"
+          :style="isTaskboardVisible ? {} : { color: 'var(--text-muted)' }"
+          :title="isTaskboardVisible ? '隐藏任务看板' : '显示任务看板'">
+          <ClipboardList class="w-4 h-4" />
         </button>
         <button @mousedown.stop @click="handleToggleNote"
           class="p-1.5 rounded-md transition-colors flex items-center justify-center"
           :class="isNoteVisible ? 'bg-[var(--primary-light)] text-[var(--primary)] shadow-sm' : 'hover:bg-[var(--hover-bg)]'"
           :style="isNoteVisible ? {} : { color: 'var(--text-muted)' }"
           :title="isNoteVisible ? '隐藏备忘录' : '显示备忘录'">
-          <StickyNote class="w-4 h-4" />
+          <Kanban class="w-4 h-4" />
         </button>
         <button @mousedown.stop @click="handleToggleTodo"
           class="p-1.5 rounded-md transition-colors flex items-center justify-center"
@@ -126,13 +123,6 @@ const headerBorderStyle = computed(() => {
           :style="isTodoVisible ? {} : { color: 'var(--text-muted)' }"
           :title="isTodoVisible ? '隐藏待办' : '显示待办'">
           <ListTodo class="w-4 h-4" />
-        </button>
-        <button @mousedown.stop @click="handleToggleTaskboard"
-          class="p-1.5 rounded-md transition-colors flex items-center justify-center"
-          :class="isTaskboardVisible ? 'bg-[var(--primary-light)] text-[var(--primary)] shadow-sm' : 'hover:bg-[var(--hover-bg)]'"
-          :style="isTaskboardVisible ? {} : { color: 'var(--text-muted)' }"
-          :title="isTaskboardVisible ? '隐藏任务看板' : '显示任务看板'">
-          <ClipboardList class="w-4 h-4" />
         </button>
       </div>
 

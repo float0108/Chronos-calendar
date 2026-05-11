@@ -66,9 +66,8 @@ const showDescriptionDialog = ref(false);
 const showBatchTaskDialog = ref(false);
 const editingSchedule = ref<Schedule | null>(null);
 const isLocked = ref(false);
-const isBoardVisible = ref(false);
-const isNoteVisible = ref(false);
 const isSearchVisible = ref(false);
+const isNoteVisible = ref(false);
 const isTodoVisible = ref(false);
 const isTaskboardVisible = ref(false);
 
@@ -330,34 +329,6 @@ async function handleSettingsUpdate() {
   await refreshSchedules();
 }
 
-async function loadBoardVisibility() {
-  const saved = localStorage.getItem('chronos_board_visible');
-  if (saved === 'true') {
-    isBoardVisible.value = true;
-    await invoke('open_board_window');
-  }
-}
-
-async function toggleBoard() {
-  const isVisible = await invoke<boolean>('toggle_board_window');
-  isBoardVisible.value = isVisible;
-  localStorage.setItem('chronos_board_visible', String(isVisible));
-}
-
-async function loadNoteVisibility() {
-  const saved = localStorage.getItem('chronos_note_visible');
-  if (saved === 'true') {
-    isNoteVisible.value = true;
-    await invoke('open_note_window');
-  }
-}
-
-async function toggleNote() {
-  const isVisible = await invoke<boolean>('toggle_note_window');
-  isNoteVisible.value = isVisible;
-  localStorage.setItem('chronos_note_visible', String(isVisible));
-}
-
 function loadSearchVisibility() {
   const saved = localStorage.getItem('chronos_search_visible');
   if (saved === 'true') {
@@ -387,6 +358,20 @@ async function toggleTodo() {
   const isVisible = await invoke<boolean>('toggle_todo_window');
   isTodoVisible.value = isVisible;
   localStorage.setItem('chronos_todo_visible', String(isVisible));
+}
+
+async function loadNoteVisibility() {
+  const saved = localStorage.getItem('chronos_note_visible');
+  if (saved === 'true') {
+    isNoteVisible.value = true;
+    await invoke('open_note_window');
+  }
+}
+
+async function toggleNote() {
+  const isVisible = await invoke<boolean>('toggle_note_window');
+  isNoteVisible.value = isVisible;
+  localStorage.setItem('chronos_note_visible', String(isVisible));
 }
 
 async function loadTaskboardVisibility() {
@@ -437,9 +422,8 @@ onMounted(async () => {
   await refreshSchedules();
   await initSettings();
   await loadFonts();
-  await loadBoardVisibility();
-  await loadNoteVisibility();
   loadSearchVisibility();
+  await loadNoteVisibility();
   await loadTodoVisibility();
   await loadTaskboardVisibility();
   window.addEventListener('storage', handleSettingsUpdate);
@@ -484,9 +468,8 @@ onUnmounted(() => {
       :can-undo="canUndo()"
       :can-redo="canRedo()"
       :view-mode="viewMode"
-      :is-board-visible="isBoardVisible"
-      :is-note-visible="isNoteVisible"
       :is-search-visible="isSearchVisible"
+      :is-note-visible="isNoteVisible"
       :is-todo-visible="isTodoVisible"
       :is-taskboard-visible="isTaskboardVisible"
       :hide-weekends="hideWeekends"
@@ -508,9 +491,8 @@ onUnmounted(() => {
       @redo="handleRedo"
       @switch-view-mode="handleSwitchViewMode"
       @open-batch-task="handleOpenBatchTask"
-      @toggle-board="toggleBoard"
-      @toggle-note="toggleNote"
       @toggle-search="toggleSearch"
+      @toggle-note="toggleNote"
       @toggle-todo="toggleTodo"
       @toggle-taskboard="toggleTaskboard"
       @toggle-weekends="toggleWeekends"

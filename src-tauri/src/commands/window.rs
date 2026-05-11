@@ -1,4 +1,4 @@
-//! 窗口管理命令：设置、Board、Note、Task 窗口
+//! 窗口管理命令：设置、TaskBoard、Note 窗口
 
 use tauri::{Emitter, Manager, WebviewUrl, WebviewWindowBuilder};
 use tauri_plugin_window_state::{AppHandleExt, StateFlags, WindowExt};
@@ -167,39 +167,7 @@ pub async fn open_settings_window(app: tauri::AppHandle) -> Result<(), String> {
     Ok(())
 }
 
-// === Board 窗口 ===
-
-const BOARD_CONFIG: WindowConfig = WindowConfig::new(
-    "board",
-    "src/board.html",
-    "Chronos - Board",
-    320.0,
-    480.0,
-    280.0,
-    360.0,
-);
-
-#[tauri::command]
-pub async fn open_board_window(app: tauri::AppHandle) -> Result<(), String> {
-    open_window_by_config(&app, &BOARD_CONFIG)
-}
-
-#[tauri::command]
-pub async fn close_board_window(app: tauri::AppHandle) -> Result<(), String> {
-    close_window_by_name(&app, "board")
-}
-
-#[tauri::command]
-pub async fn toggle_board_window(app: tauri::AppHandle) -> Result<bool, String> {
-    toggle_window_by_config(&app, &BOARD_CONFIG)
-}
-
-#[tauri::command]
-pub async fn is_board_window_visible(app: tauri::AppHandle) -> Result<bool, String> {
-    is_window_visible(&app, "board")
-}
-
-// === TaskBoard 窗口 (合并的 Board + Task 窗口) ===
+// === TaskBoard 窗口 ===
 
 const TASKBOARD_CONFIG: WindowConfig = WindowConfig::new(
     "taskboard",
@@ -263,72 +231,6 @@ pub async fn is_note_window_visible(app: tauri::AppHandle) -> Result<bool, Strin
     is_window_visible(&app, "note")
 }
 
-// === Task 窗口 ===
-
-const TASK_CONFIG: WindowConfig = WindowConfig::new(
-    "task",
-    "src/task.html",
-    "Chronos - Task",
-    360.0,
-    480.0,
-    300.0,
-    360.0,
-);
-
-#[tauri::command]
-pub async fn open_task_window(app: tauri::AppHandle, task_id: i64) -> Result<(), String> {
-    if let Some(window) = app.get_webview_window("task") {
-        window.show().map_err(|e| e.to_string())?;
-        window.set_focus().map_err(|e| e.to_string())?;
-        window
-            .emit("set_task_id", task_id)
-            .map_err(|e: tauri::Error| e.to_string())?;
-        return Ok(());
-    }
-
-    let script = format!("window.__TASK_ID__ = {};", task_id);
-    let task_window = build_window(&app, &TASK_CONFIG, Some(script))?;
-    show_window(&task_window)?;
-    Ok(())
-}
-
-#[tauri::command]
-pub async fn close_task_window(app: tauri::AppHandle) -> Result<(), String> {
-    close_window_by_name(&app, "task")
-}
-
-#[tauri::command]
-pub async fn toggle_task_window(app: tauri::AppHandle, task_id: Option<i64>) -> Result<bool, String> {
-    if let Some(window) = app.get_webview_window("task") {
-        let is_visible = window.is_visible().map_err(|e| e.to_string())?;
-        if is_visible {
-            let _ = app.save_window_state(StateFlags::SIZE | StateFlags::POSITION);
-            window.hide().map_err(|e| e.to_string())?;
-            Ok(false)
-        } else {
-            window.show().map_err(|e| e.to_string())?;
-            window.set_focus().map_err(|e| e.to_string())?;
-            if let Some(id) = task_id {
-                window
-                    .emit("set_task_id", id)
-                    .map_err(|e: tauri::Error| e.to_string())?;
-            }
-            Ok(true)
-        }
-    } else {
-        let id = task_id.unwrap_or(0);
-        let script = format!("window.__TASK_ID__ = {};", id);
-        let window = build_window(&app, &TASK_CONFIG, Some(script))?;
-        show_window(&window)?;
-        Ok(true)
-    }
-}
-
-#[tauri::command]
-pub async fn is_task_window_visible(app: tauri::AppHandle) -> Result<bool, String> {
-    is_window_visible(&app, "task")
-}
-
 // === Todo 窗口 ===
 
 const TODO_CONFIG: WindowConfig = WindowConfig::new(
@@ -360,4 +262,3 @@ pub async fn toggle_todo_window(app: tauri::AppHandle) -> Result<bool, String> {
 pub async fn is_todo_window_visible(app: tauri::AppHandle) -> Result<bool, String> {
     is_window_visible(&app, "todo")
 }
-
