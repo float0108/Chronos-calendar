@@ -39,13 +39,11 @@ export function useSchedules() {
 
     const { startDate, endDate } = dateRange.value;
 
-    // 根据视图模式选择加载函数
+    // todo 模式显示所有日程，done 模式只显示已完成的
     if (viewMode.value === 'todo') {
-      result = await loadTodoSchedules(startDate, endDate);
-    } else if (viewMode.value === 'done') {
-      result = await loadDoneSchedules(startDate, endDate);
-    } else {
       result = await loadSchedules(startDate, endDate);
+    } else {
+      result = await loadDoneSchedules(startDate, endDate);
     }
 
     schedules.value.clear();

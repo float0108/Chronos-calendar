@@ -70,6 +70,7 @@ const isBoardVisible = ref(false);
 const isNoteVisible = ref(false);
 const isSearchVisible = ref(false);
 const isTodoVisible = ref(false);
+const isTaskboardVisible = ref(false);
 
 const hideWeekends = computed(() => getSetting('hide_weekends') ?? false);
 
@@ -388,6 +389,20 @@ async function toggleTodo() {
   localStorage.setItem('chronos_todo_visible', String(isVisible));
 }
 
+async function loadTaskboardVisibility() {
+  const saved = localStorage.getItem('chronos_taskboard_visible');
+  if (saved === 'true') {
+    isTaskboardVisible.value = true;
+    await invoke('open_taskboard_window');
+  }
+}
+
+async function toggleTaskboard() {
+  const isVisible = await invoke<boolean>('toggle_taskboard_window');
+  isTaskboardVisible.value = isVisible;
+  localStorage.setItem('chronos_taskboard_visible', String(isVisible));
+}
+
 // 处理从搜索窗口导航到指定日期
 function handleNavigateToDate(data: { date: string; viewMode: ViewMode }) {
   if (data.date) {
@@ -426,6 +441,7 @@ onMounted(async () => {
   await loadNoteVisibility();
   loadSearchVisibility();
   await loadTodoVisibility();
+  await loadTaskboardVisibility();
   window.addEventListener('storage', handleSettingsUpdate);
   window.addEventListener('keydown', handleKeyDown);
 
@@ -472,6 +488,7 @@ onUnmounted(() => {
       :is-note-visible="isNoteVisible"
       :is-search-visible="isSearchVisible"
       :is-todo-visible="isTodoVisible"
+      :is-taskboard-visible="isTaskboardVisible"
       :hide-weekends="hideWeekends"
       @prev-month="prevMonth()"
       @next-month="nextMonth()"
@@ -495,6 +512,7 @@ onUnmounted(() => {
       @toggle-note="toggleNote"
       @toggle-search="toggleSearch"
       @toggle-todo="toggleTodo"
+      @toggle-taskboard="toggleTaskboard"
       @toggle-weekends="toggleWeekends"
     />
 

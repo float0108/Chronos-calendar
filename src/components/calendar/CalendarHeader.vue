@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue';
-import { ChevronLeft, ChevronRight, MoreVertical, Lock, Unlock, Undo2, Redo, ListTodo, CheckCircle2, Kanban, StickyNote, Search } from 'lucide-vue-next';
+import { ChevronLeft, ChevronRight, MoreVertical, Lock, Unlock, Undo2, Redo, ListTodo, CheckCircle2, Kanban, StickyNote, Search, ClipboardList } from 'lucide-vue-next';
 import dayjs from 'dayjs';
 import MiniCalendar from './MiniCalendar.vue';
 import DropdownMenu from '../ui/DropdownMenu.vue';
@@ -20,6 +20,7 @@ defineProps<{
   isNoteVisible?: boolean;
   isSearchVisible?: boolean;
   isTodoVisible?: boolean;
+  isTaskboardVisible?: boolean;
   hideWeekends: boolean;
 }>();
 
@@ -45,6 +46,7 @@ const emit = defineEmits<{
   (e: 'toggleNote'): void;
   (e: 'toggleSearch'): void;
   (e: 'toggleTodo'): void;
+  (e: 'toggleTaskboard'): void;
   (e: 'toggleWeekends'): void;
   (e: 'openBatchTask'): void;
 }>();
@@ -71,6 +73,7 @@ function handleToggleBoard() { emit('toggleBoard'); }
 function handleToggleNote() { emit('toggleNote'); }
 function handleToggleSearch() { emit('toggleSearch'); }
 function handleToggleTodo() { emit('toggleTodo'); }
+function handleToggleTaskboard() { emit('toggleTaskboard'); }
 function handleToggleWeekends() { emit('toggleWeekends'); }
 function handleOpenBatchTask() { emit('openBatchTask'); }
 function handleStartDrag(event: MouseEvent) { startWindowDrag(event); }
@@ -123,6 +126,13 @@ const headerBorderStyle = computed(() => {
           :style="isTodoVisible ? {} : { color: 'var(--text-muted)' }"
           :title="isTodoVisible ? '隐藏待办' : '显示待办'">
           <ListTodo class="w-4 h-4" />
+        </button>
+        <button @mousedown.stop @click="handleToggleTaskboard"
+          class="p-1.5 rounded-md transition-colors flex items-center justify-center"
+          :class="isTaskboardVisible ? 'bg-[var(--primary-light)] text-[var(--primary)] shadow-sm' : 'hover:bg-[var(--hover-bg)]'"
+          :style="isTaskboardVisible ? {} : { color: 'var(--text-muted)' }"
+          :title="isTaskboardVisible ? '隐藏任务看板' : '显示任务看板'">
+          <ClipboardList class="w-4 h-4" />
         </button>
       </div>
 

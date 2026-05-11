@@ -199,6 +199,38 @@ pub async fn is_board_window_visible(app: tauri::AppHandle) -> Result<bool, Stri
     is_window_visible(&app, "board")
 }
 
+// === TaskBoard 窗口 (合并的 Board + Task 窗口) ===
+
+const TASKBOARD_CONFIG: WindowConfig = WindowConfig::new(
+    "taskboard",
+    "src/taskboard.html",
+    "Chronos - Tasks",
+    640.0,
+    520.0,
+    500.0,
+    400.0,
+);
+
+#[tauri::command]
+pub async fn open_taskboard_window(app: tauri::AppHandle) -> Result<(), String> {
+    open_window_by_config(&app, &TASKBOARD_CONFIG)
+}
+
+#[tauri::command]
+pub async fn close_taskboard_window(app: tauri::AppHandle) -> Result<(), String> {
+    close_window_by_name(&app, "taskboard")
+}
+
+#[tauri::command]
+pub async fn toggle_taskboard_window(app: tauri::AppHandle) -> Result<bool, String> {
+    toggle_window_by_config(&app, &TASKBOARD_CONFIG)
+}
+
+#[tauri::command]
+pub async fn is_taskboard_window_visible(app: tauri::AppHandle) -> Result<bool, String> {
+    is_window_visible(&app, "taskboard")
+}
+
 // === Note 窗口 ===
 
 const NOTE_CONFIG: WindowConfig = WindowConfig::new(

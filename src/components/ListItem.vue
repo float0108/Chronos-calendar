@@ -12,11 +12,13 @@ const props = withDefaults(defineProps<{
   editable?: boolean;
   centerCalendar?: boolean;
   isAddMode?: boolean;
+  selected?: boolean;
 }>(), {
   title: '',
   editable: true,
   centerCalendar: false,
   isAddMode: false,
+  selected: false,
 });
 
 const emit = defineEmits<{
@@ -177,7 +179,8 @@ onUnmounted(() => {
     class="list-item group flex items-start gap-2 px-3 rounded-lg"
     :class="[
       preview ? 'py-2' : 'py-1.5',
-      isAddMode ? ' hover:bg-black/5 dark:hover:bg-white/5 opacity-80 hover:opacity-100 border-dashed' : ''
+      isAddMode ? ' hover:bg-black/5 dark:hover:bg-white/5 opacity-80 hover:opacity-100 border-dashed' : '',
+      selected ? 'ring-2 ring-[var(--theme-primary)]' : ''
     ]"
     :style="{
       backgroundColor: 'var(--theme-cell)',
