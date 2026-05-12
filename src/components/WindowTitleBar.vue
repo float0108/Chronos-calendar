@@ -5,8 +5,10 @@ import { computed } from 'vue';
 const props = withDefaults(defineProps<{
   themeStyle?: Record<string, string>;
   showCloseButton?: boolean;
+  hideCloseButton?: boolean;
 }>(), {
   showCloseButton: true,
+  hideCloseButton: false,
 });
 
 const emit = defineEmits<{
@@ -31,7 +33,7 @@ const textColor = computed(() => props.themeStyle?.['--theme-text'] || 'inherit'
     <slot name="right" />
 
     <button
-      v-if="showCloseButton"
+      v-if="showCloseButton && !hideCloseButton"
       @click="emit('close')"
       class="close-btn shrink-0 w-6 h-6 flex items-center justify-center rounded transition-all opacity-0 group-hover:opacity-100 hover:bg-black/10 dark:hover:bg-white/10 active:scale-95"
       :style="{ color: textColor }"
