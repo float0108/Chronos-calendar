@@ -1,8 +1,9 @@
 <!-- components/SubTaskPanel.vue -->
 <script setup lang="ts">
 import { ref } from 'vue';
-import { ListTodo, Plus, Info } from 'lucide-vue-next';
-import ListItem from './ListItem.vue';
+import { ListTodo, Info, Plus } from 'lucide-vue-next';
+import WindowTitleBar from './WindowTitleBar.vue';
+import ListItemPanel from './ListItemPanel.vue';
 import ScheduleEditor from './ScheduleEditor.vue';
 import type { MainTask, Schedule } from '../api/database';
 
@@ -25,6 +26,7 @@ interface Emits {
   'sub-tasks-changed': [];
   'add-sub-task': [content: string];
   'delete-sub-task': [subTaskId: number];
+  'close': [];
 }
 
 const props = defineProps<Props>();
@@ -44,18 +46,12 @@ const scheduleEditorRef = ref<InstanceType<typeof ScheduleEditor> | null>(null);
 
 // ============ 导航 ============
 
-function handleViewTaskDetail() {
-  emit('view-task-detail');
-}
-
 function handleBackToList() {
   emit('back-to-list');
   resetEditState();
 }
 
 function handleSelectRootTask() {
-  // 如果已经在 main-list，切换到 main-detail
-  // 否则回到 main-list
   if (props.viewMode === 'main-list') {
     emit('view-task-detail');
   } else {
@@ -78,7 +74,6 @@ function resetEditState() {
 
 function handleStartAddSubTask() {
   isAddingSubTask.value = true;
-  addingKey.value++;
 }
 
 function handleAddSubTask(content: string) {
@@ -93,17 +88,20 @@ function handleAddSubTask(content: string) {
   addingKey.value = 0;
 }
 
-function handleCancelAddSubTask() {
-  isAddingSubTask.value = false;
-  addingKey.value = 0;
-}
-
 function handleSelectSubTask(subTask: Schedule) {
   emit('select-sub-task', subTask);
 }
 
 function handleDeleteSubTask(subTaskId: number) {
   emit('delete-sub-task', subTaskId);
+}
+
+function handleInfoClick() {
+  emit('view-task-detail');
+}
+
+function handleClose() {
+  emit('close');
 }
 
 // ============ 详情编辑 ============
@@ -119,125 +117,77 @@ function handleSaveTaskDetailAndBack() {
 
 <template>
   <div class="right-panel flex flex-col flex-1 min-w-0">
-    <!-- Header with breadcrumb navigation -->
-    <div
-      class="flex items-center border-b px-3 py-2"
-      :style="{ borderColor: cellStyle.borderColor }"
+    <!-- Header with WindowTitleBar -->
+    <WindowTitleBar
+      :theme-style="themeStyle"
+      @close="handleClose"
     >
-      <template v-if="currentTask">
-        <!-- Breadcrumb navigation -->
-        <nav class="flex items-center gap-1 text-sm min-w-0 flex-1">
-          <!-- Task name -->
-          <button
-            @click="handleSelectRootTask"
-            class="px-2 py-1 rounded hover:bg-black/10 dark:hover:bg-white/10 transition-colors shrink-0"
-            :style="{ color: viewMode === 'main-list' ? themeStyle['--theme-text'] : themeStyle['--theme-text-muted'] }"
-            :title="currentTask.content"
+      <!-- Breadcrumb navigation -->
+      <nav v-if="currentTask" class="flex items-center gap-1 text-sm min-w-0 flex-1">
+        <!-- Task name -->
+        <button
+          @click="handleSelectRootTask"
+          class="px-2 py-1 rounded hover:bg-black/10 dark:hover:bg-white/10 transition-colors shrink-0"
+          :style="{ color: viewMode === 'main-list' ? themeStyle['--theme-text'] : themeStyle['--theme-text-muted'] }"
+          :title="currentTask.content"
+        >
+          <span class="truncate max-w-[150px] inline-block align-bottom">{{ currentTask.content }}</span>
+        </button>
+
+        <!-- Task Info breadcrumb -->
+        <template v-if="viewMode === 'main-detail'">
+          <span class="text-[var(--theme-text-muted)] shrink-0">/</span>
+          <span class="px-2 py-1 shrink-0" :style="{ color: themeStyle['--theme-text'] }">Info</span>
+        </template>
+
+        <!-- Sub-task breadcrumb -->
+        <template v-if="viewMode === 'sub-detail' && editingSubTask">
+          <span class="text-[var(--theme-text-muted)] shrink-0">/</span>
+          <span
+            class="px-2 py-1 truncate max-w-[150px] inline-block align-bottom"
+            :style="{ color: themeStyle['--theme-text'] }"
           >
-            <span class="truncate max-w-[150px] inline-block align-bottom">{{ currentTask.content }}</span>
-          </button>
+            {{ editingSubTask.content }}
+          </span>
+        </template>
+      </nav>
+      <span v-else class="text-base font-medium" :style="{ color: themeStyle['--theme-text-muted'] }">
+        Select a task
+      </span>
 
-          <!-- Task Info breadcrumb -->
-          <template v-if="viewMode === 'main-detail'">
-            <span class="text-[var(--theme-text-muted)] shrink-0">/</span>
-            <span class="px-2 py-1 shrink-0" :style="{ color: themeStyle['--theme-text'] }">Info</span>
-          </template>
-
-          <!-- Sub-task breadcrumb -->
-          <template v-if="viewMode === 'sub-detail' && editingSubTask">
-            <span class="text-[var(--theme-text-muted)] shrink-0">/</span>
-            <span
-              class="px-2 py-1 truncate max-w-[150px] inline-block align-bottom"
-              :style="{ color: themeStyle['--theme-text'] }"
-            >
-              {{ editingSubTask.content }}
-            </span>
-          </template>
-        </nav>
-
-        <!-- Add subtask button -->
-        <div v-if="viewMode === 'main-list'" class="ml-auto flex items-center">
-          <button
-            @click="handleStartAddSubTask"
-            class="p-1.5 rounded hover:bg-black/10 dark:hover:bg-white/10 transition-colors"
-            :style="{ color: themeStyle['--theme-text-muted'] }"
-            title="Add subtask"
-          >
-            <Plus class="w-4 h-4" />
-          </button>
-        </div>
+      <template #right>
+        <button
+          v-if="currentTask && viewMode === 'main-list'"
+          @click="handleStartAddSubTask"
+          class="shrink-0 w-6 h-6 flex items-center justify-center rounded transition-all opacity-0 group-hover:opacity-100 hover:bg-black/10 dark:hover:bg-white/10 active:scale-95"
+          :style="{ color: themeStyle['--theme-text'] }"
+          title="Add subtask"
+        >
+          <Plus class="w-4 h-4" />
+        </button>
       </template>
-      <template v-else>
-        <span class="text-base font-medium" :style="{ color: themeStyle['--theme-text-muted'] }">
-          Select a task
-        </span>
-      </template>
-    </div>
+    </WindowTitleBar>
 
     <!-- Content Area -->
     <div class="flex-1 relative overflow-hidden">
       <!-- Subtask list view -->
       <div v-if="viewMode === 'main-list'" class="absolute inset-0 flex flex-col w-full h-full">
-        <div class="flex-1 overflow-y-auto custom-scrollbar px-3 pt-2 pb-3">
-          <div class="space-y-2">
-            <!-- Task info entry -->
-            <div
-              class="group flex items-center gap-1 px-3 py-2 rounded-lg transition-all cursor-pointer hover:bg-black/5 dark:hover:bg-white/5"
-              :style="cellStyle"
-              @click="handleViewTaskDetail"
-            >
-              <Info
-                class="w-4 h-4 opacity-60 group-hover:opacity-100 transition-opacity"
-                :style="{ color: themeStyle['--theme-text-muted'] }"
-              />
-              <span
-                class="text-sm opacity-60 group-hover:opacity-100 transition-opacity"
-                :style="{ color: themeStyle['--theme-text-muted'] }"
-              >
-                Task Info
-              </span>
-            </div>
-
-            <!-- Add new subtask -->
-            <ListItem
-              v-if="isAddingSubTask"
-              :key="`add-sub-task-${addingKey}`"
-              is-add-mode
-              @add="handleAddSubTask"
-              @cancel="handleCancelAddSubTask"
-              @click.stop
-            />
-
-            <!-- Subtask list -->
-            <ListItem
-              v-for="subTask in subTasks"
-              :key="subTask.id"
-              :title="subTask.content"
-              :preview="subTask.description"
-              :date="subTask.create_date"
-              :is-done="subTask.is_done"
-              center-calendar
-              @update:title="() => {}"
-              @update:date="() => {}"
-              @delete="handleDeleteSubTask(subTask.id!)"
-              @toggle-done="handleSelectSubTask(subTask)"
-              @click="handleSelectSubTask(subTask)"
-            />
-          </div>
-
-          <!-- Empty state -->
-          <div
-            v-if="subTasks.length === 0 && !isAddingSubTask"
-            class="flex flex-col items-center justify-center py-20 pointer-events-none transition-opacity"
-          >
-            <div class="p-4 rounded-full" :style="cellStyle">
-              <ListTodo
-                class="w-8 h-8 opacity-20"
-                :style="{ color: themeStyle['--theme-text'] }"
-              />
-            </div>
-          </div>
-        </div>
+        <ListItemPanel
+          :items="subTasks"
+          :selected-item="null"
+          :theme-style="themeStyle"
+          :cell-style="cellStyle"
+          :parent-id="currentTask?.id"
+          :show-info-entry="true"
+          :info-entry-icon="Info"
+          :is-adding="isAddingSubTask"
+          @select="handleSelectSubTask"
+          @add="handleAddSubTask"
+          @delete="handleDeleteSubTask"
+          @info-click="handleInfoClick"
+          @start-add="handleStartAddSubTask"
+          @update:is-adding="(_val) => isAddingSubTask = _val"
+        />
       </div>
 
       <!-- Subtask detail view -->

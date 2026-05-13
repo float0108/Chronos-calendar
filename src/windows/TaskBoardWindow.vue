@@ -2,9 +2,7 @@
 import { ref, onMounted, onUnmounted, nextTick, watch } from 'vue';
 import { getCurrentWindow } from '@tauri-apps/api/window';
 import { listen } from '@tauri-apps/api/event';
-import { LayoutList, Plus } from 'lucide-vue-next';
-import WindowTitleBar from '../components/WindowTitleBar.vue';
-import ListItem from '../components/ListItem.vue';
+import TaskListPanel from '../components/TaskListPanel.vue';
 import SubTaskPanel from '../components/SubTaskPanel.vue';
 import { useTheme } from '../composables/useTheme';
 import { useTaskOperations } from '../composables/useTaskOperations';
@@ -32,13 +30,9 @@ const editingSubTask = ref<Schedule | null>(null);
 
 // ============ 添加任务状态 ============
 const isAddingMainTask = ref(false);
-const addingKey = ref(0);
-
-// ============ 搜索状态 ============
-const isSearchFocused = ref(false);
 
 // ============ 搜索功能：关键词变化时重新加载 ============
-watch(searchKeyword, () => {
+const stopSearchWatch = watch(searchKeyword, () => {
   loadTasks();
 });
 
@@ -79,6 +73,7 @@ onMounted(async () => {
 });
 
 onUnmounted(() => {
+  stopSearchWatch();
   unlisteners.forEach(fn => fn());
 });
 
@@ -146,7 +141,6 @@ function handleSelectRootTask() {
 
 function handleStartAddTask() {
   viewMode.value = 'main-list';
-  addingKey.value++;
   isAddingMainTask.value = true;
 }
 
@@ -154,7 +148,6 @@ async function handleAddTask(content: string) {
   const trimmed = content.trim();
   if (!trimmed) {
     isAddingMainTask.value = false;
-    addingKey.value = 0;
     return;
   }
   try {
@@ -170,20 +163,20 @@ async function handleAddTask(content: string) {
     console.error('Failed to add task:', error);
   }
   isAddingMainTask.value = false;
-  addingKey.value = 0;
 }
 
-function handleCancelAddTask() {
-  isAddingMainTask.value = false;
-  addingKey.value = 0;
-}
-async function handleIconDrag() {
+async function handleStartDrag() {
   try {
     const win = getCurrentWindow();
     await win.startDragging();
   } catch (error) {
     console.error('Drag failed:', error);
   }
+}
+
+async function handleClose() {
+  const win = getCurrentWindow();
+  await win.hide();
 }
 </script>
 
@@ -197,89 +190,22 @@ async function handleIconDrag() {
         WebkitBackdropFilter: settings.enable_blur ? 'blur(20px) saturate(180%)' : 'none',
       }">
 
-      <!-- Left Panel: Task List with Title Bar -->
-      <div class="left-panel flex flex-col w-80 border-r min-h-0" :style="{ borderColor: 'var(--theme-border)' }">
-        <!-- Title Bar using WindowTitleBar component -->
-        <WindowTitleBar :theme-style="themeStyle" :hide-close-button="true" @start-drag="handleIconDrag">
-          <template #left>
-            <button
-              class="shrink-0 w-6 h-6 flex items-center justify-center cursor-grab active:cursor-grabbing hover:opacity-80 transition-opacity"
-              :style="{ color: themeStyle['--theme-text'] }"
-              title="Drag"
-              @mousedown.stop="handleIconDrag"
-            >
-              <LayoutList class="w-4 h-4" />
-            </button>
-          </template>
-
-          <span v-show="!isSearchFocused"
-                class="text-base font-medium leading-relaxed transition-opacity cursor-text"
-                :style="{ color: themeStyle['--theme-text'] }"
-                @click="isSearchFocused = true">
-            Tasks
-          </span>
-          <input
-            v-show="isSearchFocused"
-            v-model="searchKeyword"
-            type="text"
-            placeholder="..."
-            class="absolute inset-0 w-full h-full bg-black/5 dark:bg-white/5 rounded-md px-2 outline-none text-sm leading-relaxed text-center selection:bg-[var(--theme-primary-alpha)] caret-[var(--theme-text)]"
-            :style="{ color: themeStyle['--theme-text'] }"
-            @input="handleSearch(searchKeyword)"
-            @focus="isSearchFocused = true"
-            @blur="isSearchFocused = false"
-          />
-
-          <template #right>
-            <button
-              @click="handleStartAddTask"
-              class="shrink-0 w-6 h-6 flex items-center justify-center rounded transition-all opacity-0 group-hover:opacity-100 hover:bg-black/10 dark:hover:bg-white/10 active:scale-95"
-              :style="{ color: themeStyle['--theme-text'] }"
-              title="Add task"
-            >
-              <Plus class="w-4 h-4" />
-            </button>
-          </template>
-        </WindowTitleBar>
-
-        <!-- Task List -->
-        <div class="flex-1 overflow-y-auto custom-scrollbar px-3 pt-2 pb-3">
-          <div class="space-y-2">
-            <!-- Add New Task -->
-            <ListItem
-              v-if="isAddingMainTask"
-              :key="`add-new-task-${addingKey}`"
-              is-add-mode
-              @add="handleAddTask"
-              @cancel="handleCancelAddTask"
-              @click.stop
-            />
-
-            <!-- Task List Items -->
-            <ListItem
-              v-for="task in tasks"
-              :key="task.id"
-              :title="task.content"
-              :date="task.create_date"
-              :is-done="task.is_done"
-              center-calendar
-              :selected="currentTask?.id === task.id"
-              @update:title="() => {}"
-              @update:date="() => {}"
-              @delete="handleDeleteTask(task.id!)"
-              @toggle-done="handleSelectTask(task)"
-              @click="handleSelectTask(task)"
-            />
-          </div>
-
-          <!-- Empty State -->
-          <div v-if="tasks.length === 0" class="flex flex-col items-center justify-center py-20 pointer-events-none transition-opacity">
-            <div class="p-4 rounded-full" :style="{ backgroundColor: 'var(--theme-cell)' }">
-              <LayoutList class="w-8 h-8 opacity-20" :style="{ color: themeStyle['--theme-text'] }" />
-            </div>
-          </div>
-        </div>
-      </div>
+      <!-- Left Panel: Task List -->
+      <TaskListPanel
+        :tasks="tasks"
+        :selected-task="currentTask"
+        :theme-style="themeStyle"
+        :cell-style="cellStyle"
+        :search-keyword="searchKeyword"
+        :is-adding-main-task="isAddingMainTask"
+        @select-task="handleSelectTask"
+        @start-add-task="handleStartAddTask"
+        @add-task="handleAddTask"
+        @delete-task="handleDeleteTask"
+        @tasks-changed="handleTasksChanged"
+        @search="handleSearch"
+        @start-drag="handleStartDrag"
+      />
 
       <!-- Right Panel: SubTask List / Detail -->
       <SubTaskPanel
@@ -296,6 +222,7 @@ async function handleIconDrag() {
         @sub-tasks-changed="handleSubTasksChanged"
         @add-sub-task="handleAddSubTask"
         @delete-sub-task="handleDeleteSubTask"
+        @close="handleClose"
       />
     </div>
   </div>
