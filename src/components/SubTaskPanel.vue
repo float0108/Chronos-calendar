@@ -1,7 +1,7 @@
 <!-- components/SubTaskPanel.vue -->
 <script setup lang="ts">
-import { ref } from 'vue';
-import { ListTodo, Info, Plus } from 'lucide-vue-next';
+import { ref, computed } from 'vue';
+import { ListTodo, Info, Plus, ChevronLeft } from 'lucide-vue-next';
 import WindowTitleBar from './WindowTitleBar.vue';
 import ListItemPanel from './ListItemPanel.vue';
 import ScheduleEditor from './ScheduleEditor.vue';
@@ -41,8 +41,24 @@ const editDoneDate = ref('');
 const taskEditDescription = ref('');
 const taskEditCreateDate = ref('');
 const taskEditDoneDate = ref('');
+const subTaskSearchKeyword = ref('');
 
 const scheduleEditorRef = ref<InstanceType<typeof ScheduleEditor> | null>(null);
+
+// 是否显示搜索框
+const showSearch = computed(() => !!(props.currentTask && props.viewMode === 'main-list'));
+
+// 过滤后的子任务
+const filteredSubTasks = computed(() => {
+  if (!subTaskSearchKeyword.value.trim()) {
+    return props.subTasks;
+  }
+  const keyword = subTaskSearchKeyword.value.toLowerCase();
+  return props.subTasks.filter(task =>
+    task.content.toLowerCase().includes(keyword) ||
+    (task.description && task.description.toLowerCase().includes(keyword))
+  );
+});
 
 // ============ 导航 ============
 
@@ -120,40 +136,23 @@ function handleSaveTaskDetailAndBack() {
     <!-- Header with WindowTitleBar -->
     <WindowTitleBar
       :theme-style="themeStyle"
+      :show-search="showSearch"
+      :title="currentTask?.content || ''"
+      v-model="subTaskSearchKeyword"
+      search-placeholder="Search subtasks..."
       @close="handleClose"
     >
-      <!-- Breadcrumb navigation -->
-      <nav v-if="currentTask" class="flex items-center gap-1 text-sm min-w-0 flex-1">
-        <!-- Task name -->
+      <template #left>
         <button
+          v-if="currentTask"
           @click="handleSelectRootTask"
-          class="px-2 py-1 rounded hover:bg-black/10 dark:hover:bg-white/10 transition-colors shrink-0"
-          :style="{ color: viewMode === 'main-list' ? themeStyle['--theme-text'] : themeStyle['--theme-text-muted'] }"
+          class="shrink-0 w-6 h-6 flex items-center justify-center rounded transition-all hover:bg-black/10 dark:hover:bg-white/10 active:scale-95"
+          :style="{ color: themeStyle['--theme-text'] }"
           :title="currentTask.content"
         >
-          <span class="truncate max-w-[150px] inline-block align-bottom">{{ currentTask.content }}</span>
+          <ChevronLeft class="w-4 h-4" />
         </button>
-
-        <!-- Task Info breadcrumb -->
-        <template v-if="viewMode === 'main-detail'">
-          <span class="text-[var(--theme-text-muted)] shrink-0">/</span>
-          <span class="px-2 py-1 shrink-0" :style="{ color: themeStyle['--theme-text'] }">Info</span>
-        </template>
-
-        <!-- Sub-task breadcrumb -->
-        <template v-if="viewMode === 'sub-detail' && editingSubTask">
-          <span class="text-[var(--theme-text-muted)] shrink-0">/</span>
-          <span
-            class="px-2 py-1 truncate max-w-[150px] inline-block align-bottom"
-            :style="{ color: themeStyle['--theme-text'] }"
-          >
-            {{ editingSubTask.content }}
-          </span>
-        </template>
-      </nav>
-      <span v-else class="text-base font-medium" :style="{ color: themeStyle['--theme-text-muted'] }">
-        Select a task
-      </span>
+      </template>
 
       <template #right>
         <button
@@ -173,7 +172,7 @@ function handleSaveTaskDetailAndBack() {
       <!-- Subtask list view -->
       <div v-if="viewMode === 'main-list'" class="absolute inset-0 flex flex-col w-full h-full">
         <ListItemPanel
-          :items="subTasks"
+          :items="filteredSubTasks"
           :selected-item="null"
           :theme-style="themeStyle"
           :cell-style="cellStyle"
@@ -181,6 +180,7 @@ function handleSaveTaskDetailAndBack() {
           :show-info-entry="true"
           :info-entry-icon="Info"
           :is-adding="isAddingSubTask"
+          :show-header="false"
           @select="handleSelectSubTask"
           @add="handleAddSubTask"
           @delete="handleDeleteSubTask"

@@ -35,9 +35,6 @@ const effectiveTheme = computed(() => {
 
 const { themeStyle, cellStyle } = useThemeStyle(settings, () => effectiveTheme.value);
 
-// 搜索框焦点状态
-const isSearchFocused = ref(false);
-
 // 新增模式
 const isAdding = ref(false);
 
@@ -53,9 +50,6 @@ const editDescription = ref('');
 const editCreateDate = ref('');
 const editDoneDate = ref('');
 const scheduleEditorRef = ref<InstanceType<typeof ScheduleEditor> | null>(null);
-
-// DOM Refs
-const searchInputRef = ref<HTMLInputElement | null>(null);
 
 function loadSettings() {
   const saved = localStorage.getItem('chronos_settings');
@@ -206,14 +200,6 @@ function handleCancelScheduleDetail() {
   handleBackToList();
 }
 
-watch(isSearchFocused, (focused) => {
-  if (focused) {
-    nextTick(() => {
-      searchInputRef.value?.focus();
-    });
-  }
-});
-
 watch(showPastTodos, () => {
   loadSchedulesData();
 });
@@ -275,8 +261,12 @@ onUnmounted(() => {
       <!-- 标题栏 - 使用单个 WindowTitleBar -->
       <WindowTitleBar
         :theme-style="themeStyle"
+        :show-search="viewMode === 'list'"
+        title="Todo"
+        v-model="searchKeyword"
         @close="handleClose"
         @start-drag="handleIconDrag"
+        @search="loadSchedulesData"
       >
         <template #left>
           <!-- 详情视图显示返回按钮 -->
@@ -295,33 +285,12 @@ onUnmounted(() => {
           </button>
         </template>
 
-        <!-- 标题 -->
-        <span v-show="!isSearchFocused && viewMode === 'list'"
-          class="text-base font-medium leading-relaxed transition-opacity"
-          :style="{ color: 'var(--theme-text)' }"
-          @click="isSearchFocused = true">
-          Todo
-        </span>
-        <span v-show="viewMode === 'detail'"
-          class="text-base font-medium leading-relaxed"
-          :style="{ color: 'var(--theme-text)' }">
-          日程详情
-        </span>
-
-        <!-- 搜索框 -->
-        <input
-          ref="searchInputRef"
-          v-show="isSearchFocused && viewMode === 'list'"
-          v-model="searchKeyword"
-          type="text"
-          placeholder="..."
-          class="absolute inset-0 w-full h-full bg-black/5 dark:bg-white/5 rounded-md px-2 outline-none text-sm leading-relaxed text-center selection:bg-[var(--theme-primary-alpha)] caret-[var(--theme-text)]"
-          :style="{ color: 'var(--theme-text)' }"
-          @input="loadSchedulesData"
-          @focus="isSearchFocused = true"
-          @blur="isSearchFocused = false"
-          @mousedown.stop
-        />
+        <!-- 详情视图标题 -->
+        <template #center>
+          <span v-if="viewMode === 'detail'" class="text-base font-medium leading-relaxed" :style="{ color: 'var(--theme-text)' }">
+            日程详情
+          </span>
+        </template>
 
         <template #right>
           <button v-if="viewMode === 'list'" @click="showPastTodos = !showPastTodos"

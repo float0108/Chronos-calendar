@@ -1,6 +1,7 @@
 <!-- components/TaskListPanel.vue -->
 <script setup lang="ts">
 import { Plus, GripVertical } from 'lucide-vue-next';
+import WindowTitleBar from './WindowTitleBar.vue';
 import ListItemPanel from './ListItemPanel.vue';
 import type { MainTask } from '../api/database';
 
@@ -9,7 +10,7 @@ interface Props {
   selectedTask: MainTask | null;
   themeStyle: Record<string, string>;
   cellStyle: Record<string, string>;
-  searchKeyword: string;
+  searchKeyword?: string;
   isAddingMainTask?: boolean;
 }
 
@@ -23,7 +24,10 @@ interface Emits {
   'start-drag': [];
 }
 
-defineProps<Props>();
+withDefaults(defineProps<Props>(), {
+  searchKeyword: '',
+});
+
 const emit = defineEmits<Emits>();
 
 function handleSelect(task: MainTask) {
@@ -53,35 +57,38 @@ function handleStartAdd() {
 
 <template>
   <div class="left-panel flex flex-col w-80 border-r min-h-0" :style="{ borderColor: cellStyle.borderColor }">
-    <!-- Header with Drag, Search and Add -->
-    <div class="flex items-center gap-2 border-b px-3 py-2 shrink-0 group" :style="{ borderColor: cellStyle.borderColor }">
-      <button
-        class="shrink-0 w-5 h-5 flex items-center justify-center cursor-grab active:cursor-grabbing hover:opacity-80 transition-opacity"
-        :style="{ color: themeStyle['--theme-text'] }"
-        title="Drag"
-        @mousedown.stop="emit('start-drag')"
-      >
-        <GripVertical class="w-3.5 h-3.5" />
-      </button>
-      <input
-        type="text"
-        placeholder="Search tasks..."
-        :value="searchKeyword"
-        @input="(e) => handleSearch((e.target as HTMLInputElement).value)"
-        class="flex-1 px-2 py-1 rounded text-sm bg-transparent outline-none"
-        :style="{
-          color: themeStyle['--theme-text'],
-        }"
-      />
-      <button
-        @click="handleStartAdd"
-        class="p-1 rounded hover:bg-black/10 dark:hover:bg-white/10 transition-colors shrink-0"
-        :style="{ color: themeStyle['--theme-text-muted'] }"
-        title="Add task"
-      >
-        <Plus class="w-4 h-4" />
-      </button>
-    </div>
+    <!-- Header with WindowTitleBar -->
+    <WindowTitleBar
+      :theme-style="themeStyle"
+      :show-search="true"
+      :title="'Tasks'"
+      :model-value="searchKeyword"
+      search-placeholder="Search tasks..."
+      @update:model-value="handleSearch"
+      @start-drag="emit('start-drag')"
+    >
+      <template #left>
+        <button
+          class="shrink-0 w-5 h-5 flex items-center justify-center cursor-grab active:cursor-grabbing hover:opacity-80 transition-opacity"
+          :style="{ color: themeStyle['--theme-text'] }"
+          title="Drag"
+          @mousedown.stop="emit('start-drag')"
+        >
+          <GripVertical class="w-3.5 h-3.5" />
+        </button>
+      </template>
+
+      <template #right>
+        <button
+          @click="handleStartAdd"
+          class="shrink-0 w-6 h-6 flex items-center justify-center rounded transition-all opacity-0 group-hover:opacity-100 hover:bg-black/10 dark:hover:bg-white/10 active:scale-95"
+          :style="{ color: themeStyle['--theme-text'] }"
+          title="Add task"
+        >
+          <Plus class="w-4 h-4" />
+        </button>
+      </template>
+    </WindowTitleBar>
 
     <!-- Task List -->
     <ListItemPanel
@@ -89,14 +96,11 @@ function handleStartAdd() {
       :selected-item="selectedTask"
       :theme-style="themeStyle"
       :cell-style="cellStyle"
-      :search-keyword="searchKeyword"
       :is-adding="isAddingMainTask"
-      :show-header="false"
       @select="handleSelect"
       @add="handleAdd"
       @delete="handleDelete"
       @toggle-done="handleToggleDone"
-      @search="handleSearch"
       @start-add="emit('start-add-task')"
       @update:is-adding="() => emit('start-add-task')"
     />

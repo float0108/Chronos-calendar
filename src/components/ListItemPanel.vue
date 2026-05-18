@@ -23,7 +23,7 @@ const props = withDefaults(defineProps<Props>(), {
   searchKeyword: '',
   showInfoEntry: false,
   infoEntryIcon: undefined,
-  showHeader: true,
+  showHeader: false,
   isAdding: false,
 });
 

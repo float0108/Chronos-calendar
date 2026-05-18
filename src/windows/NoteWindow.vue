@@ -1,8 +1,9 @@
 <script setup lang="ts">
 import { ref, onMounted, nextTick, computed, onUnmounted, watch } from 'vue';
 import { getCurrentWindow } from '@tauri-apps/api/window';
-import { X, Trash2, FileText, StickyNote, ChevronLeft, Plus, PenLine } from 'lucide-vue-next';
+import { Trash2, FileText, StickyNote, ChevronLeft, Plus, PenLine } from 'lucide-vue-next';
 import ListItem from '../components/ListItem.vue';
+import WindowTitleBar from '../components/WindowTitleBar.vue';
 import MiniCalendar from '../components/calendar/MiniCalendar.vue';
 import {
   loadNotes,
@@ -35,13 +36,9 @@ const effectiveTheme = computed(() => {
 
 // DOM Refs 用于自动聚焦
 const titleInputRef = ref<HTMLInputElement | null>(null);
-const searchInputRef = ref<HTMLInputElement | null>(null);
 
 // 视图控制：false 显示列表，true 显示编辑器
 const isEditing = ref(false);
-
-// 搜索框焦点状态
-const isSearchFocused = ref(false);
 
 // 追踪是否是新创建的备忘录（用于自动删除空备忘录）
 const isNewNote = ref(false);
@@ -213,11 +210,9 @@ watch([title, content], () => {
   }
 });
 
-watch(isSearchFocused, (focused) => {
-  if (focused) {
-    nextTick(() => {
-      searchInputRef.value?.focus();
-    });
+watch([title, content], () => {
+  if (currentNote.value?.id && isEditing.value) {
+    scheduleSave();
   }
 });
 
@@ -293,54 +288,35 @@ onUnmounted(() => {
            WebkitBackdropFilter: settings.enable_blur ? 'blur(20px) saturate(180%)' : 'none',
          }">
 
-      <div class="title-bar flex items-center gap-2 px-3 py-2.5 shrink-0 select-none group"
-           data-tauri-drag-region>
-        <template v-if="!isEditing">
-          <button @mousedown="handleIconDrag"
+      <!-- 标题栏 -->
+      <WindowTitleBar
+        :theme-style="themeStyle"
+        :show-search="!isEditing"
+        title=""
+        v-model="searchKeyword"
+        @close="handleClose"
+        @start-drag="handleIconDrag"
+        @search="loadNotesList"
+      >
+        <template #left>
+          <!-- 编辑模式显示返回按钮 -->
+          <button v-if="isEditing" @click="handleBackToList"
+                  class="shrink-0 w-6 h-6 flex items-center justify-center rounded transition-all hover:bg-black/10 dark:hover:bg-white/10 active:scale-95"
+                  :style="{ color: 'var(--theme-text)' }">
+            <ChevronLeft class="w-4 h-4" />
+          </button>
+          <!-- 列表模式显示拖拽按钮 -->
+          <button v-else @mousedown="handleIconDrag"
                   class="shrink-0 w-6 h-6 flex items-center justify-center cursor-grab active:cursor-grabbing hover:opacity-80 transition-opacity"
                   :style="{ color: 'var(--theme-text)' }"
                   title="Drag">
             <StickyNote class="w-4 h-4" />
           </button>
-
-          <div class="flex-1 min-w-0 flex justify-center items-center relative h-6"
-               @mousedown="(e) => e.target === e.currentTarget && handleIconDrag()">
-            <span v-show="!isSearchFocused"
-                  class="text-base font-medium leading-relaxed transition-opacity cursor-text"
-                  :style="{ color: 'var(--theme-text)' }"
-                  @click="isSearchFocused = true">
-              Notes
-            </span>
-            <input
-              ref="searchInputRef"
-              v-show="isSearchFocused"
-              v-model="searchKeyword"
-              type="text"
-              placeholder="..."
-              class="absolute inset-0 w-full h-full bg-black/5 dark:bg-white/5 rounded-md px-2 outline-none text-sm leading-relaxed text-center selection:bg-[var(--theme-primary-alpha)] caret-[var(--theme-text)]"
-              :style="{ color: 'var(--theme-text)' }"
-              @input="loadNotesList"
-              @focus="isSearchFocused = true"
-              @blur="isSearchFocused = false"
-            />
-          </div>
-
-          <button @click="handleNewNote"
-                  class="shrink-0 w-6 h-6 flex items-center justify-center rounded transition-all opacity-0 group-hover:opacity-100 hover:bg-black/10 dark:hover:bg-white/10 active:scale-95"
-                  :style="{ color: 'var(--theme-text)' }">
-            <Plus class="w-4 h-4" />
-          </button>
         </template>
 
-        <template v-else>
-          <button @click="handleBackToList"
-                  class="shrink-0 w-6 h-6 flex items-center justify-center rounded transition-all hover:bg-black/10 dark:hover:bg-white/10 active:scale-95"
-                  :style="{ color: 'var(--theme-text)' }">
-            <ChevronLeft class="w-4 h-4" />
-          </button>
-
-          <!-- 使用绝对定位实现标题真正居中 -->
-          <div class="flex-1 min-w-0 relative h-6"
+        <!-- 编辑模式标题输入 -->
+        <template #center>
+          <div v-if="isEditing" class="flex-1 min-w-0 relative h-6"
                @mousedown="handleIconDrag">
             <div class="absolute inset-0 flex justify-center items-center pointer-events-none">
               <input
@@ -354,20 +330,23 @@ onUnmounted(() => {
               />
             </div>
           </div>
+        </template>
 
+        <template #right>
+          <button @click="handleNewNote"
+                  v-if="!isEditing"
+                  class="shrink-0 w-6 h-6 flex items-center justify-center rounded transition-all opacity-0 group-hover:opacity-100 hover:bg-black/10 dark:hover:bg-white/10 active:scale-95"
+                  :style="{ color: 'var(--theme-text)' }">
+            <Plus class="w-4 h-4" />
+          </button>
           <button @click="handleDeleteNote"
+                  v-if="isEditing"
                   class="shrink-0 w-6 h-6 flex items-center justify-center rounded transition-all opacity-0 group-hover:opacity-100 hover:bg-red-50 dark:hover:bg-red-900/30"
                   :style="{ color: 'var(--theme-text)' }">
             <Trash2 class="w-4 h-4 hover:text-red-500 dark:hover:text-red-400 transition-colors" />
           </button>
         </template>
-
-        <button @click="handleClose"
-          class="close-btn shrink-0 w-6 h-6 flex items-center justify-center rounded transition-all opacity-0 group-hover:opacity-100 hover:bg-black/10 dark:hover:bg-white/10 active:scale-95"
-          :style="{ color: 'var(--theme-text)' }">
-          <X class="w-4 h-4" />
-        </button>
-      </div>
+      </WindowTitleBar>
 
       <div class="flex-1 relative overflow-hidden">
         <Transition name="view-fade">
