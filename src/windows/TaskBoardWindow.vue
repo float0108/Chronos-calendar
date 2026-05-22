@@ -6,7 +6,7 @@ import TaskListPanel from '../components/TaskListPanel.vue';
 import SubTaskPanel from '../components/SubTaskPanel.vue';
 import { useTheme } from '../composables/useTheme';
 import { useTaskOperations } from '../composables/useTaskOperations';
-import { saveMainTask, saveSubTask, deleteSchedule, deleteMainTask } from '../api/database';
+import { saveMainTask, saveSubTask, deleteSchedule, deleteMainTask, toggleMainTaskStatus, toggleScheduleStatus, updateScheduleContent, updateMainTaskContent } from '../api/database';
 import { defaultLightSettings } from '../types';
 import type { MainTask, Schedule } from '../api/database';
 import type { DataChange } from '../types';
@@ -83,6 +83,12 @@ async function handleSelectTask(task: MainTask) {
   viewMode.value = 'main-list';
 }
 
+async function handleToggleMainTaskDone(task: MainTask) {
+  if (!task.id) return;
+  await toggleMainTaskStatus(task.id, !task.is_done);
+  await loadTasks();
+}
+
 function handleViewTaskDetail() {
   viewMode.value = 'main-detail';
 }
@@ -90,6 +96,24 @@ function handleViewTaskDetail() {
 function handleSelectSubTask(subTask: Schedule) {
   editingSubTask.value = subTask;
   viewMode.value = 'sub-detail';
+}
+
+async function handleToggleSubTaskDone(subTask: Schedule) {
+  if (!subTask.id) return;
+  await toggleScheduleStatus(subTask.id, !subTask.is_done);
+  await loadSubTasks();
+}
+
+async function handleUpdateSubTaskContent(subTaskId: number, content: string) {
+  if (!subTaskId) return;
+  await updateScheduleContent(subTaskId, content);
+  await loadSubTasks();
+}
+
+async function handleUpdateMainTaskContent(taskId: number, content: string) {
+  if (!taskId) return;
+  await updateMainTaskContent(taskId, content);
+  await loadTasks();
 }
 
 function handleBackToList() {
@@ -199,6 +223,7 @@ async function handleClose() {
         :search-keyword="searchKeyword"
         :is-adding-main-task="isAddingMainTask"
         @select-task="handleSelectTask"
+        @toggle-done="handleToggleMainTaskDone"
         @start-add-task="handleStartAddTask"
         @add-task="handleAddTask"
         @delete-task="handleDeleteTask"
@@ -216,6 +241,10 @@ async function handleClose() {
         :theme-style="themeStyle"
         :cell-style="cellStyle"
         @select-sub-task="handleSelectSubTask"
+        @toggle-sub-task-done="handleToggleSubTaskDone"
+        @update-sub-task-content="handleUpdateSubTaskContent"
+        @update-main-task-content="handleUpdateMainTaskContent"
+        @title-saved="handleSubTasksChanged"
         @view-task-detail="handleViewTaskDetail"
         @back-to-list="handleBackToList"
         @select-root-task="handleSelectRootTask"

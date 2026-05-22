@@ -18,7 +18,7 @@ import { useFonts } from './composables/useFonts';
 import { useContextMenu } from './composables/useContextMenu';
 import { setWindowLocked, hideWindow, exitApp } from './utils/window';
 import { exportDatabaseBackup, exportAsZip, importFromJson } from './utils/export';
-import { useToast } from './composables/useToast';
+import { useToast } from './composables/useNotification';
 import { hexToRgba, adjustBrightness } from './utils/color';
 import type { ViewMode, Schedule, BatchTaskConfig, DataChange } from './types';
 

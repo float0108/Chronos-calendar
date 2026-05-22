@@ -143,6 +143,54 @@ function convertImportStats(stats: BackendImportStats): ImportStats {
   };
 }
 
+// ========== Backend Format Converters (Frontend -> Backend) ==========
+
+function toBackendSchedule(s: Schedule): BackendSchedule {
+  return {
+    id: s.id || 0,
+    create_date: s.create_date || null,
+    content: s.content,
+    is_done: s.is_done,
+    priority: s.priority,
+    done_date: s.done_date || null,
+    description: s.description || null,
+    father_task: s.father_task || null,
+  };
+}
+
+function toBackendMainTask(t: MainTask): BackendMainTask {
+  return {
+    id: t.id || 0,
+    content: t.content,
+    description: t.description || null,
+    is_done: t.is_done,
+    priority: t.priority,
+    create_date: t.create_date,
+    done_date: t.done_date || null,
+  };
+}
+
+function toBackendNote(n: Note): BackendNote {
+  return {
+    id: n.id || 0,
+    title: n.title,
+    content: n.content,
+    create_date: n.create_date,
+  };
+}
+
+function toBackendExportData(data: ExportData): BackendBackupData {
+  return {
+    schedules: data.schedules.map(toBackendSchedule),
+    main_tasks: data.mainTasks.map(toBackendMainTask),
+    notes: data.notes.map(toBackendNote),
+    cell_metadata: data.cellMetadata.map(m => ({
+      date: m.date,
+      cell_color: m.cell_color || null,
+    })),
+  };
+}
+
 // ========== Schedule API ==========
 
 export async function loadSchedules(startDate: string, endDate: string): Promise<Schedule[]> {
@@ -361,39 +409,7 @@ export async function exportAllData(): Promise<ExportData> {
 }
 
 export async function importAndMergeData(data: ExportData): Promise<ImportStats> {
-  // 转换为后端格式 (camelCase -> snake_case)
-  const backendData = {
-    schedules: data.schedules.map(s => ({
-      id: s.id || 0,
-      create_date: s.create_date || null,
-      content: s.content,
-      is_done: s.is_done,
-      priority: s.priority,
-      done_date: s.done_date || null,
-      description: s.description || null,
-      father_task: s.father_task || null,
-    })),
-    main_tasks: data.mainTasks.map(t => ({
-      id: t.id || 0,
-      content: t.content,
-      description: t.description || null,
-      is_done: t.is_done,
-      priority: t.priority,
-      create_date: t.create_date,
-      done_date: t.done_date || null,
-    })),
-    notes: data.notes.map(n => ({
-      id: n.id || 0,
-      title: n.title,
-      content: n.content,
-      create_date: n.create_date,
-    })),
-    cell_metadata: data.cellMetadata.map(m => ({
-      date: m.date,
-      cell_color: m.cell_color || null,
-    })),
-  };
-
+  const backendData = toBackendExportData(data);
   const stats = await invoke<BackendImportStats>('db_import_and_merge_data', { data: backendData });
   return convertImportStats(stats);
 }
@@ -409,10 +425,12 @@ export async function resetAutoIncrement(): Promise<void> {
 // ========== Legacy Compatibility ==========
 
 export async function loadAllSchedules(): Promise<{ schedules: Schedule[], cellColors: Map<string, string> }> {
-  // 加载所有日程
+  // 加载所有日程（扩展到过去3年和未来1年，覆盖跨年数据）
   const today = new Date();
-  const startDate = `${today.getFullYear()}-01-01`;
-  const endDate = `${today.getFullYear() + 1}-12-31`;
+  const startYear = today.getFullYear() - 3;
+  const endYear = today.getFullYear() + 1;
+  const startDate = `${startYear}-01-01`;
+  const endDate = `${endYear}-12-31`;
 
   const schedules = await loadSchedules(startDate, endDate);
   const cellColors = await loadCellColorMap(startDate, endDate);
@@ -422,36 +440,27 @@ export async function loadAllSchedules(): Promise<{ schedules: Schedule[], cellC
 
 export async function importSchedules(
   schedules: Schedule[],
-  merge: boolean
+  _merge: boolean
 ): Promise<{ inserted: number, updated: number }> {
-  let inserted = 0;
-  let updated = 0;
-
-  if (merge) {
-    // 合并模式：先尝试插入，失败则更新
-    for (const s of schedules) {
-      try {
-        await saveSchedule(s.create_date || '', s.content, s.is_done, s.done_date || undefined, s.description || undefined);
-        inserted++;
-      } catch (error) {
-        console.error('Failed to import schedule:', s, error);
-        updated++;
-      }
-    }
-  } else {
-    // 覆盖模式：直接插入
-    for (const s of schedules) {
-      try {
-        await saveSchedule(s.create_date || '', s.content, s.is_done, s.done_date || undefined, s.description || undefined);
-        inserted++;
-      } catch (error) {
-        console.error('Failed to import schedule:', s, error);
-        throw error; // 覆盖模式下失败应该抛出异常
-      }
-    }
+  if (schedules.length === 0) {
+    return { inserted: 0, updated: 0 };
   }
 
-  return { inserted, updated };
+  // 转换为后端格式
+  const items: ScheduleItemInput[] = schedules.map(s => ({
+    id: s.id || 0,
+    create_date: s.create_date || '',
+    content: s.content,
+    is_done: s.is_done,
+    priority: s.priority,
+    done_date: s.done_date || null,
+    description: s.description || null,
+    father_task: s.father_task || null,
+  }));
+
+  // 使用批量 API 一次性插入
+  const ids = await saveSchedulesBatch(items);
+  return { inserted: ids.length, updated: 0 };
 }
 
 export async function importCellColors(

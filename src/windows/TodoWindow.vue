@@ -331,6 +331,7 @@ onUnmounted(() => {
                   :date="schedule.create_date"
                   :is-done="schedule.is_done"
                   center-calendar
+                  show-context-menu-done
                   @update:title="(val) => handleUpdateSchedule(schedule, val)"
                   @update:date="(val) => handleUpdateScheduleDate(schedule, val)"
                   @delete="handleDeleteSchedule(schedule.id!)"

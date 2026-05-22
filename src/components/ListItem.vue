@@ -13,12 +13,14 @@ const props = withDefaults(defineProps<{
   centerCalendar?: boolean;
   isAddMode?: boolean;
   selected?: boolean;
+  showContextMenuDone?: boolean;
 }>(), {
   title: '',
   editable: true,
   centerCalendar: false,
   isAddMode: false,
   selected: false,
+  showContextMenuDone: false,
 });
 
 const emit = defineEmits<{
@@ -82,7 +84,7 @@ function handleTitleClick() {
   clickTimer = setTimeout(() => {
     emit('click');
     clickTimer = null;
-  }, 250);
+  }, 150);
 }
 
 function handleTitleDblclick() {
@@ -220,7 +222,7 @@ onUnmounted(() => {
             :style="{ color: isDone ? 'var(--theme-text-muted)' : 'var(--theme-text)' }"
             @click.stop="handleTitleClick"
             @dblclick.stop="handleTitleDblclick"
-            @contextmenu.prevent.stop="emit('toggleDone')"
+            @contextmenu.prevent.stop="showContextMenuDone && emit('toggleDone')"
           >
             {{ title || '...' }}
           </span>

@@ -1,7 +1,7 @@
 import { ref } from 'vue';
 import type { Schedule } from '../types';
 import { importFromFile, csvToSchedules } from '../utils/export';
-import { useToast } from './useToast';
+import { useToast } from './useNotification';
 
 export function useImport() {
   const { showSuccess, showError } = useToast();

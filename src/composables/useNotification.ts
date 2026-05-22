@@ -10,6 +10,9 @@ export interface Notification {
   duration: number;
 }
 
+// Module-level singleton for backward compatibility with useToast
+const notifications = ref<Notification[]>([]);
+
 /**
  * 通知提示组合式函数
  *
@@ -17,10 +20,11 @@ export interface Notification {
  * - 管理通知列表
  * - 显示/隐藏通知
  * - 自动消失
+ *
+ * @deprecated Use show/hide/clear methods directly on this module
+ *             or create local refs with the composable function
  */
 export function useNotification() {
-  const notifications = ref<Notification[]>([]);
-
   /**
    * 显示通知
    * @param message 通知内容
@@ -93,5 +97,40 @@ export function useNotification() {
     error,
     warning,
     info,
+  };
+}
+
+// Backward compatibility alias for useToast
+export function useToast() {
+  const { notifications, show, dismiss } = useNotification();
+
+  function showToast(message: string, type: NotificationType = 'info', duration = 3000) {
+    show(message, type, duration);
+  }
+
+  function showError(message: string, duration = 4000) {
+    show(message, 'error', duration);
+  }
+
+  function showSuccess(message: string, duration = 3000) {
+    show(message, 'success', duration);
+  }
+
+  function showInfo(message: string, duration = 3000) {
+    show(message, 'info', duration);
+  }
+
+  function removeToast(id: number) {
+    const strId = String(id);
+    dismiss(strId);
+  }
+
+  return {
+    toasts: notifications,
+    showToast,
+    showError,
+    showSuccess,
+    showInfo,
+    removeToast,
   };
 }

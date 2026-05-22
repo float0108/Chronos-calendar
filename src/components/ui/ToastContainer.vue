@@ -1,7 +1,12 @@
 <script setup lang="ts">
-import { useToast } from '../../composables/useToast';
+import { useToast } from '../../composables/useNotification';
 
 const { toasts, removeToast } = useToast();
+
+// Convert string id to number for backward compatibility
+function handleRemove(id: string) {
+  removeToast(Number(id));
+}
 </script>
 
 <template>
@@ -11,7 +16,7 @@ const { toasts, removeToast } = useToast();
         v-for="toast in toasts"
         :key="toast.id"
         :class="['toast', `toast-${toast.type}`]"
-        @click="removeToast(toast.id)"
+        @click="handleRemove(toast.id)"
       >
         <span class="toast-message">{{ toast.message }}</span>
       </div>

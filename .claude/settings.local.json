@@ -1,0 +1,24 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm run:*)",
+      "Bash(taskkill.exe:*)",
+      "Bash(sqlite3:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git push:*)",
+      "Skill(commit-commands:commit)",
+      "WebSearch",
+      "WebFetch(domain:v2.tauri.app)",
+      "WebFetch(domain:docs.rs)",
+      "Bash(cargo check:*)",
+      "WebFetch(domain:github.com)",
+      "mcp__plugin_github_github__issue_read",
+      "Bash(npx tsc --noEmit)",
+      "Bash(npx vue-tsc:*)",
+      "Bash(cargo doc:*)",
+      "mcp__plugin_github_github__list_releases",
+      "Bash(xargs wc *)"
+    ]
+  }
+}

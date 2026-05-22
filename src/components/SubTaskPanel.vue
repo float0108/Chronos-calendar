@@ -1,6 +1,6 @@
 <!-- components/SubTaskPanel.vue -->
 <script setup lang="ts">
-import { ref, computed } from 'vue';
+import { ref, computed, watch } from 'vue';
 import { ListTodo, Info, Plus, ChevronLeft } from 'lucide-vue-next';
 import WindowTitleBar from './WindowTitleBar.vue';
 import ListItemPanel from './ListItemPanel.vue';
@@ -20,12 +20,16 @@ interface Props {
 
 interface Emits {
   'select-sub-task': [subTask: Schedule];
+  'toggle-sub-task-done': [subTask: Schedule];
   'view-task-detail': [];
   'back-to-list': [];
   'select-root-task': [];
   'sub-tasks-changed': [];
   'add-sub-task': [content: string];
   'delete-sub-task': [subTaskId: number];
+  'update-sub-task-content': [subTaskId: number, content: string];
+  'update-main-task-content': [taskId: number, content: string];
+  'title-saved': [];
   'close': [];
 }
 
@@ -48,7 +52,40 @@ const scheduleEditorRef = ref<InstanceType<typeof ScheduleEditor> | null>(null);
 // 是否显示搜索框
 const showSearch = computed(() => !!(props.currentTask && props.viewMode === 'main-list'));
 
-// 过滤后的子任务
+// 是否显示可编辑标题（sub-detail 和 main-detail）
+const showEditableTitle = computed(() => props.viewMode === 'sub-detail' || props.viewMode === 'main-detail');
+
+// 当前标题
+const currentTitle = computed(() => {
+  if (props.viewMode === 'sub-detail') {
+    return props.editingSubTask?.content || '';
+  }
+  return props.currentTask?.content || '';
+});
+
+// 当 editingSubTask 变化时，更新编辑字段
+watch(() => props.editingSubTask, (subTask) => {
+  if (subTask) {
+    editDescription.value = subTask.description || '';
+    editCreateDate.value = subTask.create_date || '';
+    editDoneDate.value = subTask.done_date || '';
+  } else {
+    editDescription.value = '';
+    editCreateDate.value = '';
+    editDoneDate.value = '';
+  }
+}, { deep: false });
+
+// 当 currentTask 或 viewMode 变化时，更新 task 详情编辑字段
+watch([() => props.currentTask, () => props.viewMode], ([task, mode]) => {
+  if (task && mode === 'main-detail') {
+    taskEditDescription.value = task.description || '';
+    taskEditCreateDate.value = task.create_date || '';
+    taskEditDoneDate.value = task.done_date || '';
+  }
+}, { deep: false });
+
+// ============ 导航 ============
 const filteredSubTasks = computed(() => {
   if (!subTaskSearchKeyword.value.trim()) {
     return props.subTasks;
@@ -112,6 +149,22 @@ function handleDeleteSubTask(subTaskId: number) {
   emit('delete-sub-task', subTaskId);
 }
 
+function handleToggleSubTaskDone(subTask: Schedule) {
+  emit('toggle-sub-task-done', subTask);
+}
+
+function handleTitleUpdate(newTitle: string) {
+  if (props.viewMode === 'sub-detail' && props.editingSubTask?.id) {
+    emit('update-sub-task-content', props.editingSubTask.id, newTitle);
+  } else if (props.viewMode === 'main-detail' && props.currentTask?.id) {
+    emit('update-main-task-content', props.currentTask.id, newTitle);
+  }
+}
+
+function handleTitleSaved() {
+  emit('title-saved');
+}
+
 function handleInfoClick() {
   emit('view-task-detail');
 }
@@ -137,10 +190,14 @@ function handleSaveTaskDetailAndBack() {
     <WindowTitleBar
       :theme-style="themeStyle"
       :show-search="showSearch"
-      :title="currentTask?.content || ''"
+      :editable-title="showEditableTitle"
+      :title="currentTitle"
       v-model="subTaskSearchKeyword"
       search-placeholder="Search subtasks..."
+      title-placeholder="Subtask title"
       @close="handleClose"
+      @update:title="handleTitleUpdate"
+      @title-saved="handleTitleSaved"
     >
       <template #left>
         <button
@@ -184,6 +241,8 @@ function handleSaveTaskDetailAndBack() {
           @select="handleSelectSubTask"
           @add="handleAddSubTask"
           @delete="handleDeleteSubTask"
+          show-context-menu-done
+          @toggle-done="handleToggleSubTaskDone"
           @info-click="handleInfoClick"
           @start-add="handleStartAddSubTask"
           @update:is-adding="(_val) => isAddingSubTask = _val"

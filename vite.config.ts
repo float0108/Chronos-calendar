@@ -18,10 +18,9 @@ export default defineConfig(async () => ({
       input: {
         main: resolve(__dirname, 'index.html'),
         settings: resolve(__dirname, 'src/settings.html'),
-        board: resolve(__dirname, 'src/board.html'),
         note: resolve(__dirname, 'src/note.html'),
-        task: resolve(__dirname, 'src/task.html'),
-        search: resolve(__dirname, 'src/search.html'),
+        taskboard: resolve(__dirname, 'src/taskboard.html'),
+        todo: resolve(__dirname, 'src/todo.html'),
       },
     },
   },

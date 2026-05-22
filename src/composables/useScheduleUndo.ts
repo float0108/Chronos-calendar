@@ -1,6 +1,6 @@
 import { ref, type Ref } from 'vue';
 import type { Schedule } from '../types';
-import { useToast } from './useToast';
+import { useToast } from './useNotification';
 
 export interface UndoAction {
   type: 'toggleDone' | 'deleteSchedule' | 'editSchedule' | 'addSchedule' | 'updateLines' | 'moveSchedule';

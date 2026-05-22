@@ -42,4 +42,4 @@ Thumbs.db
 *.db-journal
 
 # --- Claude 记忆目录 ---
-.claude/
+.claude/docs/temp/

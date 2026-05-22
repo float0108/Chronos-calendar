@@ -19,6 +19,7 @@ interface Emits {
   'start-add-task': [];
   'add-task': [content: string];
   'delete-task': [taskId: number];
+  'toggle-done': [task: MainTask];
   'tasks-changed': [];
   'search': [keyword: string];
   'start-drag': [];
@@ -43,7 +44,7 @@ function handleDelete(taskId: number) {
 }
 
 function handleToggleDone(task: MainTask) {
-  emit('select-task', task);
+  emit('toggle-done', task);
 }
 
 function handleSearch(keyword: string) {
@@ -97,6 +98,7 @@ function handleStartAdd() {
       :theme-style="themeStyle"
       :cell-style="cellStyle"
       :is-adding="isAddingMainTask"
+      show-context-menu-done
       @select="handleSelect"
       @add="handleAdd"
       @delete="handleDelete"

@@ -16,6 +16,7 @@ interface Props {
   infoEntryIcon?: any;
   showHeader?: boolean;
   isAdding?: boolean;
+  showContextMenuDone?: boolean;
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -25,6 +26,7 @@ const props = withDefaults(defineProps<Props>(), {
   infoEntryIcon: undefined,
   showHeader: false,
   isAdding: false,
+  showContextMenuDone: false,
 });
 
 const emit = defineEmits<{
@@ -185,6 +187,7 @@ function handleInfoClick() {
             :is-done="item.is_done"
             center-calendar
             :selected="selectedItem?.id === item.id"
+            :show-context-menu-done="showContextMenuDone"
             @toggle-done="handleToggleDone(item)"
             @delete="handleDelete(item.id!)"
             @click="handleSelect(item)"

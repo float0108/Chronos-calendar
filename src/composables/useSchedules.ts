@@ -2,7 +2,7 @@ import { ref, computed } from 'vue';
 import dayjs from 'dayjs';
 import type { Schedule, ViewMode, BatchTaskConfig } from '../types';
 import { useDatabase } from './useDatabase';
-import { useToast } from './useToast';
+import { useToast } from './useNotification';
 import { useSettings } from './useSettings';
 import { schedulesToCSV, exportToFile } from '../utils/export';
 import { getCalendarDays } from '../utils/date';

@@ -6,14 +6,14 @@ import type { AppSettings, ThemeMode } from '../types';
 import { defaultLightSettings, defaultDarkSettings, extractCommonParts } from '../types/index';
 import { hexToRgba, adjustBrightness } from '../utils/color';
 import { useFonts } from '../composables/useFonts';
-import { useSystemTheme } from '../composables/useSystemTheme';
+import { useSettings } from '../composables/useSettings';
 import CommonSettings from './CommonSettings.vue';
 import ModeSettings from './ModeSettings.vue';
 import PageSettings from './PageSettings.vue';
 import BasicSettings from './BasicSettings.vue';
 
 const { loadFonts, isFontsLoaded } = useFonts();
-const { systemTheme, onThemeChange } = useSystemTheme();
+const { systemTheme } = useSettings();
 
 const activeMainTab = ref<'basic' | 'common' | 'mode' | 'page'>('basic');
 const activeTab = ref<ThemeMode>('light');
@@ -143,14 +143,8 @@ onMounted(async () => {
   // 添加键盘快捷键
   window.addEventListener('keydown', handleKeydown);
 
-  // 监听系统主题变化
-  onThemeChange(() => {
-    if (activeTab.value === 'system') {
-      // 重新加载对应主题的设置
-      handleSwitchMode('system');
-      applySettings();
-    }
-  });
+  // System theme changes handled internally by useSettings
+// No need for external listener since useSettings already handles this
 });
 
 onUnmounted(() => {

@@ -30,6 +30,36 @@ impl DbState {
             let _ = handle.emit("schedule-changed", change);
         }
     }
+
+    /// 发送创建事件
+    fn notify_created(&self, entity: &str, id: i64, data: serde_json::Value) {
+        self.notify_change(DataChange {
+            entity: entity.into(),
+            action: "created".into(),
+            id,
+            data: Some(data),
+        });
+    }
+
+    /// 发送更新事件
+    fn notify_updated(&self, entity: &str, id: i64, data: serde_json::Value) {
+        self.notify_change(DataChange {
+            entity: entity.into(),
+            action: "updated".into(),
+            id,
+            data: Some(data),
+        });
+    }
+
+    /// 发送删除事件
+    fn notify_deleted(&self, entity: &str, id: i64) {
+        self.notify_change(DataChange {
+            entity: entity.into(),
+            action: "deleted".into(),
+            id,
+            data: None,
+        });
+    }
 }
 
 // ========== Schedule Commands ==========
@@ -82,13 +112,8 @@ pub async fn db_save_schedule(
         father_task,
     };
     let id = state.manager.add_schedule(&item)?;
-    let change = DataChange {
-        entity: "schedule".into(),
-        action: "created".into(),
-        id,
-        data: Some(serde_json::to_value(&item).unwrap()),
-    };
-    state.notify_change(change);
+    let data = serde_json::to_value(&item).map_err(|e| e.to_string())?;
+    state.notify_created("schedule", id, data);
     Ok(id)
 }
 
@@ -98,13 +123,20 @@ pub async fn db_save_schedules_batch(
     items: Vec<ScheduleItem>,
 ) -> Result<Vec<i64>, String> {
     let ids = state.manager.add_schedules(&items)?;
-    let change = DataChange {
-        entity: "schedule".into(),
-        action: "created".into(),
-        id: ids.first().copied().unwrap_or(0),
-        data: Some(serde_json::to_value(&items).unwrap()),
-    };
-    state.notify_change(change);
+    let data = serde_json::to_value(&items).map_err(|e| e.to_string())?;
+    state.notify_created("schedule", ids.first().copied().unwrap_or(0), data);
+    Ok(ids)
+}
+
+#[allow(dead_code)]
+#[tauri::command]
+pub async fn _db_save_schedules_batch_internal(
+    state: State<'_, DbState>,
+    items: Vec<ScheduleItem>,
+) -> Result<Vec<i64>, String> {
+    let ids = state.manager.add_schedules(&items)?;
+    let data = serde_json::to_value(&items).map_err(|e| e.to_string())?;
+    state.notify_created("schedule", ids.first().copied().unwrap_or(0), data);
     Ok(ids)
 }
 
@@ -114,13 +146,7 @@ pub async fn db_delete_schedule(
     id: i64,
 ) -> Result<(), String> {
     state.manager.delete_schedule(id)?;
-    let change = DataChange {
-        entity: "schedule".into(),
-        action: "deleted".into(),
-        id,
-        data: None,
-    };
-    state.notify_change(change);
+    state.notify_deleted("schedule", id);
     Ok(())
 }
 
@@ -130,13 +156,7 @@ pub async fn db_delete_schedules_by_date(
     date: String,
 ) -> Result<(), String> {
     state.manager.delete_schedules_by_date(&date)?;
-    let change = DataChange {
-        entity: "schedule".into(),
-        action: "deleted".into(),
-        id: 0,
-        data: Some(serde_json::json!({ "date": date })),
-    };
-    state.notify_change(change);
+    state.notify_deleted("schedule", 0);
     Ok(())
 }
 
@@ -147,13 +167,8 @@ pub async fn db_toggle_schedule_status(
     is_done: bool,
 ) -> Result<(), String> {
     state.manager.toggle_schedule_status(id, is_done)?;
-    let change = DataChange {
-        entity: "schedule".into(),
-        action: "updated".into(),
-        id,
-        data: Some(serde_json::json!({ "id": id, "is_done": is_done })),
-    };
-    state.notify_change(change);
+    let data = serde_json::json!({ "id": id, "is_done": is_done });
+    state.notify_updated("schedule", id, data);
     Ok(())
 }
 
@@ -168,13 +183,8 @@ pub async fn db_update_schedule_content(
         ..Default::default()
     };
     state.manager.patch_schedule(id, &patch)?;
-    let change = DataChange {
-        entity: "schedule".into(),
-        action: "updated".into(),
-        id,
-        data: Some(serde_json::json!({ "id": id, "content": content })),
-    };
-    state.notify_change(change);
+    let data = serde_json::json!({ "id": id, "content": content });
+    state.notify_updated("schedule", id, data);
     Ok(())
 }
 
@@ -189,13 +199,8 @@ pub async fn db_update_schedule_description(
         ..Default::default()
     };
     state.manager.patch_schedule(id, &patch)?;
-    let change = DataChange {
-        entity: "schedule".into(),
-        action: "updated".into(),
-        id,
-        data: Some(serde_json::json!({ "id": id, "description": description })),
-    };
-    state.notify_change(change);
+    let data = serde_json::json!({ "id": id, "description": description });
+    state.notify_updated("schedule", id, data);
     Ok(())
 }
 
@@ -218,13 +223,8 @@ pub async fn db_update_schedule_date(
         }
     };
     state.manager.patch_schedule(id, &patch)?;
-    let change = DataChange {
-        entity: "schedule".into(),
-        action: "updated".into(),
-        id,
-        data: Some(serde_json::json!({ "id": id, "field": field, "date": date })),
-    };
-    state.notify_change(change);
+    let data = serde_json::json!({ "id": id, "field": field, "date": date });
+    state.notify_updated("schedule", id, data);
     Ok(())
 }
 
@@ -239,13 +239,8 @@ pub async fn db_update_schedule_father_task(
         ..Default::default()
     };
     state.manager.patch_schedule(id, &patch)?;
-    let change = DataChange {
-        entity: "schedule".into(),
-        action: "updated".into(),
-        id,
-        data: Some(serde_json::json!({ "id": id, "father_task": father_task })),
-    };
-    state.notify_change(change);
+    let data = serde_json::json!({ "id": id, "father_task": father_task });
+    state.notify_updated("schedule", id, data);
     Ok(())
 }
 
@@ -265,13 +260,8 @@ pub async fn db_save_sub_task(
     description: Option<String>,
 ) -> Result<i64, String> {
     let id = state.manager.save_sub_task(&content, father_task_id, description.as_deref())?;
-    let change = DataChange {
-        entity: "schedule".into(),
-        action: "created".into(),
-        id,
-        data: Some(serde_json::json!({ "id": id, "content": content, "father_task": father_task_id })),
-    };
-    state.notify_change(change);
+    let data = serde_json::json!({ "id": id, "content": content, "father_task": father_task_id });
+    state.notify_created("schedule", id, data);
     Ok(id)
 }
 
@@ -317,13 +307,8 @@ pub async fn db_save_main_task(
         done_date: None,
     };
     let id = state.manager.add_main_task(&item)?;
-    let change = DataChange {
-        entity: "main_task".into(),
-        action: "created".into(),
-        id,
-        data: Some(serde_json::to_value(&item).unwrap()),
-    };
-    state.notify_change(change);
+    let data = serde_json::to_value(&item).map_err(|e| e.to_string())?;
+    state.notify_created("main_task", id, data);
     Ok(id)
 }
 
@@ -338,13 +323,8 @@ pub async fn db_update_main_task_content(
         ..Default::default()
     };
     state.manager.patch_main_task(id, &patch)?;
-    let change = DataChange {
-        entity: "main_task".into(),
-        action: "updated".into(),
-        id,
-        data: Some(serde_json::json!({ "id": id, "content": content })),
-    };
-    state.notify_change(change);
+    let data = serde_json::json!({ "id": id, "content": content });
+    state.notify_updated("main_task", id, data);
     Ok(())
 }
 
@@ -359,13 +339,8 @@ pub async fn db_update_main_task_description(
         ..Default::default()
     };
     state.manager.patch_main_task(id, &patch)?;
-    let change = DataChange {
-        entity: "main_task".into(),
-        action: "updated".into(),
-        id,
-        data: Some(serde_json::json!({ "id": id, "description": description })),
-    };
-    state.notify_change(change);
+    let data = serde_json::json!({ "id": id, "description": description });
+    state.notify_updated("main_task", id, data);
     Ok(())
 }
 
@@ -380,13 +355,8 @@ pub async fn db_update_main_task_create_date(
         ..Default::default()
     };
     state.manager.patch_main_task(id, &patch)?;
-    let change = DataChange {
-        entity: "main_task".into(),
-        action: "updated".into(),
-        id,
-        data: Some(serde_json::json!({ "id": id, "create_date": create_date })),
-    };
-    state.notify_change(change);
+    let data = serde_json::json!({ "id": id, "create_date": create_date });
+    state.notify_updated("main_task", id, data);
     Ok(())
 }
 
@@ -401,13 +371,8 @@ pub async fn db_update_main_task_done_date(
         ..Default::default()
     };
     state.manager.patch_main_task(id, &patch)?;
-    let change = DataChange {
-        entity: "main_task".into(),
-        action: "updated".into(),
-        id,
-        data: Some(serde_json::json!({ "id": id, "done_date": done_date })),
-    };
-    state.notify_change(change);
+    let data = serde_json::json!({ "id": id, "done_date": done_date });
+    state.notify_updated("main_task", id, data);
     Ok(())
 }
 
@@ -418,13 +383,8 @@ pub async fn db_toggle_main_task_status(
     is_done: bool,
 ) -> Result<(), String> {
     state.manager.toggle_main_task_status(id, is_done)?;
-    let change = DataChange {
-        entity: "main_task".into(),
-        action: "updated".into(),
-        id,
-        data: Some(serde_json::json!({ "id": id, "is_done": is_done })),
-    };
-    state.notify_change(change);
+    let data = serde_json::json!({ "id": id, "is_done": is_done });
+    state.notify_updated("main_task", id, data);
     Ok(())
 }
 
@@ -439,13 +399,8 @@ pub async fn db_update_main_task_priority(
         ..Default::default()
     };
     state.manager.patch_main_task(id, &patch)?;
-    let change = DataChange {
-        entity: "main_task".into(),
-        action: "updated".into(),
-        id,
-        data: Some(serde_json::json!({ "id": id, "priority": priority })),
-    };
-    state.notify_change(change);
+    let data = serde_json::json!({ "id": id, "priority": priority });
+    state.notify_updated("main_task", id, data);
     Ok(())
 }
 
@@ -455,13 +410,7 @@ pub async fn db_delete_main_task(
     id: i64,
 ) -> Result<(), String> {
     state.manager.delete_main_task(id)?;
-    let change = DataChange {
-        entity: "main_task".into(),
-        action: "deleted".into(),
-        id,
-        data: None,
-    };
-    state.notify_change(change);
+    state.notify_deleted("main_task", id);
     Ok(())
 }
 
@@ -503,13 +452,8 @@ pub async fn db_create_note(
         create_date: String::new(),
     };
     let id = state.manager.add_note(&item)?;
-    let change = DataChange {
-        entity: "note".into(),
-        action: "created".into(),
-        id,
-        data: Some(serde_json::to_value(&item).unwrap()),
-    };
-    state.notify_change(change);
+    let data = serde_json::to_value(&item).map_err(|e| e.to_string())?;
+    state.notify_created("note", id, data);
     Ok(id)
 }
 
@@ -527,13 +471,8 @@ pub async fn db_update_note(
         create_date: String::new(),
     };
     state.manager.update_note(id, &item)?;
-    let change = DataChange {
-        entity: "note".into(),
-        action: "updated".into(),
-        id,
-        data: Some(serde_json::to_value(&item).unwrap()),
-    };
-    state.notify_change(change);
+    let data = serde_json::to_value(&item).map_err(|e| e.to_string())?;
+    state.notify_updated("note", id, data);
     Ok(())
 }
 
@@ -548,13 +487,8 @@ pub async fn db_update_note_title(
         ..Default::default()
     };
     state.manager.patch_note(id, &patch)?;
-    let change = DataChange {
-        entity: "note".into(),
-        action: "updated".into(),
-        id,
-        data: Some(serde_json::json!({ "id": id, "title": title })),
-    };
-    state.notify_change(change);
+    let data = serde_json::json!({ "id": id, "title": title });
+    state.notify_updated("note", id, data);
     Ok(())
 }
 
@@ -569,13 +503,8 @@ pub async fn db_update_note_content(
         ..Default::default()
     };
     state.manager.patch_note(id, &patch)?;
-    let change = DataChange {
-        entity: "note".into(),
-        action: "updated".into(),
-        id,
-        data: Some(serde_json::json!({ "id": id, "content": content })),
-    };
-    state.notify_change(change);
+    let data = serde_json::json!({ "id": id, "content": content });
+    state.notify_updated("note", id, data);
     Ok(())
 }
 
@@ -590,13 +519,8 @@ pub async fn db_update_note_create_date(
         ..Default::default()
     };
     state.manager.patch_note(id, &patch)?;
-    let change = DataChange {
-        entity: "note".into(),
-        action: "updated".into(),
-        id,
-        data: Some(serde_json::json!({ "id": id, "create_date": create_date })),
-    };
-    state.notify_change(change);
+    let data = serde_json::json!({ "id": id, "create_date": create_date });
+    state.notify_updated("note", id, data);
     Ok(())
 }
 
@@ -606,13 +530,7 @@ pub async fn db_delete_note(
     id: i64,
 ) -> Result<(), String> {
     state.manager.delete_note(id)?;
-    let change = DataChange {
-        entity: "note".into(),
-        action: "deleted".into(),
-        id,
-        data: None,
-    };
-    state.notify_change(change);
+    state.notify_deleted("note", id);
     Ok(())
 }
 
@@ -625,13 +543,8 @@ pub async fn db_update_cell_color(
     color: String,
 ) -> Result<(), String> {
     state.manager.update_cell_color(&date, &color)?;
-    let change = DataChange {
-        entity: "cell_color".into(),
-        action: "updated".into(),
-        id: 0,
-        data: Some(serde_json::json!({ "date": date, "cell_color": color })),
-    };
-    state.notify_change(change);
+    let data = serde_json::json!({ "date": date, "cell_color": color });
+    state.notify_updated("cell_color", 0, data);
     Ok(())
 }
 
@@ -667,13 +580,8 @@ pub async fn db_import_and_merge_data(
     data: BackupData,
 ) -> Result<ImportStats, String> {
     let stats = state.manager.import_and_merge_data(&data)?;
-    let change = DataChange {
-        entity: "batch".into(),
-        action: "imported".into(),
-        id: 0,
-        data: Some(serde_json::to_value(&stats).unwrap()),
-    };
-    state.notify_change(change);
+    let data = serde_json::to_value(&stats).map_err(|e| e.to_string())?;
+    state.notify_updated("batch", 0, data);
     Ok(stats)
 }
 
@@ -682,13 +590,7 @@ pub async fn db_clear_all_tables(
     state: State<'_, DbState>,
 ) -> Result<(), String> {
     state.manager.clear_all_tables()?;
-    let change = DataChange {
-        entity: "batch".into(),
-        action: "cleared".into(),
-        id: 0,
-        data: None,
-    };
-    state.notify_change(change);
+    state.notify_deleted("batch", 0);
     Ok(())
 }
 

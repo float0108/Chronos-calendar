@@ -210,12 +210,6 @@ watch([title, content], () => {
   }
 });
 
-watch([title, content], () => {
-  if (currentNote.value?.id && isEditing.value) {
-    scheduleSave();
-  }
-});
-
 // 格式化日期为 MM-DD
 function formatDate(dateStr?: string): string {
   return dateStr ? dayjs(dateStr).format('MM-DD') : '';

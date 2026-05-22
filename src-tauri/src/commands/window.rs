@@ -4,6 +4,8 @@ use tauri::{Emitter, Manager, WebviewUrl, WebviewWindowBuilder};
 use tauri_plugin_window_state::{AppHandleExt, StateFlags, WindowExt};
 
 #[cfg(target_os = "windows")]
+use windows::Win32::Foundation::HWND;
+#[cfg(target_os = "windows")]
 use crate::windows::apply_window_settings;
 
 // === 窗口配置 ===
@@ -45,8 +47,15 @@ impl WindowConfig {
 #[cfg(target_os = "windows")]
 fn apply_window_effects(window: &tauri::WebviewWindow) -> Result<(), String> {
     if let Ok(tauri_hwnd) = window.hwnd() {
+        let hwnd = tauri_hwnd;
+        // 验证 HWND 有效性
+        if hwnd.0.is_null() {
+            return Err("Invalid HWND: NULL".to_string());
+        }
+        // 转换为原生 HWND 类型（通过 transmute 保持相同的内存表示）
+        let native_hwnd = HWND(hwnd.0);
         unsafe {
-            apply_window_settings(std::mem::transmute(tauri_hwnd));
+            apply_window_settings(native_hwnd);
         }
     }
     Ok(())
