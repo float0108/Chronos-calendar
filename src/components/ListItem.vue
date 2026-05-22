@@ -178,10 +178,10 @@ onUnmounted(() => {
 
 <template>
   <div
-    class="list-item group flex items-start gap-2 px-3 rounded-lg"
+    class="list-item group flex items-start gap-2 px-3 rounded-lg transition-opacity hover:opacity-100"
     :class="[
       preview ? 'py-2' : 'py-1.5',
-      isAddMode ? ' hover:bg-black/5 dark:hover:bg-white/5 opacity-80 hover:opacity-100 border-dashed' : '',
+      isAddMode ? ' hover:bg-black/5 dark:hover:bg-white/5 opacity-80 border-dashed' : 'opacity-80',
       selected ? 'ring-2 ring-[var(--theme-primary)]' : ''
     ]"
     :style="{
