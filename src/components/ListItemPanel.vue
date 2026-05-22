@@ -38,6 +38,8 @@ const emit = defineEmits<{
   infoClick: [];
   'update:isAdding': [value: boolean];
   'start-add': [];
+  'update-title': [item: T, newTitle: string];
+  'update-date': [item: T, newDate: string];
 }>();
 
 // 本地状态
@@ -102,6 +104,14 @@ function handleSearch(keyword: string) {
 
 function handleInfoClick() {
   emit('infoClick');
+}
+
+function handleUpdateTitle(item: T, newTitle: string) {
+  emit('update-title', item, newTitle);
+}
+
+function handleUpdateDate(item: T, newDate: string) {
+  emit('update-date', item, newDate);
 }
 </script>
 
@@ -191,6 +201,8 @@ function handleInfoClick() {
             @toggle-done="handleToggleDone(item)"
             @delete="handleDelete(item.id!)"
             @click="handleSelect(item)"
+            @update:title="(val) => handleUpdateTitle(item, val)"
+            @update:date="(val) => handleUpdateDate(item, val)"
           />
         </template>
 

@@ -6,7 +6,7 @@ import TaskListPanel from '../components/TaskListPanel.vue';
 import SubTaskPanel from '../components/SubTaskPanel.vue';
 import { useTheme } from '../composables/useTheme';
 import { useTaskOperations } from '../composables/useTaskOperations';
-import { saveMainTask, saveSubTask, deleteSchedule, deleteMainTask, toggleMainTaskStatus, toggleScheduleStatus, updateScheduleContent, updateMainTaskContent } from '../api/database';
+import { saveMainTask, saveSubTask, deleteSchedule, deleteMainTask, toggleMainTaskStatus, toggleScheduleStatus, updateScheduleContent, updateScheduleDate, updateMainTaskContent, updateMainTaskCreateDate } from '../api/database';
 import { defaultLightSettings } from '../types';
 import type { MainTask, Schedule } from '../api/database';
 import type { DataChange } from '../types';
@@ -113,6 +113,18 @@ async function handleUpdateSubTaskContent(subTaskId: number, content: string) {
 async function handleUpdateMainTaskContent(taskId: number, content: string) {
   if (!taskId) return;
   await updateMainTaskContent(taskId, content);
+  await loadTasks();
+}
+
+async function handleUpdateSubTaskDate(subTaskId: number, date: string) {
+  if (!subTaskId) return;
+  await updateScheduleDate(subTaskId, 'create_date', date);
+  await loadSubTasks();
+}
+
+async function handleUpdateMainTaskDate(taskId: number, date: string) {
+  if (!taskId) return;
+  await updateMainTaskCreateDate(taskId, date);
   await loadTasks();
 }
 
@@ -251,6 +263,8 @@ async function handleClose() {
         @sub-tasks-changed="handleSubTasksChanged"
         @add-sub-task="handleAddSubTask"
         @delete-sub-task="handleDeleteSubTask"
+        @update-sub-task-date="handleUpdateSubTaskDate"
+        @update-main-task-date="handleUpdateMainTaskDate"
         @close="handleClose"
       />
     </div>

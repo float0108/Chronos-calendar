@@ -28,7 +28,9 @@ interface Emits {
   'add-sub-task': [content: string];
   'delete-sub-task': [subTaskId: number];
   'update-sub-task-content': [subTaskId: number, content: string];
+  'update-sub-task-date': [subTaskId: number, date: string];
   'update-main-task-content': [taskId: number, content: string];
+  'update-main-task-date': [taskId: number, date: string];
   'title-saved': [];
   'close': [];
 }
@@ -165,6 +167,18 @@ function handleTitleSaved() {
   emit('title-saved');
 }
 
+function handleUpdateSubTaskTitle(subTask: Schedule, newTitle: string) {
+  if (subTask.id) {
+    emit('update-sub-task-content', subTask.id, newTitle);
+  }
+}
+
+function handleUpdateSubTaskDate(subTask: Schedule, newDate: string) {
+  if (subTask.id) {
+    emit('update-sub-task-date', subTask.id, newDate);
+  }
+}
+
 function handleInfoClick() {
   emit('view-task-detail');
 }
@@ -246,6 +260,8 @@ function handleSaveTaskDetailAndBack() {
           @info-click="handleInfoClick"
           @start-add="handleStartAddSubTask"
           @update:is-adding="(_val) => isAddingSubTask = _val"
+          @update-title="handleUpdateSubTaskTitle"
+          @update-date="handleUpdateSubTaskDate"
         />
       </div>
 

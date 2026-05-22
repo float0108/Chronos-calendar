@@ -3,7 +3,7 @@ import { ref, onMounted, nextTick, computed, onUnmounted, watch } from 'vue';
 import { getCurrentWindow } from '@tauri-apps/api/window';
 import { listen } from '@tauri-apps/api/event';
 import { Plus, CheckSquare, Calendar, ChevronLeft } from 'lucide-vue-next';
-import ListItem from '../components/ListItem.vue';
+import ListItemPanel from '../components/ListItemPanel.vue';
 import WindowTitleBar from '../components/WindowTitleBar.vue';
 import ScheduleEditor from '../components/ScheduleEditor.vue';
 import { useThemeStyle } from '../composables/useTaskTheme';
@@ -111,10 +111,6 @@ async function handleAddSchedule(content: string) {
   } catch (error) {
     console.error('Failed to add schedule:', error);
   }
-  isAdding.value = false;
-}
-
-function handleCancelAdd() {
   isAdding.value = false;
 }
 
@@ -312,40 +308,23 @@ onUnmounted(() => {
         <Transition name="view-fade" mode="out-in">
           <!-- 列表视图 -->
           <div v-if="viewMode === 'list'" key="list" class="absolute inset-0 flex flex-col w-full h-full">
-            <div class="flex-1 overflow-y-auto custom-scrollbar px-3 pt-2 pb-3">
-              <div class="space-y-2">
-                <ListItem
-                  v-if="isAdding"
-                  key="add-new-schedule"
-                  is-add-mode
-                  @add="handleAddSchedule"
-                  @cancel="handleCancelAdd"
-                  @click.stop
-                />
-
-                <ListItem
-                  v-for="schedule in schedules"
-                  :key="schedule.id"
-                  :title="schedule.content"
-                  :preview="schedule.description"
-                  :date="schedule.create_date"
-                  :is-done="schedule.is_done"
-                  center-calendar
-                  show-context-menu-done
-                  @update:title="(val) => handleUpdateSchedule(schedule, val)"
-                  @update:date="(val) => handleUpdateScheduleDate(schedule, val)"
-                  @delete="handleDeleteSchedule(schedule.id!)"
-                  @toggle-done="handleToggleDone(schedule)"
-                  @click="handleScheduleClick(schedule)"
-                />
-              </div>
-
-              <div v-if="schedules.length === 0 && !isAdding" class="flex flex-col items-center justify-center py-20 pointer-events-none transition-opacity">
-                <div class="p-4 rounded-full" :style="cellStyle">
-                  <CheckSquare class="w-8 h-8 opacity-20" :style="{ color: 'var(--theme-text)' }" />
-                </div>
-              </div>
-            </div>
+            <ListItemPanel
+              :items="schedules"
+              :selected-item="null"
+              :theme-style="themeStyle"
+              :cell-style="cellStyle"
+              :is-adding="isAdding"
+              :show-header="false"
+              @select="handleScheduleClick"
+              @add="handleAddSchedule"
+              @delete="handleDeleteSchedule"
+              show-context-menu-done
+              @toggle-done="handleToggleDone"
+              @start-add="handleStartAdding"
+              @update:is-adding="(val) => isAdding = val"
+              @update-title="handleUpdateSchedule"
+              @update-date="handleUpdateScheduleDate"
+            />
           </div>
 
           <!-- 详情视图 -->
