@@ -224,12 +224,12 @@ function closeCalendar() {
         </template>
 
         <span
-          v-if="date && !isAddMode"
+          v-if="!isAddMode"
           class="shrink-0 text-xs opacity-50 hover:opacity-80 cursor-pointer"
           :style="{ color: 'var(--theme-text-muted)' }"
           @click.stop="handleDateClick"
         >
-          {{ formatDate(date) }}
+          {{ date ? formatDate(date) : '未设置' }}
         </span>
       </div>
 
