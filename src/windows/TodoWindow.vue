@@ -14,6 +14,7 @@ import {
   updateScheduleContent,
   updateScheduleDate,
   updateScheduleDescription,
+  updateScheduleFatherTask,
   deleteSchedule,
   type Schedule
 } from '../api/database';
@@ -49,6 +50,7 @@ const currentSchedule = ref<Schedule | null>(null);
 const editDescription = ref('');
 const editCreateDate = ref('');
 const editDoneDate = ref('');
+const editFatherTaskId = ref<number | null>(null);
 const scheduleEditorRef = ref<InstanceType<typeof ScheduleEditor> | null>(null);
 
 function loadSettings() {
@@ -164,6 +166,7 @@ function handleScheduleClick(schedule: Schedule) {
   editDescription.value = schedule.description || '';
   editCreateDate.value = schedule.create_date || '';
   editDoneDate.value = schedule.done_date || '';
+  editFatherTaskId.value = schedule.father_task ?? null;
   viewMode.value = 'detail';
   nextTick(() => scheduleEditorRef.value?.loadTasks());
 }
@@ -184,6 +187,9 @@ async function handleSaveScheduleDetail() {
     }
     if (editDoneDate.value !== (currentSchedule.value.done_date || '')) {
       await updateScheduleDate(currentSchedule.value.id, 'done_date', editDoneDate.value);
+    }
+    if (editFatherTaskId.value !== (currentSchedule.value.father_task ?? null)) {
+      await updateScheduleFatherTask(currentSchedule.value.id, editFatherTaskId.value);
     }
     await loadSchedulesData();
     handleBackToList();
@@ -337,8 +343,10 @@ onUnmounted(() => {
                   v-model:description="editDescription"
                   v-model:create-date="editCreateDate"
                   v-model:done-date="editDoneDate"
+                  v-model:father-task-id="editFatherTaskId"
                   :show-content="false"
-                  :show-father-task="false"
+                  :show-father-task="true"
+                  :editable-father-task="true"
                   @save="handleSaveScheduleDetail"
                   @cancel="handleCancelScheduleDetail"
                 />
