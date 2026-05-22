@@ -29,8 +29,12 @@ interface Emits {
   'delete-sub-task': [subTaskId: number];
   'update-sub-task-content': [subTaskId: number, content: string];
   'update-sub-task-date': [subTaskId: number, date: string];
+  'update-sub-task-description': [subTaskId: number, description: string];
+  'update-sub-task-done-date': [subTaskId: number, doneDate: string, isDone: boolean];
   'update-main-task-content': [taskId: number, content: string];
   'update-main-task-date': [taskId: number, date: string];
+  'update-main-task-description': [taskId: number, description: string];
+  'update-main-task-done-date': [taskId: number, doneDate: string, isDone: boolean];
   'title-saved': [];
   'close': [];
 }
@@ -44,9 +48,11 @@ const addingKey = ref(0);
 const editDescription = ref('');
 const editCreateDate = ref('');
 const editDoneDate = ref('');
+const editIsDone = ref(false);
 const taskEditDescription = ref('');
 const taskEditCreateDate = ref('');
 const taskEditDoneDate = ref('');
+const taskEditIsDone = ref(false);
 const subTaskSearchKeyword = ref('');
 
 const scheduleEditorRef = ref<InstanceType<typeof ScheduleEditor> | null>(null);
@@ -71,10 +77,12 @@ watch(() => props.editingSubTask, (subTask) => {
     editDescription.value = subTask.description || '';
     editCreateDate.value = subTask.create_date || '';
     editDoneDate.value = subTask.done_date || '';
+    editIsDone.value = !!subTask.done_date;
   } else {
     editDescription.value = '';
     editCreateDate.value = '';
     editDoneDate.value = '';
+    editIsDone.value = false;
   }
 }, { deep: false });
 
@@ -84,6 +92,7 @@ watch([() => props.currentTask, () => props.viewMode], ([task, mode]) => {
     taskEditDescription.value = task.description || '';
     taskEditCreateDate.value = task.create_date || '';
     taskEditDoneDate.value = task.done_date || '';
+    taskEditIsDone.value = !!task.done_date;
   }
 }, { deep: false });
 
@@ -183,18 +192,34 @@ function handleInfoClick() {
   emit('view-task-detail');
 }
 
-function handleClose() {
-  emit('close');
-}
-
 // ============ 详情编辑 ============
 
+function handleSubTaskDoneDateChanged(_doneDate: string, isDone: boolean) {
+  editIsDone.value = isDone;
+}
+
+function handleMainTaskDoneDateChanged(_doneDate: string, isDone: boolean) {
+  taskEditIsDone.value = isDone;
+}
+
 function handleSaveDetail() {
+  if (props.editingSubTask?.id) {
+    emit('update-sub-task-description', props.editingSubTask.id, editDescription.value);
+    emit('update-sub-task-done-date', props.editingSubTask.id, editDoneDate.value, editIsDone.value);
+  }
   handleBackToList();
 }
 
 function handleSaveTaskDetailAndBack() {
+  if (props.currentTask?.id) {
+    emit('update-main-task-description', props.currentTask.id, taskEditDescription.value);
+    emit('update-main-task-done-date', props.currentTask.id, taskEditDoneDate.value, taskEditIsDone.value);
+  }
   handleBackToList();
+}
+
+function handleClose() {
+  emit('close');
 }
 </script>
 
@@ -281,6 +306,7 @@ function handleSaveTaskDetailAndBack() {
               :father-task-id="currentTask?.id"
               @save="handleSaveDetail"
               @cancel="handleBackToList"
+              @done-date-changed="handleSubTaskDoneDateChanged"
             />
           </div>
         </div>
@@ -299,6 +325,7 @@ function handleSaveTaskDetailAndBack() {
               :show-father-task="false"
               @save="handleSaveTaskDetailAndBack"
               @cancel="handleBackToList"
+              @done-date-changed="handleMainTaskDoneDateChanged"
             />
           </div>
         </div>

@@ -6,7 +6,7 @@ import TaskListPanel from '../components/TaskListPanel.vue';
 import SubTaskPanel from '../components/SubTaskPanel.vue';
 import { useTheme } from '../composables/useTheme';
 import { useTaskOperations } from '../composables/useTaskOperations';
-import { saveMainTask, saveSubTask, deleteSchedule, deleteMainTask, toggleMainTaskStatus, toggleScheduleStatus, updateScheduleContent, updateScheduleDate, updateMainTaskContent, updateMainTaskCreateDate } from '../api/database';
+import { saveMainTask, saveSubTask, deleteSchedule, deleteMainTask, toggleMainTaskStatus, toggleScheduleStatus, updateScheduleContent, updateScheduleDate, updateScheduleDescription, updateMainTaskContent, updateMainTaskCreateDate, updateMainTaskDescription, updateMainTaskDoneDate } from '../api/database';
 import { defaultLightSettings } from '../types';
 import type { MainTask, Schedule } from '../api/database';
 import type { DataChange } from '../types';
@@ -125,6 +125,32 @@ async function handleUpdateSubTaskDate(subTaskId: number, date: string) {
 async function handleUpdateMainTaskDate(taskId: number, date: string) {
   if (!taskId) return;
   await updateMainTaskCreateDate(taskId, date);
+  await loadTasks();
+}
+
+async function handleUpdateSubTaskDescription(subTaskId: number, description: string) {
+  if (!subTaskId) return;
+  await updateScheduleDescription(subTaskId, description);
+  await loadSubTasks();
+}
+
+async function handleUpdateSubTaskDoneDate(subTaskId: number, doneDate: string, isDone: boolean) {
+  if (!subTaskId) return;
+  await updateScheduleDate(subTaskId, 'done_date', doneDate);
+  await toggleScheduleStatus(subTaskId, isDone);
+  await loadSubTasks();
+}
+
+async function handleUpdateMainTaskDescription(taskId: number, description: string) {
+  if (!taskId) return;
+  await updateMainTaskDescription(taskId, description);
+  await loadTasks();
+}
+
+async function handleUpdateMainTaskDoneDate(taskId: number, doneDate: string, isDone: boolean) {
+  if (!taskId) return;
+  await updateMainTaskDoneDate(taskId, doneDate || null);
+  await toggleMainTaskStatus(taskId, isDone);
   await loadTasks();
 }
 
@@ -264,7 +290,11 @@ async function handleClose() {
         @add-sub-task="handleAddSubTask"
         @delete-sub-task="handleDeleteSubTask"
         @update-sub-task-date="handleUpdateSubTaskDate"
+        @update-sub-task-description="handleUpdateSubTaskDescription"
+        @update-sub-task-done-date="handleUpdateSubTaskDoneDate"
         @update-main-task-date="handleUpdateMainTaskDate"
+        @update-main-task-description="handleUpdateMainTaskDescription"
+        @update-main-task-done-date="handleUpdateMainTaskDoneDate"
         @close="handleClose"
       />
     </div>
