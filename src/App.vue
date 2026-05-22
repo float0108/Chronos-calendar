@@ -255,7 +255,7 @@ function handleEditDescription(schedule: Schedule) {
   showDescriptionDialog.value = true;
 }
 
-async function handleDescriptionSave(scheduleId: number, content: string, description: string, createDate: string, doneDate: string, fatherTask: number | null) {
+async function handleDescriptionSave(scheduleId: number, content: string, description: string, createDate: string, doneDate: string, fatherTask: number | null, isDone: boolean) {
   // 更新标题（如果内容有变化）
   if (editingSchedule.value && content !== editingSchedule.value.content) {
     await updateScheduleContent(scheduleId, content);
@@ -264,12 +264,12 @@ async function handleDescriptionSave(scheduleId: number, content: string, descri
   if (createDate && createDate !== editingSchedule.value?.create_date) {
     await updateScheduleDate(scheduleId, 'create_date', createDate);
   }
-  if (doneDate && doneDate !== editingSchedule.value?.done_date) {
+  if (doneDate !== editingSchedule.value?.done_date) {
     await updateScheduleDate(scheduleId, 'done_date', doneDate);
   }
-  // 如果完成日期非空，自动设置为 done 状态
-  if (doneDate && editingSchedule.value && !editingSchedule.value.is_done) {
-    await toggleScheduleStatus(scheduleId, true);
+  // 根据 isDone 状态同步更新完成状态
+  if (editingSchedule.value && isDone !== editingSchedule.value.is_done) {
+    await toggleScheduleStatus(scheduleId, isDone);
   }
   await updateScheduleFatherTask(scheduleId, fatherTask);
   showDescriptionDialog.value = false;

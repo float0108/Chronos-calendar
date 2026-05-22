@@ -10,7 +10,7 @@ const props = defineProps<{
 }>();
 
 const emit = defineEmits<{
-  (e: 'save', scheduleId: number, content: string, description: string, createDate: string, doneDate: string, fatherTask: number | null): void;
+  (e: 'save', scheduleId: number, content: string, description: string, createDate: string, doneDate: string, fatherTask: number | null, isDone: boolean): void;
   (e: 'cancel'): void;
 }>();
 
@@ -21,6 +21,7 @@ const description = ref('');
 const createDateValue = ref('');
 const doneDateValue = ref('');
 const fatherTaskId = ref<number | null>(null);
+const currentIsDone = ref(false);
 const scheduleEditorRef = ref<InstanceType<typeof ScheduleEditor> | null>(null);
 
 // 为 ScheduleEditor 提供主题变量
@@ -49,6 +50,7 @@ watch(() => props.visible, (newVal) => {
     fatherTaskId.value = props.schedule?.father_task ?? null;
     createDateValue.value = props.schedule?.create_date || '';
     doneDateValue.value = props.schedule?.done_date || '';
+    currentIsDone.value = props.schedule?.is_done || false;
 
     nextTick(() => scheduleEditorRef.value?.loadTasks());
     document.body.style.overflow = 'hidden';
@@ -56,6 +58,10 @@ watch(() => props.visible, (newVal) => {
     document.body.style.overflow = '';
   }
 });
+
+function handleDoneDateChanged(_doneDate: string, isDone: boolean) {
+  currentIsDone.value = isDone;
+}
 
 const handleSave = () => {
   if (props.schedule) {
@@ -65,7 +71,8 @@ const handleSave = () => {
       description.value,
       createDateValue.value,
       doneDateValue.value,
-      fatherTaskId.value
+      fatherTaskId.value,
+      currentIsDone.value
     );
   }
 };
@@ -129,6 +136,7 @@ onUnmounted(() => {
               :calendar-centered="true"
               @save="handleSave"
               @cancel="handleCancel"
+              @done-date-changed="handleDoneDateChanged"
             />
           </div>
 

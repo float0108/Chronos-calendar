@@ -29,6 +29,7 @@ const emit = defineEmits<{
   (e: 'update:createDate', value: string): void;
   (e: 'update:doneDate', value: string): void;
   (e: 'update:fatherTaskId', value: number | null): void;
+  (e: 'done-date-changed', doneDate: string, isDone: boolean): void;
   (e: 'create-task', keyword: string): void;
   (e: 'save'): void;
   (e: 'cancel'): void;
@@ -94,7 +95,10 @@ watch(() => props.fatherTaskId, (val) => { localFatherTaskId.value = val ?? null
 watch(localContent, (val) => { emit('update:content', val); });
 watch(localDescription, (val) => { emit('update:description', val); });
 watch(localCreateDate, (val) => { emit('update:createDate', val); });
-watch(localDoneDate, (val) => { emit('update:doneDate', val); });
+watch(localDoneDate, (val) => {
+  emit('update:doneDate', val);
+  emit('done-date-changed', val, !!val);
+});
 watch(localFatherTaskId, (val) => { emit('update:fatherTaskId', val); });
 
 function handleTaskInputFocus() {
@@ -116,6 +120,16 @@ function selectTask(task: MainTask | null) {
 function clearTask() {
   localFatherTaskId.value = null;
   searchKeyword.value = '';
+}
+
+function clearCreateDate() {
+  localCreateDate.value = '';
+  showCreateDateCalendar.value = false;
+}
+
+function clearDoneDate() {
+  localDoneDate.value = '';
+  showDoneDateCalendar.value = false;
 }
 
 function handleCreateNewTask() {
@@ -219,18 +233,32 @@ defineExpose({ loadTasks });
           <span>创建日期</span>
         </label>
         <div class="date-picker-wrapper relative">
+          <div v-if="localCreateDate" class="schedule-input flex items-center gap-1 px-2 py-1.5 rounded text-sm">
+            <button
+              type="button"
+              @click="openCreateDateCalendar"
+              class="flex-1 text-left outline-none transition-colors"
+              :style="{ color: 'var(--theme-text)' }"
+            >
+              {{ formatDateDisplay(localCreateDate) }}
+            </button>
+            <button @click.stop="clearCreateDate" class="w-4 h-4 flex items-center justify-center rounded hover:bg-black/10 dark:hover:bg-white/10 transition-colors shrink-0" :style="{ color: 'var(--theme-text-muted)' }">
+              <X class="w-3 h-3" />
+            </button>
+          </div>
           <button
+            v-else
             type="button"
             @click="openCreateDateCalendar"
             class="schedule-input w-full px-2 py-1.5 rounded text-sm text-left outline-none focus:ring-1 transition-colors"
             :style="{
               backgroundColor: 'var(--theme-cell)',
               borderColor: 'var(--theme-border)',
-              color: 'var(--theme-text)',
+              color: 'var(--theme-text-muted)',
               '--tw-ring-color': 'var(--theme-primary)',
             }"
           >
-            {{ formatDateDisplay(localCreateDate) || '选择日期' }}
+            选择日期
           </button>
           <MiniCalendar
             v-model:current-date="createDateValue"
@@ -248,18 +276,32 @@ defineExpose({ loadTasks });
           <span>完成日期</span>
         </label>
         <div class="date-picker-wrapper relative">
+          <div v-if="localDoneDate" class="schedule-input flex items-center gap-1 px-2 py-1.5 rounded text-sm">
+            <button
+              type="button"
+              @click="openDoneDateCalendar"
+              class="flex-1 text-left outline-none transition-colors"
+              :style="{ color: 'var(--theme-text)' }"
+            >
+              {{ formatDateDisplay(localDoneDate) }}
+            </button>
+            <button @click.stop="clearDoneDate" class="w-4 h-4 flex items-center justify-center rounded hover:bg-black/10 dark:hover:bg-white/10 transition-colors shrink-0" :style="{ color: 'var(--theme-text-muted)' }">
+              <X class="w-3 h-3" />
+            </button>
+          </div>
           <button
+            v-else
             type="button"
             @click="openDoneDateCalendar"
             class="schedule-input w-full px-2 py-1.5 rounded text-sm text-left outline-none focus:ring-1 transition-colors"
             :style="{
               backgroundColor: 'var(--theme-cell)',
               borderColor: 'var(--theme-border)',
-              color: 'var(--theme-text)',
+              color: 'var(--theme-text-muted)',
               '--tw-ring-color': 'var(--theme-primary)',
             }"
           >
-            {{ formatDateDisplay(localDoneDate) || '选择日期' }}
+            选择日期
           </button>
           <MiniCalendar
             v-model:current-date="doneDateValue"
