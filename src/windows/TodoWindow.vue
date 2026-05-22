@@ -311,66 +311,53 @@ onUnmounted(() => {
 
       <!-- 内容区域 -->
       <div class="flex-1 relative overflow-hidden">
-        <Transition name="view-fade" mode="out-in">
-          <!-- 列表视图 -->
-          <div v-if="viewMode === 'list'" key="list" class="absolute inset-0 flex flex-col w-full h-full">
-            <ListItemPanel
-              :items="schedules"
-              :selected-item="null"
-              :theme-style="themeStyle"
-              :cell-style="cellStyle"
-              :is-adding="isAdding"
-              :show-header="false"
-              @select="handleScheduleClick"
-              @add="handleAddSchedule"
-              @delete="handleDeleteSchedule"
-              show-context-menu-done
-              @toggle-done="handleToggleDone"
-              @start-add="handleStartAdding"
-              @update:is-adding="(val) => isAdding = val"
-              @update-title="handleUpdateSchedule"
-              @update-date="handleUpdateScheduleDate"
-            />
-          </div>
+        <!-- 列表视图 -->
+        <div v-if="viewMode === 'list'" class="absolute inset-0 flex flex-col w-full h-full">
+          <ListItemPanel
+            :items="schedules"
+            :selected-item="null"
+            :theme-style="themeStyle"
+            :cell-style="cellStyle"
+            :is-adding="isAdding"
+            :show-header="false"
+            @select="handleScheduleClick"
+            @add="handleAddSchedule"
+            @delete="handleDeleteSchedule"
+            show-context-menu-done
+            @toggle-done="handleToggleDone"
+            @start-add="handleStartAdding"
+            @update:is-adding="(val) => isAdding = val"
+            @update-title="handleUpdateSchedule"
+            @update-date="handleUpdateScheduleDate"
+          />
+        </div>
 
-          <!-- 详情视图 -->
-          <div v-else-if="viewMode === 'detail'" key="detail" class="absolute inset-0 flex flex-col w-full h-full">
-            <div class="flex-1 min-h-0 overflow-y-auto custom-scrollbar p-3">
-              <div class="h-full rounded-lg p-3" :style="cellStyle">
-                <ScheduleEditor
-                  ref="scheduleEditorRef"
-                  class="h-full"
-                  v-model:description="editDescription"
-                  v-model:create-date="editCreateDate"
-                  v-model:done-date="editDoneDate"
-                  v-model:father-task-id="editFatherTaskId"
-                  :show-content="false"
-                  :show-father-task="true"
-                  :editable-father-task="true"
-                  @save="handleSaveScheduleDetail"
-                  @cancel="handleCancelScheduleDetail"
-                />
-              </div>
+        <!-- 详情视图 -->
+        <div v-else-if="viewMode === 'detail'" class="absolute inset-0 flex flex-col w-full h-full">
+          <div class="flex-1 min-h-0 overflow-y-auto custom-scrollbar p-3">
+            <div class="h-full rounded-lg p-3" :style="cellStyle">
+              <ScheduleEditor
+                ref="scheduleEditorRef"
+                class="h-full"
+                v-model:description="editDescription"
+                v-model:create-date="editCreateDate"
+                v-model:done-date="editDoneDate"
+                v-model:father-task-id="editFatherTaskId"
+                :show-content="false"
+                :show-father-task="true"
+                :editable-father-task="true"
+                @save="handleSaveScheduleDetail"
+                @cancel="handleCancelScheduleDetail"
+              />
             </div>
           </div>
-        </Transition>
+        </div>
       </div>
     </div>
   </div>
 </template>
 
 <style scoped>
-/* 视图切换动画 */
-.view-fade-enter-active,
-.view-fade-leave-active {
-  transition: opacity 0.2s ease;
-}
-
-.view-fade-enter-from,
-.view-fade-leave-to {
-  opacity: 0;
-}
-
 /* 优雅的悬浮滚动条，默认隐藏，hover时显示 */
 .custom-scrollbar {
   scrollbar-width: thin;
