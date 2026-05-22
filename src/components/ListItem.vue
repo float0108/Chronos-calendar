@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, nextTick, onUnmounted, watch } from 'vue';
+import { ref, nextTick, watch } from 'vue';
 import { MinusCircle, Check, PlusCircle } from 'lucide-vue-next';
 import MiniCalendar from './calendar/MiniCalendar.vue';
 import dayjs from 'dayjs';
@@ -37,8 +37,6 @@ const isEditing = ref(false);
 const editTitle = ref('');
 const inputRef = ref<HTMLInputElement | null>(null);
 
-let clickTimer: ReturnType<typeof setTimeout> | null = null;
-
 // 日历相关
 const showCalendar = ref(false);
 const calendarPosition = ref<{ top: number; left: number } | undefined>(undefined);
@@ -46,13 +44,6 @@ const currentDate = ref(dayjs());
 
 function formatDate(dateStr?: string): string {
   return dateStr ? dayjs(dateStr).format('MM-DD') : '';
-}
-
-function clearClickTimer() {
-  if (clickTimer) {
-    clearTimeout(clickTimer);
-    clickTimer = null;
-  }
 }
 
 function startEdit() {
@@ -72,23 +63,7 @@ watch(() => props.isAddMode, (isAdd) => {
   }
 }, { immediate: true });
 
-function handleTitleClick() {
-  if (isEditing.value) return;
-
-  if (props.isAddMode) {
-    startEdit();
-    return;
-  }
-
-  clearClickTimer();
-  clickTimer = setTimeout(() => {
-    emit('click');
-    clickTimer = null;
-  }, 150);
-}
-
 function handleTitleDblclick() {
-  clearClickTimer();
   if (!props.isAddMode) {
     startEdit();
   }
@@ -135,13 +110,12 @@ function handleBlur() {
   }
 }
 
-function handleContentClick() {
-  if (!isEditing.value) {
-    if (props.isAddMode) {
-      startEdit();
-    } else {
-      emit('click');
-    }
+function handleItemClick() {
+  if (isEditing.value) return;
+  if (props.isAddMode) {
+    startEdit();
+  } else {
+    emit('click');
   }
 }
 
@@ -170,10 +144,6 @@ function handleDateSelect(date: dayjs.Dayjs) {
 function closeCalendar() {
   showCalendar.value = false;
 }
-
-onUnmounted(() => {
-  clearClickTimer();
-});
 </script>
 
 <template>
@@ -188,8 +158,9 @@ onUnmounted(() => {
       backgroundColor: 'var(--theme-cell)',
       border: isAddMode ? '1px dashed var(--theme-border)' : '1px solid var(--theme-border)',
     }"
+    @click="handleItemClick"
   >
-    <div class="flex-1 min-w-0" @click.stop="handleContentClick">
+    <div class="flex-1 min-w-0">
       <div class="flex items-center gap-2">
         <button
           v-if="isAddMode"
@@ -220,14 +191,13 @@ onUnmounted(() => {
             v-else
             class="text-sm font-medium leading-relaxed flex-1 truncate"
             :style="{ color: isDone ? 'var(--theme-text-muted)' : 'var(--theme-text)' }"
-            @click.stop="handleTitleClick"
             @dblclick.stop="handleTitleDblclick"
             @contextmenu.prevent.stop="showContextMenuDone && emit('toggleDone')"
           >
             {{ title || '...' }}
           </span>
         </template>
-        
+
         <template v-else>
           <div class="relative flex-1 min-w-0">
             <input
@@ -241,7 +211,6 @@ onUnmounted(() => {
               @keydown.enter="handleSave"
               @keydown.s.ctrl.prevent="handleSave"
               @keydown.escape="handleCancel"
-              @click.stop
             />
             <button
               @mousedown.prevent="handleSave"
