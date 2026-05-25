@@ -299,13 +299,13 @@ impl DatabaseManager {
         Ok(items)
     }
 
-    /// 按日期范围加载待办日程（未完成的日程）
+    /// 按日期范围加载待办日程（未完成的日程，包含无日期的日程）
     pub fn get_todo_schedules_by_range(&self, start_date: &str, end_date: &str) -> Result<Vec<ScheduleItem>, String> {
         let conn = self.conn.lock().map_err(|e| e.to_string())?;
         let mut stmt = conn.prepare(
             "SELECT id, create_date, content, is_done, priority, done_date, description, father_task
              FROM schedules
-             WHERE create_date >= ?1 AND create_date <= ?2 AND is_done = 0
+             WHERE (create_date >= ?1 AND create_date <= ?2 OR create_date IS NULL) AND is_done = 0
              ORDER BY id ASC"
         ).map_err(|e| format!("Failed to prepare statement: {}", e))?;
 
